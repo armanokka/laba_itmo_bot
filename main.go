@@ -140,7 +140,7 @@ func botRun(update *tgbotapi.Update) {
 		switch update.Message.Text {
 		case "/start":
 			var user Users
-			err := db.Model(&Users{ID: update.Message.Chat.ID}).Take(&user).Error
+			err := db.Model(&Users{ID: update.Message.Chat.ID}).Select("my_lang", "to_lang").Find(&user).Error
 			if err != nil {
 				if err == gorm.ErrRecordNotFound {
 					if update.Message.From.LanguageCode == "" {
@@ -268,14 +268,8 @@ func botRun(update *tgbotapi.Update) {
 			}
 
 			db.Model(&Users{ID: update.CallbackQuery.From.ID}).Updates(map[string]interface{}{"act": nil})
-			msg := tgbotapi.NewEditMessageText(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Your language is - *" + user.MyLang + "*, and translate language - *" + user.ToLang + "*. If you want to change them, click the button. Using: Just send message to translate.")
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Your language is - *" + user.MyLang + "*, and translate language - *" + user.ToLang + "*.\n\nChange your lang - /my_lang\nChange translate lang - /to_lang")
 			msg.ParseMode = tgbotapi.ModeMarkdown
-			kb := tgbotapi.NewInlineKeyboardMarkup(
-				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("My lang", "set_my_lang")),
-				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("Translate lang", "set_translate_lang")))
-			msg.ReplyMarkup = &kb
 			bot.Send(msg)
 		}
 	}
