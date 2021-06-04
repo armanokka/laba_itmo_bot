@@ -2,9 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/detectlanguage/detectlanguage-go"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/valyala/fasthttp"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -56,6 +57,9 @@ func Translate(lang, text string) (TranslateAPIResponse, error) {
 	err = json.Unmarshal(response, &out)
 	if err != nil {
 		return TranslateAPIResponse{}, err
+	}
+	if out.Code != 200 {
+		return TranslateAPIResponse{}, errors.New("api did not respond 200 OK.")
 	}
 	return out, err
 }

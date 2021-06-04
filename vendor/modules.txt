@@ -5,7 +5,9 @@ github.com/andybalholm/brotli
 github.com/detectlanguage/detectlanguage-go
 # github.com/go-telegram-bot-api/telegram-bot-api v4.6.4+incompatible
 ## explicit
-github.com/go-telegram-bot-api/telegram-bot-api
+# github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.0.0-rc1.0.20210311030851-d0e1dfd8c604
+## explicit
+github.com/go-telegram-bot-api/telegram-bot-api/v5
 # github.com/jackc/chunkreader/v2 v2.0.1
 github.com/jackc/chunkreader/v2
 # github.com/jackc/pgconn v1.8.1
@@ -36,7 +38,6 @@ github.com/klauspost/compress/gzip
 github.com/klauspost/compress/zlib
 # github.com/technoweenie/multipartstreamer v1.0.1
 ## explicit
-github.com/technoweenie/multipartstreamer
 # github.com/valyala/bytebufferpool v1.0.0
 github.com/valyala/bytebufferpool
 # github.com/valyala/fasthttp v1.26.0
