@@ -165,7 +165,6 @@ func botRun(update *tgbotapi.Update) {
 			msg.ParseMode = tgbotapi.ModeMarkdown
 			bot.Send(msg)
 		case "/my_lang":
-			defer bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
 			edit := tgbotapi.NewEditMessageText(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Send few words *in your language*.")
 			edit.ParseMode = tgbotapi.ModeMarkdown
 			kb := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
@@ -179,7 +178,6 @@ func botRun(update *tgbotapi.Update) {
 				return
 			}
 		case "/to_lang":
-			defer bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
 			edit := tgbotapi.NewEditMessageText(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Send few words *in your language into you want translate*.\n\nUsage: send message to translate")
 			edit.ParseMode = tgbotapi.ModeMarkdown
 			kb := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
@@ -259,6 +257,7 @@ func botRun(update *tgbotapi.Update) {
 	if update.CallbackQuery != nil {
 		switch update.CallbackQuery.Data {
 		case "back":
+			defer bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
 			var user Users
 			err := db.Model(&Users{ID: update.CallbackQuery.From.ID}).Take(&user).Error
 			if err != nil {
