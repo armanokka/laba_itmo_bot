@@ -152,10 +152,11 @@ func botRun(update *tgbotapi.Update) {
 						pingAdmin(err)
 						return
 					}
+				} else {
+					bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "error #012033, try again later"))
+					pingAdmin(err)
+					return
 				}
-				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "error #012033, try again later"))
-				pingAdmin(err)
-				return
 			}
 
 			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Your language is - *" + user.MyLang + "*, and translate language - *" + user.ToLang + "*.\n\nChange your lang - /my_lang\nChange translate lang - /to_lang"))
