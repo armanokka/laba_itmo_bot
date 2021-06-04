@@ -142,20 +142,20 @@ func botRun(update *tgbotapi.Update) {
 			var user Users
 			err := db.Model(&Users{ID: update.Message.Chat.ID}).Take(&user).Error
 			if err != nil {
+				if err == gorm.ErrRecordNotFound {
+					if update.Message.From.LanguageCode == "" {
+						update.Message.From.LanguageCode = "en"
+					}
+					err = db.Create(&Users{ID: update.Message.Chat.ID, MyLang: update.Message.From.LanguageCode}).Error
+					if err != nil {
+						bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "error #9273423, try again later"))
+						pingAdmin(err)
+						return
+					}
+				}
 				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "error #012033, try again later"))
 				pingAdmin(err)
 				return
-			}
-			if user.ID == 0 {
-				if update.Message.From.LanguageCode == "" {
-					update.Message.From.LanguageCode = "en"
-				}
-				err = db.Create(&Users{ID: update.Message.Chat.ID, MyLang: update.Message.From.LanguageCode}).Error
-				if err != nil {
-					bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "error #9273423, try again later"))
-					pingAdmin(err)
-					return
-				}
 			}
 
 			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Your language is - *" + user.MyLang + "*, and translate language - *" + user.ToLang + "*.\n\nChange your lang - /my_lang\nChange translate lang - /to_lang"))
