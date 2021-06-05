@@ -8,9 +8,11 @@ import (
 	iso6391 "github.com/emvi/iso-639-1"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
+	"github.com/valyala/fasthttp"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -96,10 +98,10 @@ func main() {
 		port = "80"
 	}
 
-	updates := bot.GetUpdatesChan(tgbotapi.UpdateConfig{})
-	for update := range updates {
-		go botRun(&update)
-	}
+	//updates := bot.GetUpdatesChan(tgbotapi.UpdateConfig{})
+	//for update := range updates {
+	//	go botRun(&update)
+	//}
 
 	//conn, err := amqp.Dial(os.Getenv("CLOUDAMQP_URL"))
 	//if amqpUrl := os.Getenv("CLOUDAMQP_URL"); amqpUrl == "" {
@@ -107,31 +109,31 @@ func main() {
 	//}
 	//defer conn.Close()
 
-	//requestHandler := func(ctx *fasthttp.RequestCtx) {
-	//	switch string(ctx.Path()) {
-	//	case "/" + botToken:
-	//		if isPost := ctx.IsPost(); isPost {
-	//			data := ctx.PostBody()
-	//			var update tgbotapi.Update
-	//			err := json.Unmarshal(data, &update)
-	//			if err != nil {
-	//				fmt.Fprint(ctx, "can't parse")
-	//			} else {
-	//				go botRun(&update)
-	//			}
-	//		} else {
-	//			fmt.Fprint(ctx, "no way")
-	//		}
-	//	default:
-	//		_, err = fmt.Fprintln(ctx, "ok")
-	//		if err != nil {
-	//			panic(err)
-	//		}
-	//	}
-	//}
-	//if err = fasthttp.ListenAndServe(":"+port, requestHandler); err != nil {
-	//	log.Fatalf("Error in ListenAndServe: %s", err)
-	//}
+	requestHandler := func(ctx *fasthttp.RequestCtx) {
+		switch string(ctx.Path()) {
+		case "/" + botToken:
+			if isPost := ctx.IsPost(); isPost {
+				data := ctx.PostBody()
+				var update tgbotapi.Update
+				err := json.Unmarshal(data, &update)
+				if err != nil {
+					fmt.Fprint(ctx, "can't parse")
+				} else {
+					go botRun(&update)
+				}
+			} else {
+				fmt.Fprint(ctx, "no way")
+			}
+		default:
+			_, err = fmt.Fprintln(ctx, "ok")
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+	if err = fasthttp.ListenAndServe(":"+port, requestHandler); err != nil {
+		log.Fatalf("Error in ListenAndServe: %s", err)
+	}
 
 }
 

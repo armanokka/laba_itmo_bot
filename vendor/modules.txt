@@ -1,3 +1,5 @@
+# github.com/andybalholm/brotli v1.0.2
+github.com/andybalholm/brotli
 # github.com/detectlanguage/detectlanguage-go v1.0.1
 ## explicit
 github.com/detectlanguage/detectlanguage-go
@@ -36,17 +38,25 @@ github.com/jinzhu/now
 # github.com/k0kubun/pp v3.0.1+incompatible
 ## explicit
 github.com/k0kubun/pp
+# github.com/klauspost/compress v1.12.2
+github.com/klauspost/compress/flate
+github.com/klauspost/compress/gzip
+github.com/klauspost/compress/zlib
 # github.com/mattn/go-colorable v0.1.6
 github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.12
 github.com/mattn/go-isatty
 # github.com/streadway/amqp v1.0.0
 ## explicit
-github.com/streadway/amqp
 # github.com/technoweenie/multipartstreamer v1.0.1
 ## explicit
+# github.com/valyala/bytebufferpool v1.0.0
+github.com/valyala/bytebufferpool
 # github.com/valyala/fasthttp v1.26.0
 ## explicit
+github.com/valyala/fasthttp
+github.com/valyala/fasthttp/fasthttputil
+github.com/valyala/fasthttp/stackless
 # golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a
 golang.org/x/crypto/pbkdf2
 # golang.org/x/sys v0.0.0-20210514084401-e8d321eab015
