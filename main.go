@@ -159,13 +159,27 @@ func botRun(update *tgbotapi.Update) {
 			if update.Message.From.LanguageCode == "" {
 				update.Message.From.LanguageCode = "en"
 			}
-			err := db.FirstOrCreate(&user, &Users{ID: update.Message.Chat.ID, MyLang: update.Message.From.LanguageCode, ToLang: "ar"}).Error
+			err := db.Model(&Users{ID: update.Message.Chat.ID}).Take(&user).Error
 			if err != nil {
-				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "error #012033, try again later"))
-				pingAdmin(err)
-				return
+				if err == gorm.ErrRecordNotFound {
+					err = db.Create(&Users{ID: update.Message.Chat.ID, MyLang: update.Message.From.LanguageCode, ToLang: "ar"}).Error
+					if err != nil {
+						bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "error #012033, try again later"))
+						pingAdmin(err)
+						return
+					}
+					err = db.Model(&Users{ID: update.Message.Chat.ID}).Take(&user).Error
+					if err != nil {
+						bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "error #3029, try again later"))
+						pingAdmin(err)
+						return
+					}
+				} else {
+					bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "error #1002, try again later"))
+					pingAdmin(err)
+					return
+				}
 			}
-			fmt.Println(user)
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Your language is - <b>"+user.MyLang+"</b>, and translate language - <b>"+user.ToLang+"</b>.\n\nChange your lang /my_lang\nChange translate lang /to_lang")
 			msg.ParseMode = tgbotapi.ModeHTML
 			bot.Send(msg)
@@ -326,4 +340,7 @@ func botRun(update *tgbotapi.Update) {
 			}
 		}
 	}
+	//if update.InlineQuery != nil {
+	//	update.InlineQuery.From.LanguageCode
+	//}
 }
