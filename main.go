@@ -142,7 +142,7 @@ func pingAdmin(err error) {
 }
 
 func setUserStep(chatID int64, step string) error {
-	return db.Model(&Users{ID: chatID}).Update("act", step).Error
+	return db.Model(&Users{ID: chatID}).Where("id", chatID).Limit(1).Update("act", step).Error
 }
 
 func getUserStep(chatID int64) (string, error) {
@@ -168,7 +168,7 @@ func botRun(update *tgbotapi.Update) {
 						pingAdmin(err)
 						return
 					}
-					err = db.Model(&Users{ID: update.Message.Chat.ID}).Take(&user).Error
+					err = db.Model(&Users{}).Where("id", update.Message.Chat.ID).Take(&user).Error
 					if err != nil {
 						bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "error #3029, try again later"))
 						pingAdmin(err)
