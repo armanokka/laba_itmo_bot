@@ -702,6 +702,6 @@ func (bot *BotAPI) CopyMessage(config CopyMessageConfig) (MessageID, error) {
 }
 
 func (bot *BotAPI) AnswerCallbackQuery(callback CallbackConfig) {
-	params, _ := callback.params()
+	params, _ :=callback.params()
 	bot.MakeRequest(callback.method(), params)
 }

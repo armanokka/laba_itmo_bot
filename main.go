@@ -5,28 +5,28 @@ import (
 	"errors"
 	"fmt"
 	"github.com/detectlanguage/detectlanguage-go"
+	iso6391 "github.com/emvi/iso-639-1"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/valyala/fasthttp"
+	"github.com/k0kubun/pp"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 )
 
 var (
-	db *gorm.DB
+	db  *gorm.DB
 	bot *tgbotapi.BotAPI
 )
 
-
 type Users struct {
-	ID int64
+	ID     int64
 	MyLang string
 	ToLang string
-	Act string
+	Act    string
 }
 
 type TranslateAPIResponse struct {
@@ -37,7 +37,11 @@ type TranslateAPIResponse struct {
 }
 
 func Translate(lang, text string) (TranslateAPIResponse, error) {
-	req, err := http.NewRequest("GET", "https://just-translated.p.rapidapi.com?lang=" + url.QueryEscape(lang) + "&text=" + url.QueryEscape(text), nil)
+	params := url.Values{}
+	params.Add("lang", lang)
+	params.Add("text", text)
+	path := params.Encode()
+	req, err := http.NewRequest("GET", "https://just-translated.p.rapidapi.com?"+path, nil)
 	if err != nil {
 		return TranslateAPIResponse{}, err
 	}
@@ -59,18 +63,16 @@ func Translate(lang, text string) (TranslateAPIResponse, error) {
 		return TranslateAPIResponse{}, err
 	}
 	if out.Code != 200 {
+		pp.Println("error in Translate:", out)
 		return TranslateAPIResponse{}, errors.New("api did not respond 200 OK.")
 	}
 	return out, err
 }
 
-func DetectLanguage(text string) (string, error){
+func DetectLanguage(text string) ([]*detectlanguage.DetectionResult, error) {
 	state := detectlanguage.New("c71fb63df8bdc8ea8bc4c0b20771aa5f")
 	detections, err := state.Detect(text)
-	if err != nil {
-		return "", err
-	}
-	return detections[0].Language, nil
+	return detections, err
 }
 
 func main() {
@@ -89,42 +91,52 @@ func main() {
 	}
 	bot.Debug = false // >:(
 
-
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "80"
 	}
 
-	requestHandler := func(ctx *fasthttp.RequestCtx) {
-		switch string(ctx.Path()) {
-		case "/" + botToken:
-			if isPost := ctx.IsPost(); isPost {
-				data := ctx.PostBody()
-				var update tgbotapi.Update
-				err := json.Unmarshal(data, &update)
-				if err != nil {
-					fmt.Fprint(ctx, "can't parse")
-				} else {
-					go botRun(&update)
-				}
-			} else {
-				fmt.Fprint(ctx, "no way")
-			}
-		default:
-			_, err = fmt.Fprintln(ctx, "ok")
-			if err != nil {
-				panic(err)
-			}
-		}
+	updates := bot.GetUpdatesChan(tgbotapi.UpdateConfig{})
+	for update := range updates {
+		go botRun(&update)
 	}
-	if err = fasthttp.ListenAndServe(":"+port, requestHandler); err != nil {
-		log.Fatalf("Error in ListenAndServe: %s", err)
-	}
+
+	//conn, err := amqp.Dial(os.Getenv("CLOUDAMQP_URL"))
+	//if amqpUrl := os.Getenv("CLOUDAMQP_URL"); amqpUrl == "" {
+	//	conn, err = amqp.Dial(amqpUrl)
+	//}
+	//defer conn.Close()
+
+	//requestHandler := func(ctx *fasthttp.RequestCtx) {
+	//	switch string(ctx.Path()) {
+	//	case "/" + botToken:
+	//		if isPost := ctx.IsPost(); isPost {
+	//			data := ctx.PostBody()
+	//			var update tgbotapi.Update
+	//			err := json.Unmarshal(data, &update)
+	//			if err != nil {
+	//				fmt.Fprint(ctx, "can't parse")
+	//			} else {
+	//				go botRun(&update)
+	//			}
+	//		} else {
+	//			fmt.Fprint(ctx, "no way")
+	//		}
+	//	default:
+	//		_, err = fmt.Fprintln(ctx, "ok")
+	//		if err != nil {
+	//			panic(err)
+	//		}
+	//	}
+	//}
+	//if err = fasthttp.ListenAndServe(":"+port, requestHandler); err != nil {
+	//	log.Fatalf("Error in ListenAndServe: %s", err)
+	//}
 
 }
 
 func pingAdmin(err error) {
-	bot.Send(tgbotapi.NewMessage(579515224, "ERROR: " + err.Error()))
+	bot.Send(tgbotapi.NewMessage(579515224, "ERROR: "+err.Error()))
 }
 
 func setUserStep(chatID int64, step string) error {
@@ -137,60 +149,47 @@ func getUserStep(chatID int64) (string, error) {
 	return user.Act, err
 }
 
-
-
 func botRun(update *tgbotapi.Update) {
 	if update.Message != nil {
 		switch update.Message.Text {
 		case "/start":
 			var user Users
-			err := db.Model(&Users{ID: update.Message.Chat.ID}).Select("my_lang", "to_lang").Find(&user).Error
-			if err != nil {
-				if err == gorm.ErrRecordNotFound {
-					if update.Message.From.LanguageCode == "" {
-						update.Message.From.LanguageCode = "en"
-					}
-
-					err = db.Create(&Users{ID: update.Message.Chat.ID, MyLang: update.Message.From.LanguageCode, ToLang: "ar"}).Error
-					if err != nil {
-						bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "error #9273423, try again later"))
-						pingAdmin(err)
-						return
-					}
-					user.MyLang = update.Message.From.LanguageCode
-					user.ToLang = "ar"
-				} else {
-					bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "error #012033, try again later"))
-					pingAdmin(err)
-					return
-				}
+			if update.Message.From.LanguageCode == "" {
+				update.Message.From.LanguageCode = "en"
 			}
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Your language is - *" + user.MyLang + "*, and translate language - *" + user.ToLang + "*.\n\nChange your lang - /my_lang\nChange translate lang - /to_lang")
-			msg.ParseMode = tgbotapi.ModeMarkdown
+			err := db.FirstOrCreate(&user, &Users{ID: update.Message.Chat.ID, MyLang: update.Message.From.LanguageCode, ToLang: "ar"}).Error
+			if err != nil {
+				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "error #012033, try again later"))
+				pingAdmin(err)
+				return
+			}
+			fmt.Println(user)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Your language is - <b>"+user.MyLang+"</b>, and translate language - <b>"+user.ToLang+"</b>.\n\nChange your lang /my_lang\nChange translate lang /to_lang")
+			msg.ParseMode = tgbotapi.ModeHTML
 			bot.Send(msg)
 		case "/my_lang":
-			edit := tgbotapi.NewEditMessageText(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Send few words *in your language*.")
+			edit := tgbotapi.NewMessage(update.Message.Chat.ID, "Send few words *in your language*.")
 			edit.ParseMode = tgbotapi.ModeMarkdown
 			kb := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
 			edit.ReplyMarkup = &kb
 			bot.Send(edit)
 
-			err := setUserStep(update.CallbackQuery.From.ID, "set_my_lang")
+			err := setUserStep(update.Message.Chat.ID, "set_my_lang")
 			if err != nil {
-				bot.Send(tgbotapi.NewMessage(update.CallbackQuery.From.ID, "error #032, try again later"))
+				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "error #032, try again later"))
 				pingAdmin(err)
 				return
 			}
 		case "/to_lang":
-			edit := tgbotapi.NewEditMessageText(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Send few words *in your language into you want translate*.\n\nUsage: send message to translate")
+			edit := tgbotapi.NewMessage(update.Message.Chat.ID, "Send few words *in your language into you want translate*.")
 			edit.ParseMode = tgbotapi.ModeMarkdown
 			kb := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
 			edit.ReplyMarkup = &kb
 			bot.Send(edit)
 
-			err := setUserStep(update.CallbackQuery.From.ID, "set_my_lang")
+			err := setUserStep(update.Message.Chat.ID, "set_translate_lang")
 			if err != nil {
-				bot.Send(tgbotapi.NewMessage(update.CallbackQuery.From.ID, "error #032, try again later"))
+				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "error #032, try again later"))
 				pingAdmin(err)
 				return
 			}
@@ -202,59 +201,82 @@ func botRun(update *tgbotapi.Update) {
 				return
 			}
 			switch userStep {
-			case "set_my_lang", "set_translate_lang":
-				userLang, err := DetectLanguage(update.Message.Text)
+			case "set_my_lang":
+				languageDetections, err := DetectLanguage(update.Message.Text)
 				if err != nil {
 					bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Could not detect language, please send something else again"))
 					return
 				}
-				if userStep == "set_my_lang" {
-					err = db.Model(&Users{ID: update.Message.Chat.ID}).Update("my_lang", userLang).Error
+				keyboard := tgbotapi.NewInlineKeyboardMarkup()
+				for _, lang := range languageDetections {
+					row := tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(iso6391.Name(lang.Language), "set_my_lang:"+lang.Language))
+					keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
 				}
-				if userStep == "set_translate_lang" {
-					err = db.Model(&Users{ID: update.Message.Chat.ID}).Update("to_lang", userLang).Error
+				if len(keyboard.InlineKeyboard) == 0 {
+					bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Sorry, but this language is unsupported."))
+					return
 				}
+				keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please, select one of this languages:\n\nP.s. If yours isn't here, send another message")
+				msg.ReplyMarkup = keyboard
+				bot.Send(msg)
+				return
+			case "set_translate_lang":
+				languageDetections, err := DetectLanguage(update.Message.Text)
 				if err != nil {
-					bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "error #1010, try again later"))
+					bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Could not detect language, please send something else again"))
+					return
+				}
+				keyboard := tgbotapi.NewInlineKeyboardMarkup()
+				for _, lang := range languageDetections {
+					row := tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(iso6391.Name(lang.Language), "set_translate_lang:"+lang.Language))
+					keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
+				}
+				if len(keyboard.InlineKeyboard) == 0 {
+					bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Sorry, but this language is unsupported."))
+					return
+				}
+				keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please, select one of this languages:\n\nP.s. If yours isn't here, send another message")
+				msg.ReplyMarkup = keyboard
+				bot.Send(msg)
+				return
+			}
+
+			var user Users // Contains only MyLang and ToLang
+			err = db.Model(&Users{ID: update.Message.Chat.ID}).Select("my_lang", "to_lang").Find(&user).Error
+			if err != nil {
+				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "err #2020, please try again later"))
+				pingAdmin(err)
+				return
+			}
+			msg, err := bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "⏳ Translating..."))
+			if err != nil {
+				return
+			}
+			messageLanguages, err := DetectLanguage(update.Message.Text)
+			if err != nil {
+				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "err #2040, please try again later"))
+				pingAdmin(err)
+				return
+			}
+			languageOfUserMessage := messageLanguages[0].Language
+			if languageOfUserMessage == user.MyLang {
+				translate, err := Translate(user.ToLang, update.Message.Text)
+				if err != nil {
+					bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "err #2090, please try again later"))
 					pingAdmin(err)
 					return
 				}
-				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Language set."))
-			default:
-				var user Users // Contains only MyLang and ToLang
-				err = db.Model(&Users{ID: update.Message.Chat.ID}).Select("my_lang", "to_lang").Find(&user).Error
+				bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, translate.Text[0]))
+			} else {
+				translate, err := Translate(user.MyLang, update.Message.Text)
 				if err != nil {
-					bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "err #2020, please try again later"))
+					bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "err #2090, please try again later"))
 					pingAdmin(err)
 					return
 				}
-				msg, err := bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "⏳ Translating..."))
-				if err != nil {
-					return
-				}
-				msgLang, err := DetectLanguage(update.Message.Text)
-				if err != nil {
-					bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "err #2040, please try again later"))
-					pingAdmin(err)
-					return
-				}
-				if msgLang == user.MyLang {
-					translatedText, err := Translate(user.ToLang, update.Message.Text)
-					if err != nil {
-						bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "err #2050, please try again later"))
-						pingAdmin(err)
-						return
-					}
-					tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, translatedText.Text[0])
-				} else {
-					translatedText, err := Translate(user.MyLang, update.Message.Text)
-					if err != nil {
-						bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "err #2060, please try again later"))
-						pingAdmin(err)
-						return
-					}
-					tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, translatedText.Text[0])
-				}
+				bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, translate.Text[0]))
 			}
 		}
 	}
@@ -271,9 +293,35 @@ func botRun(update *tgbotapi.Update) {
 			}
 
 			db.Model(&Users{ID: update.CallbackQuery.From.ID}).Updates(map[string]interface{}{"act": nil})
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Your language is - *" + user.MyLang + "*, and translate language - *" + user.ToLang + "*.\n\nChange your lang - /my_lang\nChange translate lang - /to_lang")
-			msg.ParseMode = tgbotapi.ModeMarkdown
+			msg := tgbotapi.NewEditMessageText(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Your language is - <b>"+user.MyLang+"</b>, and translate language - <b>"+user.ToLang+"</b>.\n\nChange your lang /my_lang\nChange translate lang /to_lang")
+			msg.ParseMode = tgbotapi.ModeHTML
 			bot.Send(msg)
+		}
+		if arr := strings.Split(update.CallbackQuery.Data, ":"); len(arr) == 2 {
+			switch arr[0] {
+			case "set_my_lang":
+				err := db.Model(&Users{ID: update.CallbackQuery.From.ID}).Updates(map[string]interface{}{"act": nil, "my_lang": arr[1]}).Error
+				if err != nil {
+					bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "error #434"))
+					pingAdmin(err)
+					return
+				}
+				bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
+				replyMarkup := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
+				edit := tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Now your language is "+iso6391.Name(arr[1]), replyMarkup)
+				bot.Send(edit)
+			case "set_translate_lang":
+				err := db.Model(&Users{ID: update.CallbackQuery.From.ID}).Updates(map[string]interface{}{"act": nil, "to_lang": arr[1]}).Error
+				if err != nil {
+					bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "error #435"))
+					pingAdmin(err)
+					return
+				}
+				bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
+				replyMarkup := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
+				edit := tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Now translate language is "+iso6391.Name(arr[1]), replyMarkup)
+				bot.Send(edit)
+			}
 		}
 	}
 }
