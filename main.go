@@ -147,7 +147,7 @@ func setUserStep(chatID int64, step string) error {
 
 func getUserStep(chatID int64) (string, error) {
 	var user Users
-	err := db.Model(&Users{ID: chatID}).Select("act").Limit(1).Find(&user).Error
+	err := db.Model(&Users{ID: chatID}).Select("act").Where("id", chatID).Limit(1).Find(&user).Error
 	return user.Act, err
 }
 
@@ -159,7 +159,7 @@ func botRun(update *tgbotapi.Update) {
 			if update.Message.From.LanguageCode == "" {
 				update.Message.From.LanguageCode = "en"
 			}
-			err := db.Model(&Users{ID: update.Message.Chat.ID}).Take(&user).Error
+			err := db.Model(&Users{}).Where("id", update.Message.Chat.ID).Take(&user).Error
 			if err != nil {
 				if err == gorm.ErrRecordNotFound {
 					err = db.Create(&Users{ID: update.Message.Chat.ID, MyLang: update.Message.From.LanguageCode, ToLang: "ar"}).Error
