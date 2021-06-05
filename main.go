@@ -308,7 +308,12 @@ func botRun(update *tgbotapi.Update) {
 				return
 			}
 
-			db.Model(&Users{ID: update.CallbackQuery.From.ID}).Updates(map[string]interface{}{"act": nil})
+			err = db.Model(&Users{}).Where("id", update.CallbackQuery.From.ID).Updates(map[string]interface{}{"act": nil}).Error
+			if err != nil {
+				bot.Send(tgbotapi.NewMessage(update.CallbackQuery.From.ID, "err #333 please try later"))
+				pingAdmin(err)
+				return
+			}
 			msg := tgbotapi.NewEditMessageText(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Your language is - <b>"+user.MyLang+"</b>, and translate language - <b>"+user.ToLang+"</b>.\n\nChange your lang /my_lang\nChange translate lang /to_lang")
 			msg.ParseMode = tgbotapi.ModeHTML
 			bot.Send(msg)
@@ -316,7 +321,7 @@ func botRun(update *tgbotapi.Update) {
 		if arr := strings.Split(update.CallbackQuery.Data, ":"); len(arr) == 2 {
 			switch arr[0] {
 			case "set_my_lang":
-				err := db.Model(&Users{ID: update.CallbackQuery.From.ID}).Updates(map[string]interface{}{"act": nil, "my_lang": arr[1]}).Error
+				err := db.Model(&Users{}).Where("id", update.CallbackQuery.From.ID).Updates(map[string]interface{}{"act": nil, "my_lang": arr[1]}).Error
 				if err != nil {
 					bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "error #434"))
 					pingAdmin(err)
@@ -327,7 +332,7 @@ func botRun(update *tgbotapi.Update) {
 				edit := tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Now your language is "+iso6391.Name(arr[1]), replyMarkup)
 				bot.Send(edit)
 			case "set_translate_lang":
-				err := db.Model(&Users{ID: update.CallbackQuery.From.ID}).Updates(map[string]interface{}{"act": nil, "to_lang": arr[1]}).Error
+				err := db.Model(&Users{}).Where("id", update.CallbackQuery.From.ID).Updates(map[string]interface{}{"act": nil, "to_lang": arr[1]}).Error
 				if err != nil {
 					bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "error #435"))
 					pingAdmin(err)
