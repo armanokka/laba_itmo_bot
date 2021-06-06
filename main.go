@@ -2,8 +2,8 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/detectlanguage/detectlanguage-go"
 	iso6391 "github.com/emvi/iso-639-1"
@@ -14,15 +14,17 @@ import (
 	"gorm.io/gorm"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
+	"time"
 )
 
 var (
 	db  *gorm.DB
 	bot *tgbotapi.BotAPI
+	detectLangAPIKeys []string
 )
 
 type Users struct {
@@ -33,10 +35,8 @@ type Users struct {
 }
 
 type TranslateAPIResponse struct {
-	Align []string `json:"align"`
-	Code  int      `json:"code"`
-	Lang  string   `json:"lang"`
-	Text  []string `json:"text"`
+	Error error `json:"err"`
+	Result string `json:"result"`
 }
 
 // pingAdmin attempts admin your error
@@ -153,21 +153,23 @@ func botRun(update *tgbotapi.Update) {
 				}
 				UserMessageLang := messageLanguages[0].Language
 				if UserMessageLang == user.MyLang {
-					translate, err := Translate(user.ToLang, update.Message.Text)
+					translate, err := Translate(user.MyLang, user.ToLang, update.Message.Text)
 					if err != nil {
 						bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "err #2090, please try again later"))
 						pingAdmin(err)
 						return
 					}
-					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, translate.Text[0]))
+					pp.Println(translate)
+					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, translate.Result))
 				} else {
-					translate, err := Translate(user.MyLang, update.Message.Text)
+					translate, err := Translate(user.ToLang, user.MyLang, update.Message.Text)
 					if err != nil {
 						bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "err #2090, please try again later"))
 						pingAdmin(err)
 						return
 					}
-					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, translate.Text[0]))
+					pp.Println(translate)
+					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, translate.Result))
 				}
 			}
 
@@ -234,41 +236,41 @@ func botRun(update *tgbotapi.Update) {
 	//}
 }
 
-func Translate(lang, text string) (TranslateAPIResponse, error) {
-	params := url.Values{}
-	params.Add("lang", lang)
-	params.Add("text", text)
-	path := params.Encode()
-	req, err := http.NewRequest("GET", "https://just-translated.p.rapidapi.com?"+path, nil)
+
+func Translate(source, target, text string) (TranslateAPIResponse, error) {
+	source = source + "_" + strings.ToUpper(source)
+	target = target + "_" + strings.ToUpper(target)
+	body := map[string]string{"from": source,
+		"to": target,
+		"data": text,
+		"platform": "api"}
+	bodyJson, err := json.Marshal(body)
 	if err != nil {
 		return TranslateAPIResponse{}, err
 	}
+	req, err := http.NewRequest("POST", "https://lingvanex-translate.p.rapidapi.com/translate", bytes.NewBuffer(bodyJson))
+	if err != nil {
+		return TranslateAPIResponse{}, err
+	}
+
 	req.Header["x-rapidapi-key"] = []string{"561a41f76amsha7c0323d47335aep1986ecjsn4e41c7c2b518"}
-	req.Header["x-rapidapi-host"] = []string{"just-translated.p.rapidapi.com"}
+	req.Header["x-rapidapi-host"] = []string{"lingvanex-translate.p.rapidapi.com"}
 	req.Header["useQueryString-type"] = []string{"true"}
+	req.Header["content-type"] = []string{"application/json"}
 	var client http.Client
 	res, err := client.Do(req)
 	if err != nil {
 		return TranslateAPIResponse{}, err
 	}
 	response, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return TranslateAPIResponse{}, err
-	}
 	var out TranslateAPIResponse
 	err = json.Unmarshal(response, &out)
-	if err != nil {
-		return TranslateAPIResponse{}, err
-	}
-	if out.Code != 200 {
-		pp.Println("error in Translate:", out)
-		return TranslateAPIResponse{}, errors.New("api did not respond 200 OK.")
-	}
 	return out, err
 }
 
 func DetectLanguage(text string) ([]*detectlanguage.DetectionResult, error) {
-	state := detectlanguage.New("c71fb63df8bdc8ea8bc4c0b20771aa5f")
+	rand.Seed(time.Now().UnixNano())
+	state := detectlanguage.New(detectLangAPIKeys[rand.Intn(len(detectLangAPIKeys)-1)])
 	detections, err := state.Detect(text)
 	return detections, err
 }
@@ -289,10 +291,14 @@ func main() {
 	}
 	bot.Debug = false // >:(
 
+	// Ports for Heroku
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "80"
 	}
+
+	detectLangAPIKeys = []string{"5ad64c8763b9293233bdc9164765037e", "c71fb63df8bdc8ea8bc4c0b20771aa5f", "11ac4f75a5b18eb919618c073c458241"}
+
 
 	//updates := bot.GetUpdatesChan(tgbotapi.UpdateConfig{})
 	//for update := range updates {

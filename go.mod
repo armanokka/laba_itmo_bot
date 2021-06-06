@@ -1,4 +1,4 @@
-module botranslate
+module github.com/armanokka/translobot
 
 // +heroku goVersion go1.16
 go 1.16
