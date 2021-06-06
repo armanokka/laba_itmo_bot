@@ -1,1 +1,1 @@
-web: ./bin/botranslate
+web: ./bin/translobot
