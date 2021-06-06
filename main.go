@@ -56,6 +56,9 @@ func getUserStep(chatID int64) (string, error) {
 // botRun is main handler of bot
 func botRun(update *tgbotapi.Update) {
 	if update.Message != nil {
+		if update.Message.Text == "" {
+			return
+		}
 		switch update.Message.Text {
 		case "/start":
 			var user = Users{ID: update.Message.From.ID}
@@ -222,7 +225,12 @@ func botRun(update *tgbotapi.Update) {
 		}
 	}
 	//if update.InlineQuery != nil {
-	//	update.InlineQuery.From.LanguageCode
+	//	var user Users
+	//	err := db.Model(&Users{}).Where("id = ?", update.InlineQuery.From.ID).Limit(1).Find(&user).Error
+	//	if err != nil {
+	//
+	//	}
+	//
 	//}
 }
 
@@ -274,7 +282,7 @@ func main() {
 	}
 
 	// Initializing bot
-	const botToken string = "1737819626:AAEoc8WyCq_8rFQcY4q0vtkhqCKro8AudfI"
+	const botToken string = "1878391408:AAH5lvGVaRcNlFYx9sM31mwDYttx5AUR_LA" // 1737819626:AAEoc8WyCq_8rFQcY4q0vtkhqCKro8AudfI - @translobot && 1878391408:AAH5lvGVaRcNlFYx9sM31mwDYttx5AUR_LA - @translobetabot
 	bot, err = tgbotapi.NewBotAPI(botToken)
 	if err != nil {
 		panic(err)
