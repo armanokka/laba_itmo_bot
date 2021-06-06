@@ -68,6 +68,8 @@ func botRun(update *tgbotapi.Update) {
 				pingAdmin(err)
 				return
 			}
+			user.MyLang = iso6391.Name(user.MyLang)
+			user.ToLang = iso6391.Name(user.ToLang)
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Your language is - <b>"+user.MyLang+"</b>, and translate language - <b>"+user.ToLang+"</b>.\n\nChange your lang /my_lang\nChange translate lang /to_lang")
 			msg.ParseMode = tgbotapi.ModeHTML
 			bot.Send(msg)
@@ -186,6 +188,8 @@ func botRun(update *tgbotapi.Update) {
 				pingAdmin(err)
 				return
 			}
+			user.MyLang = iso6391.Name(user.MyLang)
+			user.ToLang = iso6391.Name(user.ToLang)
 			msg := tgbotapi.NewEditMessageText(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Your language is - <b>"+user.MyLang+"</b>, and translate language - <b>"+user.ToLang+"</b>.\n\nChange your lang /my_lang\nChange translate lang /to_lang")
 			msg.ParseMode = tgbotapi.ModeHTML
 			bot.Send(msg)
