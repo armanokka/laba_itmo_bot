@@ -282,7 +282,7 @@ func main() {
 	}
 
 	// Initializing bot
-	const botToken string = "1878391408:AAH5lvGVaRcNlFYx9sM31mwDYttx5AUR_LA" // 1737819626:AAEoc8WyCq_8rFQcY4q0vtkhqCKro8AudfI - @translobot && 1878391408:AAH5lvGVaRcNlFYx9sM31mwDYttx5AUR_LA - @translobetabot
+	const botToken string = "1737819626:AAEoc8WyCq_8rFQcY4q0vtkhqCKro8AudfI" // 1737819626:AAEoc8WyCq_8rFQcY4q0vtkhqCKro8AudfI - @translobot && 1878391408:AAH5lvGVaRcNlFYx9sM31mwDYttx5AUR_LA - @translobetabot
 	bot, err = tgbotapi.NewBotAPI(botToken)
 	if err != nil {
 		panic(err)
