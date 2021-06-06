@@ -162,7 +162,7 @@ func botRun(update *tgbotapi.Update) {
 					pp.Println(translate)
 					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, translate.Result))
 				} else {
-					translate, err := Translate(user.ToLang, user.MyLang, update.Message.Text)
+					translate, err := Translate(UserMessageLang, user.MyLang, update.Message.Text)
 					if err != nil {
 						bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "err #2090, please try again later"))
 						pingAdmin(err)
