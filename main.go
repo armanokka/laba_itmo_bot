@@ -113,40 +113,44 @@ func botRun(update *tgbotapi.Update) {
 			switch userStep {
 			case "set_my_lang", "set_translate_lang":
 				lowerUserMsg := strings.ToLower(update.Message.Text)
-				if name := iso6391.Name(lowerUserMsg); name != "" { // Юзер отправил не пару слов на нужном языке, а сразу код языка
+
+				if nameOfLang := iso6391.Name(lowerUserMsg); nameOfLang != "" { // Юзер отправил сразу код языка
 					var n string // Поле для изменения в бд
 					if userStep == "set_my_lang" {
 						n = "my_lang"
 					} else {
 						n = "to_lang"
 					}
-					err := db.Model(&Users{}).Where("id", update.CallbackQuery.From.ID).Updates(map[string]interface{}{"act": nil, n: lowerUserMsg}).Error
+					err := db.Model(&Users{}).Where("id", update.Message.Chat.ID).Updates(map[string]interface{}{"act": nil, n: lowerUserMsg}).Error
 					if err != nil {
-						bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "error #434"))
+						bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "err #300 try again later"))
 						pingAdmin(err)
 						return
 					}
 					replyMarkup := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
-					edit := tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Now language is "+name, replyMarkup)
-					bot.Send(edit)
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now language is "+nameOfLang)
+					msg.ReplyMarkup = replyMarkup
+					bot.Send(msg)
 					return
 				}
-				if code := iso6391.CodeForName(lowerUserMsg); code != "" { // Юзер отправил не пару слов на нужном языке, а полное его название
+
+				if codeOfLang := iso6391.CodeForName(lowerUserMsg); codeOfLang != "" { // Юзер полное его название языка
 					var n string // Поле для изменения в бд
 					if userStep == "set_my_lang" {
 						n = "my_lang"
 					} else {
 						n = "to_lang"
 					}
-					err := db.Model(&Users{}).Where("id", update.CallbackQuery.From.ID).Updates(map[string]interface{}{"act": nil, n: code}).Error
+					err := db.Model(&Users{}).Where("id", update.Message.Chat.ID).Updates(map[string]interface{}{"act": nil, n: codeOfLang}).Error
 					if err != nil {
-						bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "error #435"))
+						bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "err #301 try again later"))
 						pingAdmin(err)
 						return
 					}
 					replyMarkup := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
-					edit := tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Now language is "+ strings.Title(lowerUserMsg), replyMarkup)
-					bot.Send(edit)
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now language is "+iso6391.Name(codeOfLang))
+					msg.ReplyMarkup = replyMarkup
+					bot.Send(msg)
 					return
 				}
 
