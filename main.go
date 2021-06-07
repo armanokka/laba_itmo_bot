@@ -112,44 +112,44 @@ func botRun(update *tgbotapi.Update) {
 			}
 			switch userStep {
 			case "set_my_lang", "set_translate_lang":
-				lowerUserMsg := strings.ToLower(update.Message.Text)
-				if !iso6391.ValidName(lowerUserMsg) { // Юзер отправил не пару слов на нужном языке, а сразу код языка
-					var n string // Поле для изменения в бд
-					if userStep == "set_my_lang" {
-						n = "my_lang"
-					} else {
-						n = "to_lang"
-					}
-					err := db.Model(&Users{}).Where("id", update.CallbackQuery.From.ID).Updates(map[string]interface{}{"act": nil, n: strings.ToLower(update.Message.Text)}).Error
-					if err != nil {
-						bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "error #434"))
-						pingAdmin(err)
-						return
-					}
-					replyMarkup := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
-					edit := tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Now language is "+iso6391.Name(lowerUserMsg), replyMarkup)
-					bot.Send(edit)
-					return
-				}
-				if iso6391.CodeForName(lowerUserMsg) != "" { // Юзер отправил не пару слов на нужном языке, а полное его название
-					langCode := iso6391.Name(lowerUserMsg)
-					var n string // Поле для изменения в бд
-					if userStep == "set_my_lang" {
-						n = "my_lang"
-					} else {
-						n = "to_lang"
-					}
-					err := db.Model(&Users{}).Where("id", update.CallbackQuery.From.ID).Updates(map[string]interface{}{"act": nil, n: langCode}).Error
-					if err != nil {
-						bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "error #435"))
-						pingAdmin(err)
-						return
-					}
-					replyMarkup := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
-					edit := tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Now language is "+ strings.Title(update.Message.Text), replyMarkup)
-					bot.Send(edit)
-					return
-				}
+				//lowerUserMsg := strings.ToLower(update.Message.Text)
+				//if !iso6391.ValidName(lowerUserMsg) { // Юзер отправил не пару слов на нужном языке, а сразу код языка
+				//	var n string // Поле для изменения в бд
+				//	if userStep == "set_my_lang" {
+				//		n = "my_lang"
+				//	} else {
+				//		n = "to_lang"
+				//	}
+				//	err := db.Model(&Users{}).Where("id", update.CallbackQuery.From.ID).Updates(map[string]interface{}{"act": nil, n: strings.ToLower(update.Message.Text)}).Error
+				//	if err != nil {
+				//		bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "error #434"))
+				//		pingAdmin(err)
+				//		return
+				//	}
+				//	replyMarkup := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
+				//	edit := tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Now language is "+iso6391.Name(lowerUserMsg), replyMarkup)
+				//	bot.Send(edit)
+				//	return
+				//}
+				//if iso6391.CodeForName(lowerUserMsg) != "" { // Юзер отправил не пару слов на нужном языке, а полное его название
+				//	langCode := iso6391.Name(lowerUserMsg)
+				//	var n string // Поле для изменения в бд
+				//	if userStep == "set_my_lang" {
+				//		n = "my_lang"
+				//	} else {
+				//		n = "to_lang"
+				//	}
+				//	err := db.Model(&Users{}).Where("id", update.CallbackQuery.From.ID).Updates(map[string]interface{}{"act": nil, n: langCode}).Error
+				//	if err != nil {
+				//		bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "error #435"))
+				//		pingAdmin(err)
+				//		return
+				//	}
+				//	replyMarkup := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
+				//	edit := tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Now language is "+ strings.Title(update.Message.Text), replyMarkup)
+				//	bot.Send(edit)
+				//	return
+				//}
 
 
 				languageDetections, err := DetectLanguage(update.Message.Text)
