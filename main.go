@@ -174,7 +174,7 @@ func botRun(update *tgbotapi.Update) {
 				} else {
 					keyboard := tgbotapi.NewInlineKeyboardMarkup(
 						tgbotapi.NewInlineKeyboardRow(
-							tgbotapi.NewInlineKeyboardButtonData(UserMessageLang, "none"),
+							tgbotapi.NewInlineKeyboardButtonData("It's " + iso6391.Name(UserMessageLang), "none"),
 							),
 						tgbotapi.NewInlineKeyboardRow(
 							tgbotapi.NewInlineKeyboardButtonData("To " + iso6391.Name(user.MyLang), "translate:" + UserMessageLang + ":" + user.MyLang),
@@ -214,6 +214,8 @@ func botRun(update *tgbotapi.Update) {
 			msg := tgbotapi.NewEditMessageText(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Your language is - <b>"+user.MyLang+"</b>, and translate language - <b>"+user.ToLang+"</b>.\n\nChange your lang /my_lang\nChange translate lang /to_lang")
 			msg.ParseMode = tgbotapi.ModeHTML
 			bot.Send(msg)
+		case "none":
+			bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
 		}
 		arr := strings.Split(update.CallbackQuery.Data, ":")
 		if len(arr) == 0 {
