@@ -113,7 +113,7 @@ func botRun(update *tgbotapi.Update) {
 			switch userStep {
 			case "set_my_lang", "set_translate_lang":
 				lowerUserMsg := strings.ToLower(update.Message.Text)
-				if iso6391.ValidName(lowerUserMsg) { // Юзер отправил не пару слов на нужном языке, а сразу код языка
+				if !iso6391.ValidName(lowerUserMsg) { // Юзер отправил не пару слов на нужном языке, а сразу код языка
 					var n string // Поле для изменения в бд
 					if userStep == "set_my_lang" {
 						n = "my_lang"
@@ -127,7 +127,7 @@ func botRun(update *tgbotapi.Update) {
 						return
 					}
 					replyMarkup := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
-					edit := tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Now language is "+iso6391.Name(update.Message.Text), replyMarkup)
+					edit := tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Now language is "+iso6391.Name(lowerUserMsg), replyMarkup)
 					bot.Send(edit)
 					return
 				}
