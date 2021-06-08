@@ -75,7 +75,7 @@ func botRun(update *tgbotapi.Update) {
 			bot.Send(tgbotapi.NewMessage(update.CallbackQuery.From.ID, errText))
 			bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, errText))
 		}
-		bot.Send(tgbotapi.NewMessage(579515224, fmt.Sprintf("Error [%d]: %s", code, err)))
+		bot.Send(tgbotapi.NewMessage(579515224, fmt.Sprintf("Error [%v]: %v", code, err)))
 	}
 
 	if update.Message != nil {
