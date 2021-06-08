@@ -65,13 +65,17 @@ func botRun(update *tgbotapi.Update) {
 	// attempt is error handler
 	attempt := func(code string, err error) {
 		errText := "Error #" + code + ". Please, try again later and PM @armanokka.\n\nI'll fix the bug in near future, please don't block the bot."
+		if update == nil {
+			fmt.Println("update is nil")
+			return
+		}
 		if update.Message != nil {
 			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, errText))
 		} else if update.CallbackQuery != nil {
 			bot.Send(tgbotapi.NewMessage(update.CallbackQuery.From.ID, errText))
 			bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, errText))
 		}
-		bot.Send(tgbotapi.NewMessage(579515224, "Error #" + code + ": "+err.Error()))
+		bot.Send(tgbotapi.NewMessage(579515224, fmt.Sprintf("Error [%d]: %s", code, err)))
 	}
 
 	if update.Message != nil {
