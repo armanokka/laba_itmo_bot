@@ -155,7 +155,7 @@ func botRun(update *tgbotapi.Update) {
 					return
 				}
 
-				if codeOfLang := iso6391.CodeForName(lowerUserMsg); codeOfLang != "" { // Юзер полное его название языка
+				if codeOfLang := iso6391.CodeForName(strings.Title(lowerUserMsg)); codeOfLang != "" { // Юзер полное его название языка
 					var n string // Поле для изменения в бд
 					if userStep == "set_my_lang" {
 						n = "my_lang"
@@ -233,9 +233,6 @@ func botRun(update *tgbotapi.Update) {
 				} else {
 					keyboard := tgbotapi.NewInlineKeyboardMarkup(
 						tgbotapi.NewInlineKeyboardRow(
-							tgbotapi.NewInlineKeyboardButtonData("It's " + iso6391.Name(UserMessageLang), "none"),
-							),
-						tgbotapi.NewInlineKeyboardRow(
 							tgbotapi.NewInlineKeyboardButtonData("To " + iso6391.Name(user.MyLang), "translate:" + UserMessageLang + ":" + user.MyLang),
 							),
 						tgbotapi.NewInlineKeyboardRow(
@@ -283,7 +280,7 @@ func botRun(update *tgbotapi.Update) {
 		case "translate": //arr[1] - is source of translate, arr[2] - is target of translate
 			translate, err := Translate(arr[1], arr[2], update.CallbackQuery.Message.Text)
 			if err != nil {
-				attempt("#4371", err)
+				attempt("#4000", err)
 				return
 			}
 			bot.Send(tgbotapi.NewEditMessageText(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, translate.Result))
@@ -347,9 +344,9 @@ func Translate(source, target, text string) (TranslateAPIResponse, error) {
 	if err != nil {
 		return TranslateAPIResponse{}, HTTPError{StatusCode: res.StatusCode, Description: fmt.Sprintf("could not do req: %s", err)}
 	}
-	if res.StatusCode != 200 && res.StatusCode != 302 {
-		return TranslateAPIResponse{}, TranslateAPIError{StatusCode: res.StatusCode, Text: fmt.Sprintf("translateAPI did not respond 200 or 302: %s", err)}
-	}
+	//if res.StatusCode != 200 && res.StatusCode != 302 {
+	//	return TranslateAPIResponse{}, TranslateAPIError{StatusCode: res.StatusCode, Text: fmt.Sprintf("%v", err)}
+	//}
 	response, err := ioutil.ReadAll(res.Body)
 	var out TranslateAPIResponse
 	err = json.Unmarshal(response, &out)
