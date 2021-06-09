@@ -223,7 +223,7 @@ func botRun(update *tgbotapi.Update) {
 					pp.Println(translate)
 					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, translate.Result))
 				} else if UserMessageLang == user.ToLang {
-					translate, err := Translate(UserMessageLang, user.MyLang, update.Message.Text)
+					translate, err := Translate(user.ToLang, user.MyLang, update.Message.Text)
 					if err != nil {
 						attempt("#2090", err)
 						return
@@ -233,15 +233,13 @@ func botRun(update *tgbotapi.Update) {
 				} else {
 					keyboard := tgbotapi.NewInlineKeyboardMarkup(
 						tgbotapi.NewInlineKeyboardRow(
-							tgbotapi.NewInlineKeyboardButtonData("To " + iso6391.Name(user.MyLang), "translate:" + UserMessageLang + ":" + user.MyLang),
+							tgbotapi.NewInlineKeyboardButtonData("To " + iso6391.Name(user.MyLang), "translate:" + user.ToLang + ":" + user.MyLang),
 							),
 						tgbotapi.NewInlineKeyboardRow(
-								tgbotapi.NewInlineKeyboardButtonData("To " + iso6391.Name(user.ToLang), "translate:" + UserMessageLang + ":" + user.ToLang),
+								tgbotapi.NewInlineKeyboardButtonData("To " + iso6391.Name(user.ToLang), "translate:" + user.MyLang + ":" + user.ToLang),
 							),
 						)
-					msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
-					msg.ReplyMarkup = keyboard
-					bot.Send(msg)
+					bot.Send(tgbotapi.NewEditMessageTextAndMarkup(update.Message.Chat.ID, msg.MessageID, update.Message.Text, keyboard))
 				}
 			}
 
@@ -283,7 +281,7 @@ func botRun(update *tgbotapi.Update) {
 				attempt("#4000", err)
 				return
 			}
-			bot.Send(tgbotapi.NewEditMessageText(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, translate.Result))
+			bot.Send(tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, translate.Result, *update.CallbackQuery.Message.ReplyMarkup))
 		case "set_my_lang": // arr[1] - language code
 			err := db.Model(&Users{}).Where("id", update.CallbackQuery.From.ID).Updates(map[string]interface{}{"act": nil, "my_lang": arr[1]}).Error
 			if err != nil {
