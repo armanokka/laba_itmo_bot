@@ -4,6 +4,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/detectlanguage/detectlanguage-go"
 	iso6391 "github.com/emvi/iso-639-1"
@@ -16,6 +17,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -215,32 +217,33 @@ func botRun(update *tgbotapi.Update) {
 				}
 				UserMessageLang := messageLanguages[0].Language
 				if UserMessageLang == user.MyLang {
-					translate, err := Translate(user.MyLang, user.ToLang, update.Message.Text)
+					translate, err := TranslateJustTranslated(user.ToLang, update.Message.Text)
 					if err != nil {
 						attempt("#2090", err)
 						return
 					}
 					pp.Println(translate)
-					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, translate.Result))
-				} else if UserMessageLang == user.ToLang {
-					translate, err := Translate(user.ToLang, user.MyLang, update.Message.Text)
-					if err != nil {
-						attempt("#2090", err)
-						return
-					}
-					pp.Println(translate)
-					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, translate.Result))
+					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, translate.Text[0]))
 				} else {
-					keyboard := tgbotapi.NewInlineKeyboardMarkup(
-						tgbotapi.NewInlineKeyboardRow(
-							tgbotapi.NewInlineKeyboardButtonData("To " + iso6391.Name(user.MyLang), "translate:" + user.ToLang + ":" + user.MyLang),
-							),
-						tgbotapi.NewInlineKeyboardRow(
-								tgbotapi.NewInlineKeyboardButtonData("To " + iso6391.Name(user.ToLang), "translate:" + user.MyLang + ":" + user.ToLang),
-							),
-						)
-					bot.Send(tgbotapi.NewEditMessageTextAndMarkup(update.Message.Chat.ID, msg.MessageID, update.Message.Text, keyboard))
+					translate, err := TranslateJustTranslated(user.MyLang, update.Message.Text)
+					if err != nil {
+						attempt("#2090", err)
+						return
+					}
+					pp.Println(translate)
+					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, translate.Text[0]))
 				}
+				//} else {
+				//	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+				//		tgbotapi.NewInlineKeyboardRow(
+				//			tgbotapi.NewInlineKeyboardButtonData("To " + iso6391.Name(user.MyLang), "translate:" + user.ToLang + ":" + user.MyLang),
+				//			),
+				//		tgbotapi.NewInlineKeyboardRow(
+				//				tgbotapi.NewInlineKeyboardButtonData("To " + iso6391.Name(user.ToLang), "translate:" + user.MyLang + ":" + user.ToLang),
+				//			),
+				//		)
+				//	bot.Send(tgbotapi.NewEditMessageTextAndMarkup(update.Message.Chat.ID, msg.MessageID, update.Message.Text, keyboard))
+				//}
 			}
 
 		}
@@ -275,13 +278,6 @@ func botRun(update *tgbotapi.Update) {
 			return
 		}
 		switch arr[0] {
-		case "translate": //arr[1] - is source of translate, arr[2] - is target of translate
-			translate, err := Translate(arr[1], arr[2], update.CallbackQuery.Message.Text)
-			if err != nil {
-				attempt("#4000", err)
-				return
-			}
-			bot.Send(tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, translate.Result, *update.CallbackQuery.Message.ReplyMarkup))
 		case "set_my_lang": // arr[1] - language code
 			err := db.Model(&Users{}).Where("id", update.CallbackQuery.From.ID).Updates(map[string]interface{}{"act": nil, "my_lang": arr[1]}).Error
 			if err != nil {
@@ -316,8 +312,46 @@ func botRun(update *tgbotapi.Update) {
 	//}
 }
 
+type TraslateJustTranslatedResponse struct {
+	Align []string `json:"align"`
+	Code  int      `json:"code"`
+	Lang  string   `json:"lang"`
+	Text  []string `json:"text"`
+}
 
-func Translate(source, target, text string) (TranslateAPIResponse, error) {
+func TranslateJustTranslated(target, text string) (*TraslateJustTranslatedResponse, error) {
+	link := url.Values{}
+	link.Add("lang", target)
+	link.Add("text", text)
+	path := link.Encode()
+	req, err := http.NewRequest("GET", "https://just-translated.p.rapidapi.com?"+path, nil)
+	if err != nil {
+		return &TraslateJustTranslatedResponse{}, err
+	}
+	req.Header["x-rapidapi-key"] = []string{"561a41f76amsha7c0323d47335aep1986ecjsn4e41c7c2b518"}
+	req.Header["x-rapidapi-host"] = []string{"just-translated.p.rapidapi.com"}
+	req.Header["useQueryString"] = []string{"true"}
+
+	var client http.Client
+	res, err := client.Do(req)
+	if err != nil {
+		return &TraslateJustTranslatedResponse{}, err
+	}
+	if res.StatusCode != 200 {
+		return &TraslateJustTranslatedResponse{}, errors.New("just translated api did not response 200 code")
+	}
+	var out TraslateJustTranslatedResponse
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return &TraslateJustTranslatedResponse{}, err
+	}
+	fmt.Println(string(body))
+	err = json.Unmarshal(body, &out)
+	return &out, err
+}
+
+
+func TranslateLingVanex(source, target, text string) (TranslateAPIResponse, error) {
 	source = source + "_" + strings.ToUpper(source)
 	target = target + "_" + strings.ToUpper(target)
 	body := map[string]string{"from": source,
