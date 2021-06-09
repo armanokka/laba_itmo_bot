@@ -215,6 +215,10 @@ func botRun(update *tgbotapi.Update) {
 					attempt("#2040", err)
 					return
 				}
+				if len(messageLanguages) < 1 {
+					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, update.Message.Text))
+					return
+				}
 				UserMessageLang := messageLanguages[0].Language
 				if UserMessageLang == user.ToLang {
 					translate, err := TranslateJustTranslated(user.MyLang, update.Message.Text)

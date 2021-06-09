@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-const message = "Hello! I've fixed the bot! Try it, send /start! 😎👍"
+const message = "Bot updated!"
 
 type Users struct {
 	ID     int64 `gorm:"primaryKey;index;not null"`
@@ -45,6 +45,9 @@ func main()  {
 				msg := tgbotapi.NewMessage(user.ID, message)
 				msg.ParseMode = tgbotapi.ModeHTML
 				bot.Send(msg)
+			}
+			if e.Code == 403 {
+				db.Model(&Users{}).Where("id = ?", user.ID).Limit(1).Delete(&user)
 			}
 		}
 		pp.Println("sent message to", user.ID)
