@@ -216,8 +216,8 @@ func botRun(update *tgbotapi.Update) {
 					return
 				}
 				UserMessageLang := messageLanguages[0].Language
-				if UserMessageLang == user.ToLang {
-					translate, err := TranslateJustTranslated(user.MyLang, update.Message.Text)
+				if UserMessageLang == user.MyLang {
+					translate, err := TranslateJustTranslated(user.ToLang, update.Message.Text)
 					if err != nil {
 						attempt("#2090", err)
 						return
@@ -225,7 +225,7 @@ func botRun(update *tgbotapi.Update) {
 					pp.Println(translate)
 					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, translate.Text[0]))
 				} else {
-					translate, err := TranslateJustTranslated(user.ToLang, update.Message.Text)
+					translate, err := TranslateJustTranslated(user.MyLang, update.Message.Text)
 					if err != nil {
 						attempt("#2090", err)
 						return
