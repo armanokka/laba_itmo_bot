@@ -81,9 +81,6 @@ func botRun(update *tgbotapi.Update) {
 	}
 
 	if update.Message != nil {
-		if update.Message.Text == "" {
-			return
-		}
 		switch update.Message.Text {
 		case "/start":
 			var user = Users{ID: update.Message.From.ID}
@@ -210,18 +207,26 @@ func botRun(update *tgbotapi.Update) {
 				if err != nil {
 					return
 				}
-				messageLanguages, err := DetectLanguage(update.Message.Text)
+
+				var text string = update.Message.Text
+				if update.Message.Caption != "" {
+					text = update.Message.Caption
+				}
+
+
+				messageLanguages, err := DetectLanguage(text)
 				if err != nil {
 					attempt("#2040", err)
 					return
 				}
+
 				if len(messageLanguages) < 1 {
-					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, update.Message.Text))
+					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, text))
 					return
 				}
 				UserMessageLang := messageLanguages[0].Language
 				if UserMessageLang == user.ToLang {
-					translate, err := TranslateJustTranslated(user.MyLang, update.Message.Text)
+					translate, err := TranslateJustTranslated(user.MyLang, text)
 					if err != nil {
 						attempt("#2090", err)
 						return
@@ -229,7 +234,7 @@ func botRun(update *tgbotapi.Update) {
 					pp.Println(translate)
 					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, translate.Text[0]))
 				} else {
-					translate, err := TranslateJustTranslated(user.ToLang, update.Message.Text)
+					translate, err := TranslateJustTranslated(user.ToLang, text)
 					if err != nil {
 						attempt("#2090", err)
 						return
@@ -237,17 +242,6 @@ func botRun(update *tgbotapi.Update) {
 					pp.Println(translate)
 					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, translate.Text[0]))
 				}
-				//} else {
-				//	keyboard := tgbotapi.NewInlineKeyboardMarkup(
-				//		tgbotapi.NewInlineKeyboardRow(
-				//			tgbotapi.NewInlineKeyboardButtonData("To " + iso6391.Name(user.MyLang), "translate:" + user.ToLang + ":" + user.MyLang),
-				//			),
-				//		tgbotapi.NewInlineKeyboardRow(
-				//				tgbotapi.NewInlineKeyboardButtonData("To " + iso6391.Name(user.ToLang), "translate:" + user.MyLang + ":" + user.ToLang),
-				//			),
-				//		)
-				//	bot.Send(tgbotapi.NewEditMessageTextAndMarkup(update.Message.Chat.ID, msg.MessageID, update.Message.Text, keyboard))
-				//}
 			}
 
 		}
