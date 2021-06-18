@@ -289,6 +289,7 @@ func botRun(update *tgbotapi.Update) {
 					text = update.Message.Caption
 				}
 				if text == "" {
+					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Please, send text message"))
 					return
 				}
 
