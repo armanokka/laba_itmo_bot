@@ -705,3 +705,8 @@ func (bot *BotAPI) AnswerCallbackQuery(callback CallbackConfig) {
 	params, _ := callback.params()
 	bot.MakeRequest(callback.method(), params)
 }
+
+func (bot *BotAPI) AnswerInlineQuery(callback InlineConfig)  {
+	params, _ := callback.params()
+	bot.MakeRequest(callback.method(), params)
+}

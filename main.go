@@ -128,13 +128,22 @@ func botRun(update *tgbotapi.Update) {
 		} else if update.CallbackQuery != nil {
 			bot.Send(tgbotapi.NewMessage(update.CallbackQuery.From.ID, errText))
 			bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, errText))
+		} else if update.InlineQuery != nil {
+			bot.AnswerInlineQuery(tgbotapi.InlineConfig{
+				InlineQueryID:     update.InlineQuery.ID,
+				Results:           nil,
+				CacheTime:         0,
+				IsPersonal:        true,
+				SwitchPMText:      "Error. Try again later",
+				SwitchPMParameter: "from_inline",
+			})
 		}
 		bot.Send(tgbotapi.NewMessage(579515224, fmt.Sprintf("Error [%v]: %v", code, err)))
 	}
 
 	if update.Message != nil {
 		switch update.Message.Text {
-		case "/start":
+		case "/start", "/start from_inline":
 			var user = Users{ID: update.Message.From.ID}
 			if update.Message.From.LanguageCode == "" {
 				update.Message.From.LanguageCode = "en"
@@ -360,6 +369,7 @@ func botRun(update *tgbotapi.Update) {
 		case "none":
 			bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
 		}
+
 		arr := strings.Split(update.CallbackQuery.Data, ":")
 		if len(arr) == 0 {
 			return
@@ -390,12 +400,71 @@ func botRun(update *tgbotapi.Update) {
 
 	}
 	//if update.InlineQuery != nil {
-	//	var user Users
-	//	err := db.Model(&Users{}).Where("id = ?", update.InlineQuery.From.ID).Limit(1).Find(&user).Error
+	//	if strings.Join(strings.Fields(update.InlineQuery.Query), " ") == "" {
+	//		bot.AnswerInlineQuery(tgbotapi.InlineConfig{
+	//			InlineQueryID:     update.InlineQuery.ID,
+	//			Results:           nil,
+	//			CacheTime:         0,
+	//			IsPersonal:        false,
+	//			NextOffset:        "",
+	//			SwitchPMText:      "Type correct query",
+	//			SwitchPMParameter: "from_inline",
+	//		})
+	//		return
+	//	}
+	//	langDetects, err := DetectLanguage(update.InlineQuery.Query)
 	//	if err != nil {
+	//		attempt("-09", err)
+	//		return
+	//	}
+	//	keyboard := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("🔽", "open_translate_langs_from_inline_query")))
+	//	if langDetects.Lang == update.InlineQuery.From.LanguageCode { // Юзер отправил текст на своем языке. Языке платформы
+	//		result := tgbotapi.InlineQueryResultArticle{
+	//			Type:                "article",
+	//			ID:                  "1",
+	//			Title:               "Buttons",
+	//			ReplyMarkup:         &keyboard,
+	//			Description:         update.InlineQuery.Query,
+	//		}
 	//
+	//		bot.AnswerInlineQuery(tgbotapi.InlineConfig{
+	//			InlineQueryID:     update.CallbackQuery.ID,
+	//			Results:           []interface{}{result},
+	//			CacheTime:         15,
+	//			IsPersonal:        false,
+	//		})
+	//	} else { // Юзер отправил текст НЕ на своем языке
+	//		transl, err := Translate(langDetects.Lang, update.InlineQuery.From.LanguageCode, update.InlineQuery.Query)
+	//		if err != nil {
+	//			attempt("-44", err)
+	//			return
+	//		}
+	//
+	//		result := tgbotapi.InlineQueryResultArticle{
+	//			Type:                "article",
+	//			ID:                  "1",
+	//			Title:               "Buttons",
+	//			ReplyMarkup:         &keyboard,
+	//			Description:         transl.Text[0],
+	//		}
+	//		bot.AnswerInlineQuery(tgbotapi.InlineConfig{
+	//			InlineQueryID:     update.CallbackQuery.ID,
+	//			Results:           []interface{}{result},
+	//			CacheTime:         15,
+	//			IsPersonal:        false,
+	//		})
 	//	}
 	//
+	//
+	//	bot.AnswerInlineQuery(tgbotapi.InlineConfig{
+	//		InlineQueryID:     update.CallbackQuery.ID,
+	//		Results:           nil,
+	//		CacheTime:         0,
+	//		IsPersonal:        false,
+	//		NextOffset:        "",
+	//		SwitchPMText:      "",
+	//		SwitchPMParameter: "",
+	//	})
 	//}
 }
 
