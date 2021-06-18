@@ -288,6 +288,9 @@ func botRun(update *tgbotapi.Update) {
 				if update.Message.Caption != "" {
 					text = update.Message.Caption
 				}
+				if text == "" {
+					return
+				}
 
 
 				langDetects, err := DetectLanguage(text)
