@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-const message = "Bot updated!"
+const message = "Bot updated!\n-#2090 error was fixed\n-perfomance was improved, try!"
 
 type Users struct {
 	ID     int64 `gorm:"primaryKey;index;not null"`

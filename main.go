@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -62,9 +63,6 @@ func Translate(fromLang, toLang, text string) (*TranslateAPIResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	if res.StatusCode != 200 {
-		return nil, errors.New("translate API did not response 200 code")
-	}
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
@@ -103,9 +101,6 @@ func DetectLanguage(text string) (*DetectAPIResponse, error) {
 	res, err := client.Do(req)
 	if err != nil {
 		return nil, err
-	}
-	if res.StatusCode != 200 {
-		return nil, errors.New("detect API did not response 200 code")
 	}
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
@@ -299,6 +294,20 @@ func botRun(update *tgbotapi.Update) {
 				if err != nil {
 					attempt("#2040", err)
 					return
+				}
+				if langDetects.Code != 200 {
+					switch langDetects.Code {
+					case 404:
+						bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Sorry, daily quota exceed. Try tomorrow."))
+					case 413:
+						bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Too big text, relax bro!"))
+					case 422:
+						bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Couldn't translate text"))
+					case 501:
+						bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Sorry, we can't detect this language..."))
+					default:
+						attempt("1981", errors.New("oh shit I couldn't detect language. Code " + strconv.Itoa(langDetects.Code)))
+					}
 				}
 
 				if langDetects.Lang == user.ToLang { // Сообщение отправлено на языке перевода
