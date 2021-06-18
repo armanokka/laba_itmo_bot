@@ -310,7 +310,7 @@ func botRun(update *tgbotapi.Update) {
 					pp.Println(translate)
 					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, translate.Text[0]))
 				} else {
-					translate, err := Translate(langDetects.Lang, user.ToLang, text)
+					translate, err := Translate(user.MyLang, user.ToLang, text)
 					if err != nil {
 						attempt("#2090", err)
 						return
