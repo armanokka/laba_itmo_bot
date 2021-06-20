@@ -2,22 +2,17 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"github.com/armanokka/translobot/translate"
 	iso6391 "github.com/emvi/iso-639-1"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
 	"github.com/valyala/fasthttp"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"io/ioutil"
 	"log"
-	"net/http"
-	"net/url"
 	"os"
-	"strconv"
 	"strings"
 )
 
@@ -32,87 +27,6 @@ type Users struct {
 	ToLang string `gorm:"default:ar;n"`
 	Act    string
 }
-
-type TranslateAPIResponse struct {
-	Code int
-	Lang string `json:"lang"`
-	Text []string `json:"text"`
-}
-
-func Translate(fromLang, toLang, text string) (*TranslateAPIResponse, error) {
-	params := url.Values{}
-	params.Set("text", text)
-	params.Set("options", "4")
-	buf := new(bytes.Buffer)
-	buf.WriteString(params.Encode())
-	req, err := http.NewRequest("POST", "https://translate.yandex.net/api/v1/tr.json/translate?id=28faf1ca.60cc682a.fb866cd2.74722d74657874-4-0&srv=tr-text&lang="+fromLang + "-" + toLang + "&reason=auto&format=text&yu=1223192481624008746&yum=1624008743444052161", buf)
-	if err != nil {
-		return nil, err
-	}
-	req.Header["content-type"] = []string{"application/x-www-form-urlencoded"}
-	req.Header["user-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.101 Safari/537.36"}
-	req.Header["sec-fetch-site"] = []string{"cross-site"}
-	req.Header["sec-fetch-mode"] = []string{"cors"}
-	req.Header["sec-fetch-dest"] = []string{"empty"}
-	req.Header["sec-ch-ua-mobile"] = []string{"?0"}
-	req.Header["sec-ch-ua"] = []string{`" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"`}
-	req.Header["referer"] = []string{`https://translate.yandex.ru/?lang=ru-en&text=Как дела?`}
-
-	var client http.Client
-	res, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
-	var response TranslateAPIResponse
-	err = json.Unmarshal(body, &response)
-	return &response, err
-}
-
-type DetectAPIResponse struct {
-	Code int `json:"code"`
-	Lang string `json:"lang"`
-}
-
-func DetectLanguage(text string) (*DetectAPIResponse, error) {
-	params := url.Values{}
-	params.Set("sid", "28faf1ca.60cc682a.fb866cd2.74722d74657874")
-	params.Set("srv", "tr-text")
-	params.Set("text", text)
-	params.Set("options", "1")
-	params.Set("yu", "1223192481624008746")
-	params.Set("yum", "1624008743444052161")
-	req, err := http.NewRequest("GET", "https://translate.yandex.net/api/v1/tr.json/detect?" + params.Encode(), nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header["content-type"] = []string{"application/x-www-form-urlencoded"}
-	req.Header["user-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.101 Safari/537.36"}
-	req.Header["sec-fetch-site"] = []string{"cross-site"}
-	req.Header["sec-fetch-mode"] = []string{"cors"}
-	req.Header["sec-fetch-dest"] = []string{"empty"}
-	req.Header["sec-ch-ua-mobile"] = []string{"?0"}
-	req.Header["sec-ch-ua"] = []string{`" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"`}
-	req.Header["referer"] = []string{`https://translate.yandex.ru/?lang=ru-en&text=Как дела?`}
-	var client http.Client
-	res, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
-	var response DetectAPIResponse
-	err = json.Unmarshal(body, &response)
-	return &response, err
-}
-
-
-
 
 // botRun is main handler of bot
 func botRun(update *tgbotapi.Update) {
@@ -222,7 +136,7 @@ func botRun(update *tgbotapi.Update) {
 					return
 				}
 
-				langDetects, err := DetectLanguage(update.Message.Text)
+				langDetects, err := translate.DetectLanguageYandex(update.Message.Text)
 				if err != nil {
 					bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Could not detect language, please send something else again"))
 					return
@@ -266,7 +180,7 @@ func botRun(update *tgbotapi.Update) {
 					return
 				}
 
-				langDetects, err := DetectLanguage(update.Message.Text)
+				langDetects, err := translate.DetectLanguageYandex(update.Message.Text)
 				if err != nil {
 					bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Could not detect language, please send something else again"))
 					return
@@ -303,42 +217,54 @@ func botRun(update *tgbotapi.Update) {
 				}
 
 
-				langDetects, err := DetectLanguage(text)
+				langDetects, err := translate.DetectLanguageYandex(text)
 				if err != nil {
-					attempt("#2040", err)
+					if e, ok := err.(translate.YandexDetectAPIError); ok {
+							attempt("#2040", e)
+					} else {
+						attempt("987", err)
+					}
 					return
 				}
-				if langDetects.Code != 200 {
-					switch langDetects.Code {
-					case 404:
-						bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Sorry, daily quota exceed. Try tomorrow."))
-					case 413:
-						bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Too big text, relax bro!"))
-					case 422:
-						bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Couldn't translate text"))
-					case 501:
-						bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Sorry, we can't detect this language..."))
-					default:
-						attempt("1981", errors.New("oh shit I couldn't detect language. Code " + strconv.Itoa(langDetects.Code)))
-					}
+				
+				if langDetects.Lang == "" {
+					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Cannot detect language of your message"))
+					return
 				}
-
+				
 				if langDetects.Lang == user.ToLang { // Сообщение отправлено на языке перевода
-					translate, err := Translate(user.ToLang, user.MyLang, text)
+					tr, err := translate.TranslateYandex(user.ToLang, user.MyLang, text)
 					if err != nil {
-						attempt("#2090", err)
+						if e, ok := err.(translate.YandexTranslateAPIError); ok {
+							attempt("#2006", e)
+						} else {
+							attempt("#2091", err)
+						}
+						attempt("#2089", err)
 						return
 					}
-					pp.Println(translate)
-					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, translate.Text[0]))
+					pp.Println(tr.Text)
+					if len(tr.Text) == 0 {
+						bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Empty result"))
+					} else {
+						bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, tr.Text[0]))
+					}
 				} else {
-					translate, err := Translate(langDetects.Lang, user.ToLang, text)
+					tr, err := translate.TranslateYandex(langDetects.Lang, user.ToLang, text)
 					if err != nil {
-						attempt("#2090", err)
+						if e, ok := err.(translate.YandexTranslateAPIError); ok {
+							attempt("#2005", e)
+						} else {
+							attempt("#2092", err)
+						}
 						return
 					}
-					pp.Println(translate)
-					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, translate.Text[0]))
+					pp.Println(tr.Text)
+					if len(tr.Text) == 0 {
+						bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Empty result"))
+					} else {
+						bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, tr.Text[0]))
+					}
 				}
 			}
 
@@ -593,7 +519,7 @@ func main() {
 	//	conn, err = amqp.Dial(amqpUrl)
 	//}
 	//defer conn.Close()
-
+	bot.Send(tgbotapi.NewMessage(579515224, "Bot started."))
 	requestHandler := func(ctx *fasthttp.RequestCtx) {
 		switch string(ctx.Path()) {
 		case "/" + botToken:
