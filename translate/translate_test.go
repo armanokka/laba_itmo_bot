@@ -2,6 +2,7 @@ package translate_test
 
 import (
 	"github.com/armanokka/translobot/translate"
+	"github.com/k0kubun/pp"
 	"strings"
 	"testing"
 )
@@ -9,20 +10,21 @@ import (
 
 
 func TestDetectLanguageYandex(t *testing.T) {
-	var tests = map[string]string{
-		".":"",
-		"hello":"en",
-		"привет":"ru",
-		":)":"",
-		"":"",
-		"тетрагидропиранилциклопентилтетрагидропиридопиридиновые":"ru",
-		"pneumonoultramicroscopicsilicovolcanoconiosis":"en",
-		"❗️❗":"emj",
-		"/v,x]'!p3(_+":"en",
-		"++_!!":"",
+	tests := []struct{
+		Input, Result string
+	}{
+		{".", ""},
+		{"привет", "ru"},
+		{"hello", "en"},
+		{":)", ""},
+		{"тетрагидропиранилциклопентилтетрагидропиридопиридиновые", "ru"},
+		{"pneumonoultramicroscopicsilicovolcanoconiosis", "en"},
+		{"❗️❗", "emj"},
+		{"/v,x]'!p3(_+", "en"},
+		{"++_!!", ""},
 	}
-	for input, result := range tests {
-		out, err := translate.DetectLanguageYandex(input)
+	for _, test := range tests {
+		out, err := translate.DetectLanguageYandex(test.Input)
 		if err != nil {
 			if e, ok := err.(translate.YandexDetectAPIError); ok {
 				if e.Code != 502 {
@@ -33,89 +35,51 @@ func TestDetectLanguageYandex(t *testing.T) {
 			}
 			continue
 		}
-		if out.Lang != result {
-			t.Error("waited:", input, "got:", out)
+		if out.Lang != test.Result {
+			t.Error("waited:", test.Result, "got:", out)
 		}
 	}
 }
 
 
 func TestTranslateGoogle(t *testing.T) {
-	var tests = map[string]string{
-		"":"",
-		"!+-*(":"! + - * (",
-		"английский":"English",
-		"гаргулия":"gargulia",
-		"😂😂😂":"😂😂😂",
-		"123":"one hundred twenty-three",
-		"🤡😈👍👌018^$@#&()??>":"🤡😈👍👌018 ^ $ @ # & () ??>",
+
+	tests := []struct{
+		Input, Result string
+	}{
+		{"",""},
+		{"!+-*(", "! + - * ("},
+		{"английский", "English"},
+		{"гаргулия", "gargulia"},
+		{"😂😂😂", "😂😂😂"},
+		{"123", "one hundred twenty-three"},
+		{"🤡😈👍👌018^$@#&()??>", "🤡😈👍👌018 ^ $ @ # & () ??>"},
 	}
-	for input, waited := range tests {
-		got, err := translate.TranslateGoogle("auto", "en", input)
+	for _, test := range tests {
+		got, err := translate.TranslateGoogle("auto", "en", test.Input)
 		if err != nil {
 			t.Error(err)
 			continue
 		}
-		if got != waited {
-			t.Error("waited:", waited, "got:", got)
+		if got != test.Result {
+			t.Error("waited:", test.Result, "got:", got)
 		}
 	}
 }
 
 func TestTranslateYandex(t *testing.T) {
-	tests := make([]map[string]string, 10, 50)
-	tests = []map[string]string{
-		{
-			"from":"en",
-			"to":"ru",
-			"text":"hello",
-			"result":"привет",
-		},
-		{
-			"from":"en",
-			"to":"ru",
-			"text":"",
-			"result":"",
-		},
-		{
-			"from":"en",
-			"to":"ru",
-			"text":"!()_+%^$",
-			"result":"!()_+%^$",
-		},
-		{
-			"from":"en",
-			"to":"ru",
-			"text":"💋😻Ё!\"№;%:💄💄",
-			"result":"💋😻E!\"№;%:💄💄",
-		},
-		{
-			"from":"en",
-			"to":"ru",
-			"text":"   ",
-			"result":"  ",
-		},
-		{
-			"from":"en",
-			"to":"ru",
-			"text":"😂",
-			"result":"Tears of joy",
-		},
+	tests := []struct{
+		FromLang, ToLang, Text, Result string
+	}{
+		{"en", "ru", "hello", "привет"},
+		{"en", "ru", "", ""},
+		{"en", "ru", "!()_+%^$", "!()_+%^$"},
+		{"en", "ru", "💋😻Ё!\"№;%:💄💄", "💋😻Ё!\"№;%:💄💄"},
+		{"en", "ru", "   ", "   "},
+		{"en", "ru", "😂", "Tears of joy"},
 	}
-	for _, arr := range tests {
-		if _, ok := arr["from"]; !ok {
-			panic(`"from" key does not exists in test`)
-		}
-		if _, ok := arr["to"]; !ok {
-			panic(`"to" key does not exists in test`)
-		}
-		if _, ok := arr["text"]; !ok {
-			panic(`"text" key does not exists in test`)
-		}
-		if _, ok := arr["result"]; !ok {
-			panic(`"result" key does not exists in test`)
-		}
-		got, err := translate.TranslateYandex(arr["from"], arr["to"], arr["text"])
+	for _, test := range tests {
+		got, err := translate.TranslateYandex(test.FromLang, test.ToLang, test.Text)
 		if err != nil {
 			if e, ok := err.(translate.YandexTranslateAPIError); ok {
 				t.Error(e)
@@ -125,9 +89,11 @@ func TestTranslateYandex(t *testing.T) {
 			continue
 		}
 		if len(got.Text) < 1 {
-			if strings.Join(strings.Fields(arr["text"]), "") != "" { // хотя бы один символ в отправленном тексте был
+			if strings.Join(strings.Fields(test.Text), "") != "" { // хотя бы один символ в отправленном тексте был
 				t.Error(err)
 			}
 		}
+		pp.Println("passed", test.Text)
+		
 	}
 }

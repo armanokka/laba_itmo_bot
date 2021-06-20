@@ -25,7 +25,7 @@ type Users struct {
 	ID     int64 `gorm:"primaryKey;index;not null"`
 	MyLang string `gorm:"default:en"`
 	ToLang string `gorm:"default:ar;n"`
-	Act    string
+	Act, Engine    string
 }
 
 // botRun is main handler of bot
@@ -100,6 +100,25 @@ func botRun(update *tgbotapi.Update) {
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "<b>What can this bot do?</b>\n▫️ Translo allows you to translate your messages into over than 100 languages. (117)\n<b>How to translate message?</b>\n▫️ Firstly, you have to setup your lang (default: English), then setup translate lang (default; Arabic) then send text messages and bot will translate them quickly.\n<b>How to setup my lang?</b>\n▫️ Send /my_lang then send any message <b>IN YOUR LANGUAGE</b>. Bot will detect and suggest you some variants. Select your lang. Done.\n<b>How to setup translate lang?</b>\n▫️ Send /to_lang then send any message <b>IN LANGUAGE YOU WANT TRANSLATE</b>. Bot will detect and suggest you some variants. Select your lang. Done.\n<b>I have a suggestion or I found bug!</b>\n▫️ 👉 Contact me pls - @armanokka")
 			msg.ParseMode = tgbotapi.ModeHTML
 			bot.Send(msg)
+		case "/engine":
+			var user Users // Contains only MyLang and ToLang
+			err := db.Model(&Users{}).Select("engine").Where("id = ?", update.Message.Chat.ID).Limit(1).Find(&user).Error
+			if err != nil {
+				attempt("#2020", err)
+				return
+			}
+
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "You can change translate engine")
+			keyboard := tgbotapi.NewInlineKeyboardMarkup(
+				tgbotapi.NewInlineKeyboardRow(
+					tgbotapi.NewInlineKeyboardButtonData("Google ✅", "switch_engine:google")),
+				tgbotapi.NewInlineKeyboardRow(
+					tgbotapi.NewInlineKeyboardButtonData("Yandex", "switch_engine:yandex")),
+				tgbotapi.NewInlineKeyboardRow(
+					tgbotapi.NewInlineKeyboardButtonData("Back", "back")))
+			msg.ReplyMarkup = keyboard
+			bot.Send(msg)
+			return
 		default: // Сообщение не является командой.
 			userStep, err := getUserStep(update.Message.Chat.ID)
 			if err != nil {
@@ -197,7 +216,7 @@ func botRun(update *tgbotapi.Update) {
 				return
 			default: // У пользователя нет шага и сообщение не команда
 				var user Users // Contains only MyLang and ToLang
-				err = db.Model(&Users{}).Select("my_lang", "to_lang").Where("id = ?", update.Message.Chat.ID).Limit(1).Find(&user).Error
+				err = db.Model(&Users{}).Select("my_lang", "to_lang", "engine").Where("id = ?", update.Message.Chat.ID).Limit(1).Find(&user).Error
 				if err != nil {
 					attempt("#2020", err)
 					return
@@ -215,8 +234,8 @@ func botRun(update *tgbotapi.Update) {
 					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Please, send text message"))
 					return
 				}
-
-
+				
+				
 				langDetects, err := translate.DetectLanguageYandex(text)
 				if err != nil {
 					if e, ok := err.(translate.YandexDetectAPIError); ok {
@@ -226,40 +245,82 @@ func botRun(update *tgbotapi.Update) {
 					}
 					return
 				}
-				
+
 				if langDetects.Lang == "" {
 					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, text))
 					return
 				}
 				
 				if langDetects.Lang == user.ToLang { // Сообщение отправлено на языке перевода
-					tr, err := translate.TranslateGoogle(user.ToLang, user.MyLang, text)
-					if err != nil {
-						attempt("#2089", err)
-						return
-					}
-					pp.Println(tr)
-					if tr == "" {
-						bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Empty result"))
-					} else {
-						bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, tr))
-					}
-				} else {
-					tr, err := translate.TranslateGoogle(langDetects.Lang, user.ToLang, text)
-					if err != nil {
-						if e, ok := err.(translate.YandexTranslateAPIError); ok {
-							attempt("#2005", e)
-						} else {
-							attempt("#2092", err)
+					
+					if user.Engine == "google" {
+						tr, err := translate.TranslateGoogle(user.ToLang, user.MyLang, text)
+						if err != nil {
+							attempt("#2089", err)
+							return
 						}
+						pp.Println(tr)
+						if tr == "" {
+							bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Empty result"))
+						} else {
+							bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, tr))
+						}
+					} else if user.Engine == "yandex" {
+						tr, err := translate.TranslateYandex(user.ToLang, user.MyLang, text)
+						if err != nil {
+							attempt("191973642", err)
+							return
+						}
+						if len(tr.Text) == 0 {
+							bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Could not translate message"))
+							return
+						}
+						pp.Println(tr.Text[0])
+						if tr.Text[0] == "" {
+							bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Empty result"))
+						} else {
+							bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, tr.Text[0]))
+						}
+					} else {
+						attempt("86", err)
 						return
 					}
-					pp.Println(tr)
-					if tr == "" {
-						bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Empty result"))
+
+				} else { // Сообщение отправлено на хз каком языке
+					
+					if user.Engine == "google" {
+						tr, err := translate.TranslateGoogle(langDetects.Lang, user.ToLang, text)
+						if err != nil {
+							attempt("#2089", err)
+							return
+						}
+						pp.Println(tr)
+						if tr == "" {
+							bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Empty result"))
+						} else {
+							bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, tr))
+						}
+					} else if user.Engine == "yandex" {
+						tr, err := translate.TranslateYandex(langDetects.Lang, user.ToLang, text)
+						if err != nil {
+							attempt("191973642", err)
+							return
+						}
+						if len(tr.Text) == 0 {
+							bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Could not translate message"))
+							return
+						}
+						pp.Println(tr.Text[0])
+						if tr.Text[0] == "" {
+							bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Empty result"))
+						} else {
+							bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, tr.Text[0]))
+						}
 					} else {
-						bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, tr))
+						attempt("87", err)
+						return
 					}
+					
 				}
 			}
 
@@ -317,6 +378,37 @@ func botRun(update *tgbotapi.Update) {
 			replyMarkup := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
 			edit := tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Now translate language is "+iso6391.Name(arr[1]), replyMarkup)
 			bot.Send(edit)
+		case "switch_engine":
+			err := db.Model(&Users{}).Where("id = ?", update.CallbackQuery.From.ID).Update("engine = ?", arr[1]).Error
+			if err != nil {
+				attempt("2055", err)
+				return
+			}
+			var user Users // Contains only MyLang and ToLang
+			err = db.Model(&Users{}).Select("engine").Where("id = ?", update.CallbackQuery.From.ID).Limit(1).Find(&user).Error
+			if err != nil {
+				attempt("9111", err)
+				return
+			}
+			n := map[string]string{"google":"", "yandex":""}
+			if user.Engine == "google" {
+				n["google"] = " ✅"
+			} else if user.Engine == "yandex" {
+				n["yandex"] = " ✅"
+			} else {
+				attempt("114", err)
+				return
+			}
+			msg := tgbotapi.NewEditMessageText(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "You can change translate engine")
+			keyboard := tgbotapi.NewInlineKeyboardMarkup(
+				tgbotapi.NewInlineKeyboardRow(
+					tgbotapi.NewInlineKeyboardButtonData("Google" + n["google"], "switch_engine:google")),
+				tgbotapi.NewInlineKeyboardRow(
+					tgbotapi.NewInlineKeyboardButtonData("Yandex" + n["yandex"], "switch_engine:yandex")),
+				tgbotapi.NewInlineKeyboardRow(
+					tgbotapi.NewInlineKeyboardButtonData("Back", "back")))
+			msg.ReplyMarkup = &keyboard
+			bot.Send(msg)
 		}
 
 	}

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/k0kubun/pp"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -91,6 +92,7 @@ type YandexTranslateAPIResponse struct {
 	Code int
 	Lang string `json:"lang"`
 	Text []string `json:"text"`
+	Message string `json:"message"`
 }
 
 type YandexTranslateAPIError struct {
@@ -104,6 +106,9 @@ func (c YandexTranslateAPIError) Error() string {
 }
 
 func TranslateYandex(fromLang, toLang, text string) (*YandexTranslateAPIResponse, error) {
+	if text == "" {
+		text = "null"
+	}
 	params := url.Values{}
 	params.Set("text", text)
 	params.Set("options", "4")
@@ -128,6 +133,8 @@ func TranslateYandex(fromLang, toLang, text string) (*YandexTranslateAPIResponse
 		return nil, err
 	}
 	if res.StatusCode != 200 {
+		body, _ := ioutil.ReadAll(res.Body)
+		pp.Println(string(body))
 		return nil, HTTPError{
 			Code:        res.StatusCode,
 			Description: "got non 200 http code",
