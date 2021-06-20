@@ -233,24 +233,19 @@ func botRun(update *tgbotapi.Update) {
 				}
 				
 				if langDetects.Lang == user.ToLang { // Сообщение отправлено на языке перевода
-					tr, err := translate.TranslateYandex(user.ToLang, user.MyLang, text)
+					tr, err := translate.TranslateGoogle(user.ToLang, user.MyLang, text)
 					if err != nil {
-						if e, ok := err.(translate.YandexTranslateAPIError); ok {
-							attempt("#2006", e)
-						} else {
-							attempt("#2091", err)
-						}
 						attempt("#2089", err)
 						return
 					}
-					pp.Println(tr.Text)
-					if len(tr.Text) == 0 {
+					pp.Println(tr)
+					if tr == "" {
 						bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Empty result"))
 					} else {
-						bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, tr.Text[0]))
+						bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, tr))
 					}
 				} else {
-					tr, err := translate.TranslateYandex(langDetects.Lang, user.ToLang, text)
+					tr, err := translate.TranslateGoogle(langDetects.Lang, user.ToLang, text)
 					if err != nil {
 						if e, ok := err.(translate.YandexTranslateAPIError); ok {
 							attempt("#2005", e)
@@ -259,11 +254,11 @@ func botRun(update *tgbotapi.Update) {
 						}
 						return
 					}
-					pp.Println(tr.Text)
-					if len(tr.Text) == 0 {
+					pp.Println(tr)
+					if tr == "" {
 						bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Empty result"))
 					} else {
-						bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, tr.Text[0]))
+						bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, tr))
 					}
 				}
 			}
