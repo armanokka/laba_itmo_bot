@@ -137,7 +137,7 @@ func botRun(update *tgbotapi.Update) {
 				}
 
 				langDetects, err := translate.DetectLanguageYandex(update.Message.Text)
-				if err != nil {
+				if err != nil || langDetects.Lang == "" {
 					bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Could not detect language, please send something else again"))
 					return
 				}
@@ -181,7 +181,7 @@ func botRun(update *tgbotapi.Update) {
 				}
 
 				langDetects, err := translate.DetectLanguageYandex(update.Message.Text)
-				if err != nil {
+				if err != nil || langDetects.Lang == "" {
 					bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Could not detect language, please send something else again"))
 					return
 				}
@@ -228,7 +228,7 @@ func botRun(update *tgbotapi.Update) {
 				}
 				
 				if langDetects.Lang == "" {
-					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Cannot detect language of your message"))
+					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, text))
 					return
 				}
 				
@@ -394,88 +394,6 @@ func botRun(update *tgbotapi.Update) {
 	//}
 }
 
-//type TraslateJustTranslatedResponse struct {
-//	Align []string `json:"align"`
-//	Code  int      `json:"code"`
-//	Lang  string   `json:"lang"`
-//	Text  []string `json:"text"`
-//}
-
-//func TranslateJustTranslated(target, text string) (*TraslateJustTranslatedResponse, error) {
-//	link := url.Values{}
-//	link.Add("lang", target)
-//	link.Add("text", text)
-//	path := link.Encode()
-//	req, err := http.NewRequest("GET", "https://just-translated.p.rapidapi.com?"+path, nil)
-//	if err != nil {
-//		return &TraslateJustTranslatedResponse{}, err
-//	}
-//	req.Header["x-rapidapi-key"] = []string{"561a41f76amsha7c0323d47335aep1986ecjsn4e41c7c2b518"}
-//	req.Header["x-rapidapi-host"] = []string{"just-translated.p.rapidapi.com"}
-//	req.Header["useQueryString"] = []string{"true"}
-//
-//	var client http.Client
-//	res, err := client.Do(req)
-//	if err != nil {
-//		return &TraslateJustTranslatedResponse{}, err
-//	}
-//	if res.StatusCode != 200 {
-//		return &TraslateJustTranslatedResponse{}, errors.New("just translated api did not response 200 code")
-//	}
-//	var out TraslateJustTranslatedResponse
-//	body, err := ioutil.ReadAll(res.Body)
-//	if err != nil {
-//		return &TraslateJustTranslatedResponse{}, err
-//	}
-//	fmt.Println(string(body))
-//	err = json.Unmarshal(body, &out)
-//	return &out, err
-//}
-
-
-//func TranslateLingVanex(source, target, text string) (TranslateAPIResponse, error) {
-//	source = source + "_" + strings.ToUpper(source)
-//	target = target + "_" + strings.ToUpper(target)
-//	body := map[string]string{"from": source,
-//		"to": target,
-//		"data": text,
-//		"platform": "api"}
-//	bodyJson, err := json.Marshal(body)
-//	if err != nil {
-//		return TranslateAPIResponse{}, err
-//	}
-//	req, err := http.NewRequest("POST", "https://lingvanex-translate.p.rapidapi.com/translate", bytes.NewBuffer(bodyJson))
-//	if err != nil {
-//		return TranslateAPIResponse{}, HTTPError{StatusCode: -1, Description: fmt.Sprintf("could not send request: %s", err)}
-//	}
-//
-//	req.Header["x-rapidapi-key"] = []string{"561a41f76amsha7c0323d47335aep1986ecjsn4e41c7c2b518"}
-//	req.Header["x-rapidapi-host"] = []string{"lingvanex-translate.p.rapidapi.com"}
-//	req.Header["useQueryString-type"] = []string{"true"}
-//	req.Header["content-type"] = []string{"application/json"}
-//	var client http.Client
-//	res, err := client.Do(req)
-//	if err != nil {
-//		return TranslateAPIResponse{}, HTTPError{StatusCode: res.StatusCode, Description: fmt.Sprintf("could not do req: %s", err)}
-//	}
-//	//if res.StatusCode != 200 && res.StatusCode != 302 {
-//	//	return TranslateAPIResponse{}, TranslateAPIError{StatusCode: res.StatusCode, Text: fmt.Sprintf("%v", err)}
-//	//}
-//	response, err := ioutil.ReadAll(res.Body)
-//	var out TranslateAPIResponse
-//	err = json.Unmarshal(response, &out)
-//	if out.Error != "" {
-//		return TranslateAPIResponse{}, TranslateAPIError{StatusCode: res.StatusCode, Text: out.Error}
-//	}
-//	return out, err
-//}
-
-//func DetectLanguage(text string) ([]*detectlanguage.DetectionResult, error) {
-//	rand.Seed(time.Now().UnixNano())
-//	state := detectlanguage.New(detectLangAPIKeys[rand.Intn(len(detectLangAPIKeys)-1)])
-//	detections, err := state.Detect(text)
-//	return detections, err
-//}
 
 func setUserStep(chatID int64, step string) error {
 	return db.Model(&Users{ID: chatID}).Where("id = ?", chatID).Limit(1).Update("act", step).Error
