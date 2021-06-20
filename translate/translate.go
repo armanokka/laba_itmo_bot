@@ -8,8 +8,16 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strings"
 )
+
+type HTTPError struct {
+	Code int
+	Description string
+}
+
+func (c HTTPError) Error() string {
+	return fmt.Sprintf("HTTP Error [code:%v]:%s", c.Code, c.Description)
+}
 
 type YandexDetectAPIResponse struct {
 	Code int `json:"code"`
@@ -56,6 +64,12 @@ func DetectLanguageYandex(text string) (*YandexDetectAPIResponse, error) {
 	res, err := client.Do(req)
 	if err != nil {
 		return nil, err
+	}
+	if res.StatusCode != 200 {
+		return nil, HTTPError{
+			Code:        res.StatusCode,
+			Description: "got non 200 http code",
+		}
 	}
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
@@ -113,13 +127,19 @@ func TranslateYandex(fromLang, toLang, text string) (*YandexTranslateAPIResponse
 	if err != nil {
 		return nil, err
 	}
+	if res.StatusCode != 200 {
+		return nil, HTTPError{
+			Code:        res.StatusCode,
+			Description: "got non 200 http code",
+		}
+	}
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
 	var response YandexTranslateAPIResponse
 	err = json.Unmarshal(body, &response)
-	if response.Code != 200 && strings.Join(strings.Fields(text), "") != "" { // код ответа не равен 200 и в тексте есть хотя бы одна буква
+	if response.Code != 200 {
 		return nil, YandexTranslateAPIError{
 			Code:        response.Code,
 			InputText:   text,
@@ -153,9 +173,19 @@ func TranslateGoogle(from, to, text string) (string, error) {
 
 	var client http.Client
 	res, err := client.Do(req)
-	if err != nil {return "", err}
+	if err != nil {
+		return "", err
+	}
+	if res.StatusCode != 200 {
+		return "", HTTPError{
+			Code:        res.StatusCode,
+			Description: "got non 200 http code",
+		}
+	}
 	doc, err := goquery.NewDocumentFromReader(res.Body)
-	if err != nil {return "", err}
+	if err != nil {
+		return "", err
+	}
 	return doc.Find("span[id=tw-answ-target-text]").Text(), err
 }
 
