@@ -107,13 +107,19 @@ func botRun(update *tgbotapi.Update) {
 				attempt("#2020", err)
 				return
 			}
+			n := map[string]string{"google":"", "yandex":""}
+			if _, ok := n[user.Engine]; !ok {
+				attempt("55-", err)
+				return
+			}
+			n[user.Engine] = " ✅"
 
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "You can change translate engine")
 			keyboard := tgbotapi.NewInlineKeyboardMarkup(
 				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("Google ✅", "switch_engine:google")),
+					tgbotapi.NewInlineKeyboardButtonData("Google" + n["google"], "switch_engine:google")),
 				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("Yandex", "switch_engine:yandex")),
+					tgbotapi.NewInlineKeyboardButtonData("Yandex" + n["yandex"], "switch_engine:yandex")),
 				tgbotapi.NewInlineKeyboardRow(
 					tgbotapi.NewInlineKeyboardButtonData("Back", "back")))
 			msg.ReplyMarkup = keyboard
@@ -391,14 +397,11 @@ func botRun(update *tgbotapi.Update) {
 				return
 			}
 			n := map[string]string{"google":"", "yandex":""}
-			if user.Engine == "google" {
-				n["google"] = " ✅"
-			} else if user.Engine == "yandex" {
-				n["yandex"] = " ✅"
-			} else {
-				attempt("114", err)
+			if _, ok := n[user.Engine]; !ok {
+				attempt("55-", err)
 				return
 			}
+			n[user.Engine] = " ✅"
 			msg := tgbotapi.NewEditMessageText(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "You can change translate engine")
 			keyboard := tgbotapi.NewInlineKeyboardMarkup(
 				tgbotapi.NewInlineKeyboardRow(
