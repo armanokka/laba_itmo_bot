@@ -379,7 +379,7 @@ func botRun(update *tgbotapi.Update) {
 			edit := tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Now translate language is "+iso6391.Name(arr[1]), replyMarkup)
 			bot.Send(edit)
 		case "switch_engine":
-			err := db.Model(&Users{}).Where("id = ?", update.CallbackQuery.From.ID).Update("engine = ?", arr[1]).Error
+			err := db.Model(&Users{}).Where("id = ?", update.CallbackQuery.From.ID).Update("engine", arr[1]).Error
 			if err != nil {
 				attempt("2055", err)
 				return
