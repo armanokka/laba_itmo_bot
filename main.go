@@ -89,8 +89,8 @@ func botRun(update *tgbotapi.Update) {
 			if update.Message.From.LanguageCode == "fr" { // перед нами француз, а свой язык и язык перевода не должны совпадать, значит пусть будет испанский
 				translateLang = "es"
 			}
-			var user = &Users{ID: update.Message.From.ID, MyLang: update.Message.From.LanguageCode, ToLang: translateLang}
-			err := db.FirstOrCreate(user, *user).Error
+			var user = Users{ID: update.Message.From.ID, MyLang: update.Message.From.LanguageCode, ToLang: translateLang}
+			err := db.FirstOrCreate(&user, user).Error
 			if err != nil {
 				warn(1002, err)
 				return
