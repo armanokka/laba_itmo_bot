@@ -26,8 +26,9 @@ var (
 type Users struct {
 	ID     int64 `gorm:"primaryKey;index;not null"`
 	MyLang string `gorm:"default:en"`
-	ToLang string `gorm:"default:ar;n"`
-	Act, Engine    string
+	ToLang string `gorm:"default:ar"`
+	Act string `gorm:"default:null"`
+	Engine    string `gorm:"default:google"`
 }
 
 type Errors struct {
