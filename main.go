@@ -262,8 +262,16 @@ func botRun(update *tgbotapi.Update) {
 					return
 				}
 				
+				cutString := func(text string, limit int) string {
+					runes := []rune(text)
+					if len(runes) > limit {
+						return string(runes[:limit])
+					}
+					return text
+				}
 				
-				langDetects, err := translate.DetectLanguageYandex(text)
+				cutText := cutString(text, 500)
+				langDetects, err := translate.DetectLanguageYandex(cutText)
 				if err != nil {
 					if e, ok := err.(translate.HTTPError); ok {
 						if e.Code == 413 {
