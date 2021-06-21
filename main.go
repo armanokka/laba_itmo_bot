@@ -265,8 +265,11 @@ func botRun(update *tgbotapi.Update) {
 				
 				langDetects, err := translate.DetectLanguageYandex(text)
 				if err != nil {
-					if e, ok := err.(translate.YandexDetectAPIError); ok {
-							warn(307, e)
+					if e, ok := err.(translate.HTTPError); ok {
+						if e.Code == 413 {
+							bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Too big text"))
+							return
+						}
 					} else {
 						warn(308, err)
 					}
