@@ -258,8 +258,8 @@ func botRun(update *tgbotapi.Update) {
 				}
 				
 				if langDetects.Lang == user.ToLang { // Сообщение отправлено на языке перевода
-					
-					if user.Engine == "google" {
+					switch user.Engine {
+					case "google":
 						tr, err := translate.TranslateGoogle(user.ToLang, user.MyLang, text)
 						if err != nil {
 							attempt("#2089", err)
@@ -271,7 +271,7 @@ func botRun(update *tgbotapi.Update) {
 						} else {
 							bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, tr))
 						}
-					} else if user.Engine == "yandex" {
+					case "yandex":
 						tr, err := translate.TranslateYandex(user.ToLang, user.MyLang, text)
 						if err != nil {
 							attempt("191973642", err)
@@ -287,14 +287,14 @@ func botRun(update *tgbotapi.Update) {
 						} else {
 							bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, tr.Text[0]))
 						}
-					} else {
+					default:
 						attempt("86", err)
 						return
 					}
 
 				} else { // Сообщение отправлено на хз каком языке
-					
-					if user.Engine == "google" {
+					switch user.Engine {
+					case "google":
 						tr, err := translate.TranslateGoogle(langDetects.Lang, user.ToLang, text)
 						if err != nil {
 							attempt("#2089", err)
@@ -306,7 +306,7 @@ func botRun(update *tgbotapi.Update) {
 						} else {
 							bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, tr))
 						}
-					} else if user.Engine == "yandex" {
+					case "yandex":
 						tr, err := translate.TranslateYandex(langDetects.Lang, user.ToLang, text)
 						if err != nil {
 							attempt("191973642", err)
@@ -322,7 +322,7 @@ func botRun(update *tgbotapi.Update) {
 						} else {
 							bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, tr.Text[0]))
 						}
-					} else {
+					default:
 						attempt("87", err)
 						return
 					}
