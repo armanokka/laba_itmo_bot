@@ -81,10 +81,15 @@ func botRun(update *tgbotapi.Update) {
 	if update.Message != nil {
 		switch update.Message.Text {
 		case "/start", "/start from_inline":
-			if update.Message.From.LanguageCode == "" {
+			if update.Message.From.LanguageCode == "" { // код языка недоступен
 				update.Message.From.LanguageCode = "en"
 			}
-			var user = &Users{ID: update.Message.From.ID, MyLang: update.Message.From.LanguageCode}
+			
+			var translateLang string = "fr"
+			if update.Message.From.LanguageCode == "fr" { // перед нами француз, а свой язык и язык перевода не должны совпадать, значит пусть будет испанский
+				translateLang = "es"
+			}
+			var user = &Users{ID: update.Message.From.ID, MyLang: update.Message.From.LanguageCode, ToLang: translateLang}
 			err := db.FirstOrCreate(user, *user).Error
 			if err != nil {
 				warn(1002, err)
