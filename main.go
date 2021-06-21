@@ -2,6 +2,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/armanokka/translobot/translate"
@@ -27,7 +28,7 @@ type Users struct {
 	ID     int64 `gorm:"primaryKey;index;not null"`
 	MyLang string `gorm:"default:en"`
 	ToLang string `gorm:"default:ar"`
-	Act string `gorm:"default:null"`
+	Act sql.NullString `gorm:"default:null"`
 	Engine    string `gorm:"default:google"`
 }
 
@@ -338,7 +339,7 @@ func botRun(update *tgbotapi.Update) {
 					pp.Println(tr.Text[0])
 					translatedText = tr.Text[0]
 				default:
-					warn(311, err)
+					warn(311, nil)
 					return
 				}
 				bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, translatedText))
@@ -507,7 +508,7 @@ func setUserStep(chatID int64, step string) error {
 func getUserStep(chatID int64) (string, error) {
 	var user Users
 	err := db.Model(&Users{ID: chatID}).Select("act").Where("id", chatID).Limit(1).Find(&user).Error
-	return user.Act, err
+	return user.Act.String, err
 }
 
 func main() {
