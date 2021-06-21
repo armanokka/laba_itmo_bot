@@ -78,11 +78,12 @@ func botRun(update *tgbotapi.Update) {
 		}
 	}
 	
-	if update.Message.Chat.ID < 0 {
-		return
-	}
-
 	if update.Message != nil {
+		
+		if update.Message.Chat.ID < 0 {
+			return
+		}
+		
 		switch update.Message.Text {
 		case "/start", "/start from_inline":
 			var userExists bool
