@@ -27,7 +27,7 @@ var (
 type Users struct {
 	ID     int64 `gorm:"primaryKey;index;not null"`
 	MyLang string `gorm:"default:en"`
-	ToLang string `gorm:"default:ar"`
+	ToLang string `gorm:"default:fr"`
 	Act sql.NullString `gorm:"default:null"`
 	Engine    string `gorm:"default:google"`
 }
@@ -81,11 +81,11 @@ func botRun(update *tgbotapi.Update) {
 	if update.Message != nil {
 		switch update.Message.Text {
 		case "/start", "/start from_inline":
-			var user = Users{ID: update.Message.From.ID}
 			if update.Message.From.LanguageCode == "" {
 				update.Message.From.LanguageCode = "en"
 			}
-			err := db.FirstOrCreate(&user, &Users{ID: update.Message.From.ID}).Error
+			var user = &Users{ID: update.Message.From.ID, MyLang: update.Message.From.LanguageCode}
+			err := db.FirstOrCreate(user, *user).Error
 			if err != nil {
 				warn(1002, err)
 				return
