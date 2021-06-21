@@ -305,6 +305,7 @@ func botRun(update *tgbotapi.Update) {
 						return
 					}
 					pp.Println(tr)
+					translatedText = tr
 				case "yandex":
 					tr, err := translate.TranslateYandex(langDetects.Lang, to, text)
 					if err != nil {
@@ -326,6 +327,7 @@ func botRun(update *tgbotapi.Update) {
 						return
 					}
 					pp.Println(tr.Text[0])
+					translatedText = tr.Text[0]
 				default:
 					warn(311, err)
 					return
