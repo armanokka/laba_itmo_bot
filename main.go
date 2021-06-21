@@ -77,24 +77,49 @@ func botRun(update *tgbotapi.Update) {
 			bot.Send(tgbotapi.NewMessage(579515224, fmt.Sprintf("Couldn't create new row in Errors relation, so this user %v generated error with this code %v now.", userID, code)))
 		}
 	}
+	
+	if update.Message.Chat.ID < 0 {
+		return
+	}
 
 	if update.Message != nil {
 		switch update.Message.Text {
 		case "/start", "/start from_inline":
-			if update.Message.From.LanguageCode == "" { // код языка недоступен
-				update.Message.From.LanguageCode = "en"
-			}
-			
-			var translateLang string = "fr"
-			if update.Message.From.LanguageCode == "fr" { // перед нами француз, а свой язык и язык перевода не должны совпадать, значит пусть будет испанский
-				translateLang = "es"
-			}
-			var user = Users{ID: update.Message.From.ID, MyLang: update.Message.From.LanguageCode, ToLang: translateLang}
-			err := db.FirstOrCreate(&user, user).Error
+			var userExists bool
+			err := db.Raw("SELECT EXISTS(SELECT id FROM users WHERE id=?)", update.Message.Chat.ID).Find(&userExists).Error
 			if err != nil {
-				warn(1002, err)
+				warn(9, err)
 				return
 			}
+			if !userExists {
+				fromLang := update.Message.From.LanguageCode
+				translateLang := "fr"
+				if fromLang == "" { // код языка недоступен
+					fromLang = "en" // О, вы из Англии
+				}
+				if fromLang == "fr" { // перед нами француз, зачем ему переводить на французский?
+					translateLang = "es"
+				}
+				err = db.Create(&Users{
+					ID:     update.Message.Chat.ID,
+					MyLang: fromLang,
+					ToLang: translateLang,
+					Act:    sql.NullString{},
+					Engine: "google",
+				}).Error
+				if err != nil {
+					warn(10, err)
+					return
+				}
+			}
+			
+			var user Users
+			err = db.Model(&Users{}).Select("my_lang", "to_lang").Where("id = ?", update.Message.Chat.ID).Find(&user).Error
+			if err != nil {
+				warn(11, err)
+				return
+			}
+			
 			user.MyLang = iso6391.Name(user.MyLang)
 			user.ToLang = iso6391.Name(user.ToLang)
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Your language is - <b>"+user.MyLang+"</b>, and translate language - <b>"+user.ToLang+"</b>.\n\nNeed help? /help\nChange your lang /my_lang\nChange translate lang /to_lang")
