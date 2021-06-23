@@ -683,6 +683,7 @@ func sendStatFromBot(chatID int64, answer, intent string, notHandled bool) error
 	} else if !response.Status.OK() {
 		fmt.Println(response.Reason)
 	}
+	pp.Println("sent stat from BOT to the USER", chatID, " answer:", message, " intent:", intent, "not_handled", notHandled)
 	return err
 }
 
@@ -696,6 +697,7 @@ func sendStatFromUser(chatID int64, message string) error {
 	} else if !response.Status.OK() {
 		fmt.Println(response.Reason)
 	}
+	pp.Println("sent stat from USER ", chatID, " message:", message)
 	return err
 }
 
