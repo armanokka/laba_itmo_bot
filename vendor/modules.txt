@@ -46,6 +46,9 @@ github.com/k0kubun/pp
 github.com/klauspost/compress/flate
 github.com/klauspost/compress/gzip
 github.com/klauspost/compress/zlib
+# github.com/m90/go-chatbase v2.0.0+incompatible
+## explicit
+github.com/m90/go-chatbase
 # github.com/mattn/go-colorable v0.1.6
 github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.12

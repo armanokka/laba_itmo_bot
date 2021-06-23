@@ -10,6 +10,7 @@ require (
 	github.com/go-telegram-bot-api/telegram-bot-api v4.6.4+incompatible // indirect
 	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.0.0-rc1.0.20210311030851-d0e1dfd8c604
 	github.com/k0kubun/pp v3.0.1+incompatible
+	github.com/m90/go-chatbase v2.0.0+incompatible
 	github.com/streadway/amqp v1.0.0 // indirect
 	github.com/technoweenie/multipartstreamer v1.0.1 // indirect
 	github.com/valyala/fasthttp v1.26.0
