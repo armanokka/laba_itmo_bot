@@ -683,7 +683,7 @@ func sendStatFromBot(chatID int64, answer, intent string, notHandled bool) error
 	} else if !response.Status.OK() {
 		fmt.Println(response.Reason)
 	}
-	pp.Println("sent stat from BOT to the USER", chatID, " answer:", message, " intent:", intent, "not_handled", notHandled)
+	pp.Println("sent stat from BOT to the USER", chatID, " answer:", answer, " intent:", intent, "not_handled", notHandled)
 	return err
 }
 
@@ -726,7 +726,6 @@ func main() {
 	}
 	
 	client = chatbase.New(chatBaseToken)
-	
 
 	//updates := bot.GetUpdatesChan(tgbotapi.UpdateConfig{})
 	//for update := range updates {
