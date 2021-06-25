@@ -708,7 +708,14 @@ func (bot *BotAPI) AnswerCallbackQuery(callback CallbackConfig) {
 	bot.MakeRequest(callback.method(), params)
 }
 
-func (bot *BotAPI) AnswerInlineQuery(callback InlineConfig)  {
+func (bot *BotAPI) AnswerInlineQuery(callback InlineConfig) (bool, error) {
 	params, _ := callback.params()
-	bot.MakeRequest(callback.method(), params)
+	resp, err := bot.MakeRequest(callback.method(), params)
+	if err != nil {
+		return false, err
+	}
+	if !resp.Ok {
+		return false, errors.New(resp.Description)
+	}
+	return true, nil
 }

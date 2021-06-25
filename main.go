@@ -3,16 +3,20 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"github.com/armanokka/translobot/translate"
 	iso6391 "github.com/emvi/iso-639-1"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
+	"github.com/valyala/fasthttp"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"log"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 
@@ -47,7 +51,7 @@ func botRun(update *tgbotapi.Update) {
 			bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, errText))
 		} else if update.InlineQuery != nil {
 			userID = update.InlineQuery.From.ID
-			bot.AnswerInlineQuery(tgbotapi.InlineConfig{
+			ok, err := bot.AnswerInlineQuery(tgbotapi.InlineConfig{
 				InlineQueryID:     update.InlineQuery.ID,
 				Results:           nil,
 				CacheTime:         0,
@@ -55,6 +59,9 @@ func botRun(update *tgbotapi.Update) {
 				SwitchPMText:      "Error. Try again later",
 				SwitchPMParameter: "from_inline",
 			})
+			if !ok || err != nil {
+				panic(err)
+			}
 		}
 		bot.Send(tgbotapi.NewMessage(579515224, fmt.Sprintf("Error [%v]: %v", code, err)))
 		
@@ -278,7 +285,6 @@ func botRun(update *tgbotapi.Update) {
 					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Please, send text message"))
 					return
 				}
-				pp.Println("here -1")
 				
 				cutText := cutString(text, 500)
 				lang, err := translate.DetectLanguageGoogle(cutText)
@@ -394,38 +400,46 @@ func botRun(update *tgbotapi.Update) {
 			"ur", "jv", "it", "fa", "gu",
 		}
 		
-		results := make([]tgbotapi.InlineQueryResultArticle, 23)
+		results := make([]interface{}, 0, 23)
+		
+		var wg sync.WaitGroup
 		
 		for i, lang := range langs {
-			tr, err := translate.TranslateGoogle("auto", lang, update.InlineQuery.Query)
-			if err != nil {
-				warn(-2, err)
-				return
-			}
-			inputMessageContent := map[string]interface{}{
-				"message_text":tr,
-				"disable_web_page_preview":true,
-			}
-			results = append(results, tgbotapi.InlineQueryResultArticle{
-				Type:                "article",
-				ID:                  strconv.Itoa(i),
-				Title:               "To " + iso6391.Name(lang),
-				InputMessageContent: inputMessageContent,
-				URL:                 "https://natrubu.org/",
-				HideURL:             true,
-				Description:         cutString(tr.Text, 15),
-			})
-		}
-		
+			go func() {
+				wg.Add(1)
+				tr, err := translate.TranslateGoogle("auto", lang, update.InlineQuery.Query)
+				if err != nil {
+					warn(-2, err)
+					return
+				}
+				inputMessageContent := map[string]interface{}{
+					"message_text":tr.Text,
+					"disable_web_page_preview":true,
+				}
+				results = append(results, tgbotapi.InlineQueryResultArticle{
+					Type:                "article",
+					ID:                  strconv.Itoa(i),
+					Title:               iso6391.Name(lang),
+					InputMessageContent: inputMessageContent,
+					URL:                 "https://natrubu.org/",
+					HideURL:             true,
+					Description:         cutString(tr.Text, 25),
+				})
+			}()
 
-		bot.AnswerInlineQuery(tgbotapi.InlineConfig{
-			InlineQueryID:     update.CallbackQuery.ID,
-			Results:           []interface{}{results},
+		}
+		wg.Wait()
+		ok, err := bot.AnswerInlineQuery(tgbotapi.InlineConfig{
+			InlineQueryID:     update.InlineQuery.ID,
+			Results:           results,
 			CacheTime:         300,
 			IsPersonal:        false,
 			SwitchPMText:      "Translo",
 			SwitchPMParameter: "from_inline",
 		})
+		if err != nil || !ok {
+			pp.Println(err)
+		}
 		
 	}
 }
@@ -473,10 +487,10 @@ func main() {
 		port = "80"
 	}
 	
-	updates := bot.GetUpdatesChan(tgbotapi.UpdateConfig{})
-	for update := range updates {
-		go botRun(&update)
-	}
+	//updates := bot.GetUpdatesChan(tgbotapi.UpdateConfig{})
+	//for update := range updates {
+	//	go botRun(&update)
+	//}
 
 	//conn, err := amqp.Dial(os.Getenv("CLOUDAMQP_URL"))
 	//if amqpUrl := os.Getenv("CLOUDAMQP_URL"); amqpUrl == "" {
@@ -484,32 +498,32 @@ func main() {
 	//}
 	//defer conn.Close()
 	
-	//bot.Send(tgbotapi.NewMessage(579515224, "Bot started."))
-	//requestHandler := func(ctx *fasthttp.RequestCtx) {
-	//	switch string(ctx.Path()) {
-	//	case "/" + botToken:
-	//		if isPost := ctx.IsPost(); isPost {
-	//			data := ctx.PostBody()
-	//			var update tgbotapi.Update
-	//			err := json.Unmarshal(data, &update)
-	//			if err != nil {
-	//				fmt.Fprint(ctx, "can't parse")
-	//			} else {
-	//				go botRun(&update)
-	//			}
-	//		} else {
-	//			fmt.Fprint(ctx, "no way")
-	//		}
-	//	default:
-	//		_, err = fmt.Fprintln(ctx, "ok")
-	//		if err != nil {
-	//			panic(err)
-	//		}
-	//	}
-	//}
-	//if err = fasthttp.ListenAndServe(":"+port, requestHandler); err != nil {
-	//	log.Fatalf("Error in ListenAndServe: %s", err)
-	//}
+	bot.Send(tgbotapi.NewMessage(579515224, "Bot started."))
+	requestHandler := func(ctx *fasthttp.RequestCtx) {
+		switch string(ctx.Path()) {
+		case "/" + botToken:
+			if isPost := ctx.IsPost(); isPost {
+				data := ctx.PostBody()
+				var update tgbotapi.Update
+				err := json.Unmarshal(data, &update)
+				if err != nil {
+					fmt.Fprint(ctx, "can't parse")
+				} else {
+					go botRun(&update)
+				}
+			} else {
+				fmt.Fprint(ctx, "no way")
+			}
+		default:
+			_, err = fmt.Fprintln(ctx, "ok")
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+	if err = fasthttp.ListenAndServe(":"+port, requestHandler); err != nil {
+		log.Fatalf("Error in ListenAndServe: %s", err)
+	}
 
 }
 
