@@ -20,6 +20,7 @@ import (
 	"strings"
 )
 
+
 var (
 	db  *gorm.DB
 	bot *tgbotapi.BotAPI
@@ -498,8 +499,10 @@ func botRun(update *tgbotapi.Update) {
 					warn(311, nil)
 					return
 				}
-				bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, translatedText))
-				
+				_, err = bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, translatedText))
+				if err != nil {
+					pp.Println(err)
+				}
 				err = sendStatFromBot(update.Message.Chat.ID, msg.Text, "translate--success", false)
 				if err != nil {
 					pingAdmin(err)

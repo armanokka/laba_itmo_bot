@@ -5,6 +5,9 @@ github.com/PuerkitoBio/goquery
 github.com/andybalholm/brotli
 # github.com/andybalholm/cascadia v1.1.0
 github.com/andybalholm/cascadia
+# github.com/armanokka/telegram-bot-api v4.6.4+incompatible
+## explicit
+github.com/armanokka/telegram-bot-api
 # github.com/detectlanguage/detectlanguage-go v1.0.1
 ## explicit
 # github.com/emvi/iso-639-1 v1.0.1
@@ -57,6 +60,7 @@ github.com/mattn/go-isatty
 ## explicit
 # github.com/technoweenie/multipartstreamer v1.0.1
 ## explicit
+github.com/technoweenie/multipartstreamer
 # github.com/valyala/bytebufferpool v1.0.0
 github.com/valyala/bytebufferpool
 # github.com/valyala/fasthttp v1.26.0
