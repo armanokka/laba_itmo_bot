@@ -424,7 +424,7 @@ func botRun(update *tgbotapi.Update) {
 				InputMessageContent: inputMessageContent,
 				URL:                 "https://g.cn/",
 				HideURL:             true,
-				Description:         cutString(tr.Text, 25),
+				Description:         cutString(tr.Text, 40),
 			})
 		}
 
