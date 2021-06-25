@@ -16,7 +16,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 
@@ -402,33 +401,27 @@ func botRun(update *tgbotapi.Update) {
 		
 		results := make([]interface{}, 0, 23)
 		
-		var wg sync.WaitGroup
-		
 		for i, lang := range langs {
-			go func() {
-				wg.Add(1)
-				tr, err := translate.TranslateGoogle("auto", lang, update.InlineQuery.Query)
-				if err != nil {
-					warn(-2, err)
-					return
-				}
-				inputMessageContent := map[string]interface{}{
-					"message_text":tr.Text,
-					"disable_web_page_preview":true,
-				}
-				results = append(results, tgbotapi.InlineQueryResultArticle{
-					Type:                "article",
-					ID:                  strconv.Itoa(i),
-					Title:               iso6391.Name(lang),
-					InputMessageContent: inputMessageContent,
-					URL:                 "https://natrubu.org/",
-					HideURL:             true,
-					Description:         cutString(tr.Text, 25),
-				})
-			}()
-
+			tr, err := translate.TranslateGoogle("auto", lang, update.InlineQuery.Query)
+			if err != nil {
+				warn(-2, err)
+				return
+			}
+			inputMessageContent := map[string]interface{}{
+				"message_text":tr.Text,
+				"disable_web_page_preview":true,
+			}
+			results = append(results, tgbotapi.InlineQueryResultArticle{
+				Type:                "article",
+				ID:                  strconv.Itoa(i),
+				Title:               iso6391.Name(lang),
+				InputMessageContent: inputMessageContent,
+				URL:                 "https://natrubu.org/",
+				HideURL:             true,
+				Description:         cutString(tr.Text, 25),
+			})
 		}
-		wg.Wait()
+
 		ok, err := bot.AnswerInlineQuery(tgbotapi.InlineConfig{
 			InlineQueryID:     update.InlineQuery.ID,
 			Results:           results,
