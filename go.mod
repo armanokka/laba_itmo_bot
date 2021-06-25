@@ -1,7 +1,7 @@
 module github.com/armanokka/translobot
 
-// +heroku goVersion go1.16
-go 1.16
+// +heroku goVersion go1.15
+go 1.15
 
 replace github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.0.0-rc1.0.20210608165722-fb1de2fb48dd => D:\Go-Workspace\FORKS\go-telegram-bot-api\telegram-bot-api\v5
 
