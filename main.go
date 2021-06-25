@@ -3,16 +3,13 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"github.com/armanokka/translobot/translate"
 	iso6391 "github.com/emvi/iso-639-1"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
-	"github.com/valyala/fasthttp"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -29,7 +26,6 @@ type Users struct {
 	MyLang string `gorm:"default:en"`
 	ToLang string `gorm:"default:fr"`
 	Act sql.NullString `gorm:"default:null"`
-	Engine    string `gorm:"default:google"`
 }
 
 // botRun is main handler of bot
@@ -107,7 +103,6 @@ func botRun(update *tgbotapi.Update) {
 					MyLang: fromLang,
 					ToLang: translateLang,
 					Act:    sql.NullString{},
-					Engine: "google",
 				}).Error
 				if err != nil {
 					warn(10, err)
@@ -158,31 +153,6 @@ func botRun(update *tgbotapi.Update) {
 			msg.ParseMode = tgbotapi.ModeHTML
 			bot.Send(msg)
 			
-		case "/engine":
-			var user Users // Contains only MyLang and ToLang
-			err := db.Model(&Users{}).Select("engine").Where("id = ?", update.Message.Chat.ID).Limit(1).Find(&user).Error
-			if err != nil {
-				warn(2020, err)
-				return
-			}
-			n := map[string]string{"google":"", "yandex":""}
-			if _, ok := n[user.Engine]; !ok {
-				warn(50, err)
-				return
-			}
-			n[user.Engine] = " ✅"
-
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "You can change translate engine")
-			keyboard := tgbotapi.NewInlineKeyboardMarkup(
-				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("Google" + n["google"], "switch_engine:google")),
-				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("Yandex" + n["yandex"], "switch_engine:yandex")),
-				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("Back", "back")))
-			msg.ReplyMarkup = keyboard
-			bot.Send(msg)
-			
 		default: // Сообщение не является командой.
 			userStep, err := getUserStep(update.Message.Chat.ID)
 			if err != nil {
@@ -220,19 +190,20 @@ func botRun(update *tgbotapi.Update) {
 					
 					return
 				}
-
-				langDetects, err := translate.DetectLanguageYandex(update.Message.Text)
-				if err != nil || langDetects.Lang == "" {
+				
+				
+				lang, err := translate.DetectLanguageGoogle(update.Message.Text)
+				if err != nil || lang == "" {
 					bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Could not detect language, please send something else again"))
 					return
 				}
-				err = db.Model(&Users{}).Where("id", update.Message.Chat.ID).Updates(map[string]interface{}{"act": nil, "my_lang": langDetects.Lang}).Error
+				err = db.Model(&Users{}).Where("id", update.Message.Chat.ID).Updates(map[string]interface{}{"act": nil, "my_lang": lang}).Error
 				if err != nil {
 					warn(302, err)
 					return
 				}
 				replyMarkup := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now language is "+iso6391.Name(langDetects.Lang))
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now language is "+iso6391.Name(lang))
 				msg.ReplyMarkup = replyMarkup
 				bot.Send(msg)
 				
@@ -269,27 +240,27 @@ func botRun(update *tgbotapi.Update) {
 					return
 				}
 
-				langDetects, err := translate.DetectLanguageYandex(update.Message.Text)
-				if err != nil || langDetects.Lang == "" {
+				langDetects, err := translate.DetectLanguageGoogle(update.Message.Text)
+				if err != nil || langDetects == "" {
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Could not detect language, please send something else again")
 					bot.Send(msg)
 					
 					return
 				}
-				err = db.Model(&Users{}).Where("id", update.Message.Chat.ID).Updates(map[string]interface{}{"act": nil, "to_lang": langDetects.Lang}).Error
+				err = db.Model(&Users{}).Where("id", update.Message.Chat.ID).Updates(map[string]interface{}{"act": nil, "to_lang": langDetects}).Error
 				if err != nil {
 					warn(305, err)
 					return
 				}
 				replyMarkup := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now language is "+iso6391.Name(langDetects.Lang))
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now language is "+iso6391.Name(langDetects))
 				msg.ReplyMarkup = replyMarkup
 				bot.Send(msg)
 				
 				return
 			default: // У пользователя нет шага и сообщение не команда
 				var user Users // Contains only MyLang and ToLang
-				err = db.Model(&Users{}).Select("my_lang", "to_lang", "engine").Where("id = ?", update.Message.Chat.ID).Limit(1).Find(&user).Error
+				err = db.Model(&Users{}).Select("my_lang", "to_lang").Where("id = ?", update.Message.Chat.ID).Limit(1).Find(&user).Error
 				if err != nil {
 					warn(306, err)
 					return
@@ -307,92 +278,51 @@ func botRun(update *tgbotapi.Update) {
 					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Please, send text message"))
 					return
 				}
+				pp.Println("here -1")
 				
 				cutText := cutString(text, 500)
-				langDetects, err := translate.DetectLanguageYandex(cutText)
+				lang, err := translate.DetectLanguageGoogle(cutText)
 				if err != nil {
-					if e, ok := err.(translate.HTTPError); ok {
-						if e.Code == 413 {
-							bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Too big text"))
-							return
-						}
-					} else {
-						warn(308, err)
-					}
 
 					return
 				}
 
-				if langDetects.Lang == "" {
+				if lang == "" {
 					bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, text))
-					
 					return
 				}
+				
 				var to string // language into need to translate
-				if langDetects.Lang == user.ToLang {
+				if lang == user.ToLang {
 					to = user.MyLang
 				} else {
 					to = user.ToLang
 				}
-				var translatedText string
-				switch user.Engine {
-				case "google":
-					tr, err := translate.TranslateGoogle(langDetects.Lang, to, text)
-					if err != nil {
-						if e, ok := err.(translate.HTTPError); ok {
-							if e.Code == 413 {
-								answer := tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Too big text")
-								bot.Send(answer)
-								return
-							} else {
-								warn(400, e)
-							}
+
+				tr, err := translate.TranslateGoogle(lang, to, text)
+				if err != nil {
+					if e, ok := err.(translate.HTTPError); ok {
+						if e.Code == 413 {
+							bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Too big text"))
+						} else if e.Code >= 500 {
+							bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Unsupported language or internal error"))
+						} else {
+							warn(400, e)
 						}
-						warn(309, err)
-						
 						return
 					}
-					if tr == "" {
-						answer := tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Empty result")
-						bot.Send(answer)
-						
-						return
-					}
-					pp.Println(tr)
-					translatedText = tr
-				case "yandex":
-					tr, err := translate.TranslateYandex(langDetects.Lang, to, text)
-					if err != nil {
-						if e, ok := err.(translate.HTTPError); ok {
-							if e.Code == 413 {
-								answer := tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Too big text")
-								bot.Send(answer)
-								return
-							} else {
-								warn(401, e)
-							}
-						}
-						warn(310, err)
-						return
-					}
-					if len(tr.Text) == 0 {
-						answer := tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Could not translate message")
-						bot.Send(answer)
-						
-						return
-					}
-					if strings.Join(strings.Fields(tr.Text[0]), "") == "" { // No words
-						answer := tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Empty result")
-						bot.Send(answer)
-						return
-					}
-					pp.Println(tr.Text[0])
-					translatedText = tr.Text[0]
-				default:
-					warn(311, nil)
+					warn(309, err)
 					return
 				}
-				_, err = bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, translatedText))
+				if tr.Text == "" {
+					answer := tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Empty result")
+					bot.Send(answer)
+					
+					return
+				}
+				pp.Println(tr)
+
+				_, err = bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, tr.Text))
 				if err != nil {
 					pp.Println(err)
 				}
@@ -452,45 +382,10 @@ func botRun(update *tgbotapi.Update) {
 			replyMarkup := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
 			edit := tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Now translate language is "+iso6391.Name(arr[1]), replyMarkup)
 			bot.Send(edit)
-		case "switch_engine":
-			bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
-			err := db.Model(&Users{}).Where("id = ?", update.CallbackQuery.From.ID).Update("engine", arr[1]).Error
-			if err != nil {
-				warn(316, err)
-				return
-			}
-			var user Users // Contains only MyLang and ToLang
-			err = db.Model(&Users{}).Select("engine").Where("id = ?", update.CallbackQuery.From.ID).Limit(1).Find(&user).Error
-			if err != nil {
-				warn(317, err)
-				return
-			}
-			n := map[string]string{"google":"", "yandex":""}
-			if _, ok := n[user.Engine]; !ok {
-				warn(318, err)
-				return
-			}
-			n[user.Engine] = " ✅"
-			msg := tgbotapi.NewEditMessageText(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "You can change translate engine")
-			keyboard := tgbotapi.NewInlineKeyboardMarkup(
-				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("Google" + n["google"], "switch_engine:google")),
-				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("Yandex" + n["yandex"], "switch_engine:yandex")),
-				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("Back", "back")))
-			msg.ReplyMarkup = &keyboard
-			bot.Send(msg)
 		}
 
 	}
 	if update.InlineQuery != nil {
-
-		langDetects, err := translate.DetectLanguageYandex(update.InlineQuery.Query)
-		if err != nil {
-			warn(-1, err)
-			return
-		}
 		
 		langs := []string{
 			"zh", "es", "en", "hi", "ar", "bn",
@@ -502,7 +397,7 @@ func botRun(update *tgbotapi.Update) {
 		results := make([]tgbotapi.InlineQueryResultArticle, 23)
 		
 		for i, lang := range langs {
-			tr, err := translate.TranslateGoogle(langDetects.Lang, lang, update.InlineQuery.Query)
+			tr, err := translate.TranslateGoogle("auto", lang, update.InlineQuery.Query)
 			if err != nil {
 				warn(-2, err)
 				return
@@ -518,7 +413,7 @@ func botRun(update *tgbotapi.Update) {
 				InputMessageContent: inputMessageContent,
 				URL:                 "https://natrubu.org/",
 				HideURL:             true,
-				Description:         cutString(tr, 15),
+				Description:         cutString(tr.Text, 15),
 			})
 		}
 		
@@ -578,10 +473,10 @@ func main() {
 		port = "80"
 	}
 	
-	//updates := bot.GetUpdatesChan(tgbotapi.UpdateConfig{})
-	//for update := range updates {
-	//	go botRun(&update)
-	//}
+	updates := bot.GetUpdatesChan(tgbotapi.UpdateConfig{})
+	for update := range updates {
+		go botRun(&update)
+	}
 
 	//conn, err := amqp.Dial(os.Getenv("CLOUDAMQP_URL"))
 	//if amqpUrl := os.Getenv("CLOUDAMQP_URL"); amqpUrl == "" {
@@ -589,32 +484,32 @@ func main() {
 	//}
 	//defer conn.Close()
 	
-	bot.Send(tgbotapi.NewMessage(579515224, "Bot started."))
-	requestHandler := func(ctx *fasthttp.RequestCtx) {
-		switch string(ctx.Path()) {
-		case "/" + botToken:
-			if isPost := ctx.IsPost(); isPost {
-				data := ctx.PostBody()
-				var update tgbotapi.Update
-				err := json.Unmarshal(data, &update)
-				if err != nil {
-					fmt.Fprint(ctx, "can't parse")
-				} else {
-					go botRun(&update)
-				}
-			} else {
-				fmt.Fprint(ctx, "no way")
-			}
-		default:
-			_, err = fmt.Fprintln(ctx, "ok")
-			if err != nil {
-				panic(err)
-			}
-		}
-	}
-	if err = fasthttp.ListenAndServe(":"+port, requestHandler); err != nil {
-		log.Fatalf("Error in ListenAndServe: %s", err)
-	}
+	//bot.Send(tgbotapi.NewMessage(579515224, "Bot started."))
+	//requestHandler := func(ctx *fasthttp.RequestCtx) {
+	//	switch string(ctx.Path()) {
+	//	case "/" + botToken:
+	//		if isPost := ctx.IsPost(); isPost {
+	//			data := ctx.PostBody()
+	//			var update tgbotapi.Update
+	//			err := json.Unmarshal(data, &update)
+	//			if err != nil {
+	//				fmt.Fprint(ctx, "can't parse")
+	//			} else {
+	//				go botRun(&update)
+	//			}
+	//		} else {
+	//			fmt.Fprint(ctx, "no way")
+	//		}
+	//	default:
+	//		_, err = fmt.Fprintln(ctx, "ok")
+	//		if err != nil {
+	//			panic(err)
+	//		}
+	//	}
+	//}
+	//if err = fasthttp.ListenAndServe(":"+port, requestHandler); err != nil {
+	//	log.Fatalf("Error in ListenAndServe: %s", err)
+	//}
 
 }
 
