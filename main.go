@@ -399,10 +399,16 @@ func botRun(update *tgbotapi.Update) {
 			"ur", "jv", "it", "fa", "gu",
 		}
 		
+		from, err := translate.DetectLanguageGoogle(update.InlineQuery.Query)
+		if err != nil {
+			warn(-3, err)
+			return
+		}
+		
 		results := make([]interface{}, 0, 23)
 		
-		for i, lang := range langs {
-			tr, err := translate.TranslateGoogle("auto", lang, update.InlineQuery.Query)
+		for i, to := range langs {
+			tr, err := translate.TranslateGoogle(from, to, update.InlineQuery.Query)
 			if err != nil {
 				warn(-2, err)
 				return
@@ -414,9 +420,9 @@ func botRun(update *tgbotapi.Update) {
 			results = append(results, tgbotapi.InlineQueryResultArticle{
 				Type:                "article",
 				ID:                  strconv.Itoa(i),
-				Title:               iso6391.Name(lang),
+				Title:               iso6391.Name(to),
 				InputMessageContent: inputMessageContent,
-				URL:                 "https://natrubu.org/",
+				URL:                 "https://g.cn/",
 				HideURL:             true,
 				Description:         cutString(tr.Text, 25),
 			})
