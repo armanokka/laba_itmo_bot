@@ -409,19 +409,19 @@ func botRun(update *tgbotapi.Update) {
 				return
 			}
 		}
+		langsLen := len(langs)
 		
-		if offset >= len(langs) { // Слишком большое смещение
+		if offset >= langsLen { // Слишком большое смещение
 			warn(-3, err)
 			return
 		}
 		
 		end := offset + 10
-
+		if end > langsLen - 1 {
+			end = langsLen - 1
+		}
 		results := make([]interface{}, 0, 10)
-		for ;offset < end - 1; offset++ {
-			if x := langs[offset]; x == "" {
-				break
-			}
+		for ;offset < end; offset++ {
 			to := langs[offset] // language code to translate
 			tr, err := translate.TranslateGoogle(from, to, update.InlineQuery.Query)
 			if err != nil {
