@@ -418,7 +418,7 @@ func botRun(update *tgbotapi.Update) {
 		end := offset + 10
 
 		results := make([]interface{}, 0, 10)
-		for ;offset < end; offset++ {
+		for ;offset < end - 1; offset++ {
 			if x := langs[offset]; x == "" {
 				break
 			}
