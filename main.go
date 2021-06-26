@@ -416,7 +416,7 @@ func botRun(update *tgbotapi.Update) {
 			return
 		}
 		
-		end := offset + 10
+		end := offset + 15
 		if end > langsLen - 1 {
 			end = langsLen - 1
 		}
