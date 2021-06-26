@@ -401,10 +401,13 @@ func botRun(update *tgbotapi.Update) {
 		}
 		
 		results := make([]interface{}, 0, 10)
-		offset, err := strconv.Atoi(update.InlineQuery.Offset)
-		if err != nil {
-			warn(-2, err)
-			return
+		var offset int
+		if update.InlineQuery.Offset != "" {
+			offset, err = strconv.Atoi(update.InlineQuery.Offset)
+			if err != nil {
+				warn(-2, err)
+				return
+			}
 		}
 		end := offset + 10
 		for ;offset < end; offset++ {
