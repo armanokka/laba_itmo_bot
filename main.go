@@ -400,21 +400,26 @@ func botRun(update *tgbotapi.Update) {
 			return
 		}
 		
-		results := make([]interface{}, 0, 10)
 		var offset int
 		if update.InlineQuery.Offset != "" {
+			pp.Println(update.InlineQuery)
 			offset, err = strconv.Atoi(update.InlineQuery.Offset)
 			if err != nil {
 				warn(-2, err)
 				return
 			}
+			if offset > len(langs) - 1 {
+				warn(-3, err)
+				return
+			}
 		}
 		end := offset + 10
+		results := make([]interface{}, 0, 10)
 		for ;offset < end; offset++ {
 			to := langs[offset] // language code to translate
 			tr, err := translate.TranslateGoogle(from, to, update.InlineQuery.Query)
 			if err != nil {
-				warn(-3, err)
+				warn(-4, err)
 				return
 			}
 			inputMessageContent := map[string]interface{}{
@@ -429,9 +434,6 @@ func botRun(update *tgbotapi.Update) {
 				URL:                 "https://t.me/TransloBot?start=from_inline",
 				HideURL:             true,
 				Description:         cutString(tr.Text, 40),
-				ThumbURL:            "",
-				ThumbWidth:          0,
-				ThumbHeight:         0,
 			})
 		}
 
