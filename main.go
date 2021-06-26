@@ -392,25 +392,26 @@ func botRun(update *tgbotapi.Update) {
 	}
 	if update.InlineQuery != nil {
 		
-		langs := []string{
-			"zh", "es", "en", "hi", "ar", "bn",
-			"pt", "ru", "ja", "mr", "te", "ms",
-			"tr", "ko", "fr", "de", "vi", "ta",
-			"ur", "jv", "it", "fa", "gu",
-		}
+		langs := []string{"zh","es","en","hi","ar","bn","pt","ru","ja","mr","te","ms","tr","ko","fr","de","vi","ta","ur","jv","it","fa","gu","ab","aa","af","ak","sq","am","an","hy","as","av","ae","ay","az","bm","ba","eu","be","bh","bi","bs","br","bg","my","ca","ch","ce","ny","cv","kw","co","cr","hr","cs","da","dv","nl","eo","et","ee","fo","fj","fi","ff","gl","ka","el","gn","ht","ha","he","hz","ho","hu","ia","id","ie","ga","ig","ik","io","is","iu","kl","kn","kr","ks","kk","km","ki","rw","ky","kv","kg","ku","kj","la","lb","lg","li","ln","lo","lt","lu","lv","gv","mk","mg","ml","mt","mi","mh","mn","na","nv","nb","nd","ne","ng","nn","no","ii","nr","oc","oj","cu","om","or","os","pa","pi","pl","ps","qu","rm","rn","ro","sa","sc","sd","se","sm","sg","sr","gd","sn","si","sk","sl","so","st","su","sw","ss","sv","tg","th","ti","bo","tk","tl","tn","to","ts","tt","tw","ty","ug","uk","uz","ve","vo","wa","cy","wo","fy","xh","yi","yo","za"}
 		
 		from, err := translate.DetectLanguageGoogle(update.InlineQuery.Query)
 		if err != nil {
-			warn(-3, err)
+			warn(-1, err)
 			return
 		}
 		
-		results := make([]interface{}, 0, 23)
-		
-		for i, to := range langs {
+		results := make([]interface{}, 0, 10)
+		offset, err := strconv.Atoi(update.InlineQuery.Offset)
+		if err != nil {
+			warn(-2, err)
+			return
+		}
+		end := offset + 10
+		for ;offset < end; offset++ {
+			to := langs[offset] // language code to translate
 			tr, err := translate.TranslateGoogle(from, to, update.InlineQuery.Query)
 			if err != nil {
-				warn(-2, err)
+				warn(-3, err)
 				return
 			}
 			inputMessageContent := map[string]interface{}{
@@ -419,19 +420,24 @@ func botRun(update *tgbotapi.Update) {
 			}
 			results = append(results, tgbotapi.InlineQueryResultArticle{
 				Type:                "article",
-				ID:                  strconv.Itoa(i),
+				ID:                  strconv.Itoa(offset),
 				Title:               iso6391.Name(to),
 				InputMessageContent: inputMessageContent,
-				URL:                 "https://g.cn/",
+				URL:                 "https://t.me/TransloBot?start=from_inline",
 				HideURL:             true,
 				Description:         cutString(tr.Text, 40),
+				ThumbURL:            "",
+				ThumbWidth:          0,
+				ThumbHeight:         0,
 			})
 		}
+
 
 		ok, err := bot.AnswerInlineQuery(tgbotapi.InlineConfig{
 			InlineQueryID:     update.InlineQuery.ID,
 			Results:           results,
 			CacheTime:         300,
+			NextOffset: 	   strconv.Itoa(end+1),
 			IsPersonal:        false,
 			SwitchPMText:      "Translo",
 			SwitchPMParameter: "from_inline",
