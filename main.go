@@ -4,7 +4,6 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/armanokka/translobot/translate"
 	iso6391 "github.com/emvi/iso-639-1"
@@ -388,32 +387,22 @@ func botRun(update *tgbotapi.Update) {
 			replyMarkup := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
 			edit := tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Now translate language is "+iso6391.Name(arr[1]), replyMarkup)
 			bot.Send(edit)
-		case "translate": // arr[1] - language code
-			from, err := translate.DetectLanguageGoogle(update.CallbackQuery.Message.Text)
-			if err != nil {
-				warn(-5, err)
-				return
-			}
-			tr, err := translate.TranslateGoogle(from, arr[1], update.CallbackQuery.Message.Text)
-			if err != nil {
-				warn(-5, err)
-				return
-			}
-			_, err = bot.Send(tgbotapi.NewEditMessageText(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, tr.Text))
-			if err != nil {
-				pp.Println(err)
-			}
 		}
 
 	}
 	if update.InlineQuery != nil {
 		
-		langs := []string{"aa","aa","ab","ab","ae","ae","af","af","ak","ak","am","am","an","an","ar","ar","as","as","av","av","ay","ay","az","az","ba","ba","be","be","bg","bg","bh","bh","bi","bi","bm","bm","bn","bn","bo","bo","br","br","bs","bs","ca","ca","ce","ce","ch","ch","co","co","cr","cr","cs","cs","cu","cu","cv","cv","cy","cy","da","da","de","de","dv","dv","ee","ee","el","el","en","en","eo","eo","es","es","et","et","eu","eu","fa","fa","ff","ff","fi","fi","fj","fj","fo","fo","fr","fr","fy","fy","ga","ga","gd","gd","gl","gl","gn","gn","gu","gu","gv","gv","ha","ha","he","he","hi","hi","ho","ho","hr","hr","ht","ht","hu","hu","hy","hy","hz","hz","ia","ia","id","id","ie","ie","ig","ig","ii","ii","ik","ik","io","io","is","is","it","it","iu","iu","ja","ja","jv","jv","ka","ka","kg","kg","ki","ki","kj","kj","kk","kk","kl","kl","km","km","kn","kn","ko","ko","kr","kr","ks","ks","ku","ku","kv","kv","kw","kw","ky","ky","la","la","lb","lb","lg","lg","li","li","ln","ln","lo","lo","lt","lt","lu","lu","lv","lv","mg","mg","mh","mh","mi","mi","mk","mk","ml","ml","mn","mn","mr","mr","ms","ms","mt","mt","my","my","na","na","nb","nb","nd","nd","ne","ne","ng","ng","nl","nl","nn","nn","no","no","nr","nr","nv","nv","ny","ny","oc","oc","oj","oj","om","om","or","or","os","os","pa","pa","pi","pi","pl","pl","ps","ps","pt","pt","qu","qu","rm","rm","rn","rn","ro","ro","ru","ru","rw","rw","sa","sa","sc","sc","sd","sd","se","se","sg","sg","si","si","sk","sk","sl","sl","sm","sm","sn","sn","so","so","sq","sq","sr","sr","ss","ss","st","st","su","su","sv","sv","sw","sw","ta","ta","te","te","tg","tg","th","th","ti","ti","tk","tk","tl","tl","tn","tn","to","to","tr","tr","ts","ts","tt","tt","tw","tw","ty","ty","ug","ug","uk","uk","ur","ur","uz","uz","ve","ve","vi","vi","vo","vo","wa","wa","wo","wo","xh","xh","yi","yi","yo","yo","za","za","zh","zh"}
+		langs := []string{"en","ru","es","ja","ar","fr","de","af","uk","uz","ko","zh","hi","bn","pt","mr","te","ms","tr","vi","ta","ur","jv","it","fa","gu","ab","aa","ak","sq","am","an","hy","as","av","ae","ay","az","bm","ba","eu","be","bh","bi","bs","br","bg","my","ca","ch","ce","ny","cv","kw","co","cr","hr","cs","da","dv","nl","eo","et","ee","fo","fj","fi","ff","gl","ka","el","gn","ht","ha","he","hz","ho","hu","ia","id","ie","ga","ig","ik","io","is","iu","kl","kn","kr","ks","kk","km","ki","rw","ky","kv","kg","ku","kj","la","lb","lg","li","ln","lo","lt","lu","lv","gv","mk","mg","ml","mt","mi","mh","mn","na","nv","nb","nd","ne","ng","nn","no","ii","nr","oc","oj","cu","om","or","os","pa","pi","pl","ps","qu","rm","rn","ro","sa","sc","sd","se","sm","sg","sr","gd","sn","si","sk","sl","so","st","su","sw","ss","sv","tg","th","ti","bo","tk","tl","tn","to","ts","tt","tw","ty","ug","ve","vo","wa","cy","wo","fy","xh","yi","yo","za"}
+		
+		from, err := translate.DetectLanguageGoogle(update.InlineQuery.Query)
+		if err != nil {
+			warn(-1, err)
+			return
+		}
 		
 		var offset int
 		
 		if update.InlineQuery.Offset != "" { // Ищем смещение
-			var err error
 			offset, err = strconv.Atoi(update.InlineQuery.Offset)
 			if err != nil {
 				warn(-2, err)
@@ -423,34 +412,37 @@ func botRun(update *tgbotapi.Update) {
 		langsLen := len(langs)
 		
 		if offset >= langsLen { // Слишком большое смещение
-			warn(-3, errors.New("too big offset"))
+			warn(-3, err)
 			return
 		}
 		
-		end := offset + 50
+		end := offset + 15
 		if end > langsLen - 1 {
 			end = langsLen - 1
 		}
 		results := make([]interface{}, 0, 10)
 		for ;offset < end; offset++ {
 			to := langs[offset] // language code to translate
-
+			tr, err := translate.TranslateGoogle(from, to, update.InlineQuery.Query)
+			if err != nil {
+				warn(-4, err)
+				return
+			}
+			if tr.Text == "" {
+				continue // ну не вышло, так не вышло, че бубнить-то
+			}
 			inputMessageContent := map[string]interface{}{
-				"message_text":update.InlineQuery.Query,
+				"message_text":tr.Text,
 				"disable_web_page_preview":true,
 			}
-			keyboard := tgbotapi.NewInlineKeyboardMarkup(
-				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("Translate", "translate:"+to))) // callback is translate:lang_code
-					
 			results = append(results, tgbotapi.InlineQueryResultArticle{
 				Type:                "article",
 				ID:                  strconv.Itoa(offset),
 				Title:               iso6391.Name(to),
 				InputMessageContent: inputMessageContent,
-				ReplyMarkup: 		 &keyboard,
 				URL:                 "https://t.me/TransloBot?start=from_inline",
 				HideURL:             true,
+				Description:         cutString(tr.Text, 40),
 			})
 		}
 		
