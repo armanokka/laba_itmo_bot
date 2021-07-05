@@ -204,9 +204,15 @@ func botRun(update *tgbotapi.Update) {
 						warn(300, err)
 						return
 					}
-					replyMarkup := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
+					keyboard := tgbotapi.NewReplyKeyboard(
+						tgbotapi.NewKeyboardButtonRow(
+							tgbotapi.NewKeyboardButton("Translate Language")),
+						tgbotapi.NewKeyboardButtonRow(
+							tgbotapi.NewKeyboardButton("My Language")),
+						tgbotapi.NewKeyboardButtonRow(
+							tgbotapi.NewKeyboardButton("⬅Back")))
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now language is "+nameOfLang)
-					msg.ReplyMarkup = replyMarkup
+					msg.ReplyMarkup = keyboard
 					bot.Send(msg)
 					
 					return
@@ -223,9 +229,15 @@ func botRun(update *tgbotapi.Update) {
 						warn(032, err)
 						return
 					}
-					replyMarkup := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
+					keyboard := tgbotapi.NewReplyKeyboard(
+						tgbotapi.NewKeyboardButtonRow(
+							tgbotapi.NewKeyboardButton("Translate Language")),
+						tgbotapi.NewKeyboardButtonRow(
+							tgbotapi.NewKeyboardButton("My Language")),
+						tgbotapi.NewKeyboardButtonRow(
+							tgbotapi.NewKeyboardButton("⬅Back")))
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now language is "+iso6391.Name(codeOfLang))
-					msg.ReplyMarkup = replyMarkup
+					msg.ReplyMarkup = keyboard
 					bot.Send(msg)
 					
 					return
@@ -242,9 +254,15 @@ func botRun(update *tgbotapi.Update) {
 					warn(302, err)
 					return
 				}
-				replyMarkup := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
+				keyboard := tgbotapi.NewReplyKeyboard(
+					tgbotapi.NewKeyboardButtonRow(
+						tgbotapi.NewKeyboardButton("Translate Language")),
+					tgbotapi.NewKeyboardButtonRow(
+						tgbotapi.NewKeyboardButton("My Language")),
+					tgbotapi.NewKeyboardButtonRow(
+						tgbotapi.NewKeyboardButton("⬅Back")))
 				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now language is "+iso6391.Name(lang))
-				msg.ReplyMarkup = replyMarkup
+				msg.ReplyMarkup = keyboard
 				bot.Send(msg)
 				
 
@@ -258,9 +276,15 @@ func botRun(update *tgbotapi.Update) {
 						warn(303, err)
 						return
 					}
-					replyMarkup := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
+					keyboard := tgbotapi.NewReplyKeyboard(
+						tgbotapi.NewKeyboardButtonRow(
+							tgbotapi.NewKeyboardButton("Translate Language")),
+						tgbotapi.NewKeyboardButtonRow(
+							tgbotapi.NewKeyboardButton("My Language")),
+						tgbotapi.NewKeyboardButtonRow(
+							tgbotapi.NewKeyboardButton("⬅Back")))
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now language is "+nameOfLang)
-					msg.ReplyMarkup = replyMarkup
+					msg.ReplyMarkup = keyboard
 					bot.Send(msg)
 					
 					return
@@ -272,9 +296,15 @@ func botRun(update *tgbotapi.Update) {
 						warn(304, err)
 						return
 					}
-					replyMarkup := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
+					keyboard := tgbotapi.NewReplyKeyboard(
+						tgbotapi.NewKeyboardButtonRow(
+							tgbotapi.NewKeyboardButton("Translate Language")),
+						tgbotapi.NewKeyboardButtonRow(
+							tgbotapi.NewKeyboardButton("My Language")),
+						tgbotapi.NewKeyboardButtonRow(
+							tgbotapi.NewKeyboardButton("⬅Back")))
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now language is "+iso6391.Name(codeOfLang))
-					msg.ReplyMarkup = replyMarkup
+					msg.ReplyMarkup = keyboard
 					bot.Send(msg)
 					
 					return
@@ -292,9 +322,15 @@ func botRun(update *tgbotapi.Update) {
 					warn(305, err)
 					return
 				}
-				replyMarkup := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
+				keyboard := tgbotapi.NewReplyKeyboard(
+					tgbotapi.NewKeyboardButtonRow(
+						tgbotapi.NewKeyboardButton("Translate Language")),
+					tgbotapi.NewKeyboardButtonRow(
+						tgbotapi.NewKeyboardButton("My Language")),
+					tgbotapi.NewKeyboardButtonRow(
+						tgbotapi.NewKeyboardButton("⬅Back")))
 				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now language is "+iso6391.Name(langDetects))
-				msg.ReplyMarkup = replyMarkup
+				msg.ReplyMarkup = keyboard
 				bot.Send(msg)
 				
 				return
