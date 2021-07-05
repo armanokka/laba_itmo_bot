@@ -9,6 +9,7 @@ import (
     "strconv"
 )
 
+// WarnAdmin send error message to the admin (by AdminID const)
 func WarnAdmin(args ...interface{}) {
     var text = "Error caused:\n"
     for _, arg := range args {

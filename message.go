@@ -19,7 +19,7 @@ func handleMessage(update *tgbotapi.Update) {
         return
     }
     switch update.Message.Text {
-    case "/start", "/start from_inline", "⬅Back":
+    case "/start", "/start from_inline", "⬅Back", "Let's check":
         var userExists bool
         err := db.Raw("SELECT EXISTS(SELECT id FROM users WHERE id=?)", update.Message.Chat.ID).Find(&userExists).Error
         if err != nil {

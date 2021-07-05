@@ -8,7 +8,6 @@ import (
 	"time"
 )
 
-const message = "Bot is working"
 
 type Users struct {
 	ID     int64 `gorm:"primaryKey;index;not null"`
@@ -36,20 +35,11 @@ func main()  {
 	}
 
 	for _, user := range users {
-		msg := tgbotapi.NewMessage(user.ID, message)
+		msg := tgbotapi.NewMessage(user.ID, "👋 Hello, guy! \nPlease, check out our new interface! 🙌\nAlways your, Translo. ❤️")
 		msg.ParseMode = tgbotapi.ModeHTML
-		_, err := bot.Send(msg)
-		if e, ok := err.(tgbotapi.Error); ok {
-			if e.RetryAfter != 0 {
-				time.Sleep(time.Duration(e.RetryAfter) * time.Second)
-				msg := tgbotapi.NewMessage(user.ID, message)
-				msg.ParseMode = tgbotapi.ModeHTML
-				bot.Send(msg)
-			}
-			if e.Code == 403 {
-				db.Model(&Users{}).Where("id = ?", user.ID).Limit(1).Delete(&user)
-			}
-		}
+		keyboard := tgbotapi.NewReplyKeyboard(tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Let's check")))
+		msg.ReplyMarkup = keyboard
+		bot.Send(msg)
 		pp.Println("sent message to", user.ID)
 		time.Sleep(33 * time.Millisecond)
 	}
