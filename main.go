@@ -159,7 +159,7 @@ func botRun(update *tgbotapi.Update) {
 			}
 		case "Translate Language", "/my_lang":
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "To setup <b>your language</b>, do <b>one</b> of the following: 👇\n\nℹ️ Send <b>few words</b> in <b>your</b> language, for example: \"<code>Hi, how are you today?</code>\" - language will be English, or \"<code>L'amour ne fait pas d'erreurs</code>\" - language will be French, and so on.\nℹ️ Or send the <b>name</b> of your language <b>in English</b>, e.g. \"<code>Russian</code>\", or \"<code>Japanese</code>\", or  \"<code>Arabic</code>\", e.t.c.")
-			msg.ParseMode = tgbotapi.ModeMarkdown
+			msg.ParseMode = tgbotapi.ModeHTML
 			keyboard:= tgbotapi.NewReplyKeyboard(tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("⬅Back")))
 			msg.ReplyMarkup = &keyboard
 			bot.Send(msg)
@@ -172,7 +172,7 @@ func botRun(update *tgbotapi.Update) {
 		
 		case "My Language", "/to_lang":
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "To setup <b>translate language</b>, do <b>one</b> of the following: 👇\n\nℹ️ Send <b>few words</b> in language <b>into you want to translate</b>, for example: \"<code>Hi, how are you today?</code>\" - language will be English, or \"<code>L'amour ne fait pas d'erreurs</code>\" - language will be French, and so on.\nℹ️ Or send the <b>name</b> of language <b>into you want to translate, in English</b>, e.g. \"<code>Russian</code>\", or \"<code>Japanese</code>\", or  \"<code>Arabic</code>\", e.t.c.")
-			msg.ParseMode = tgbotapi.ModeMarkdown
+			msg.ParseMode = tgbotapi.ModeHTML
 			keyboard := tgbotapi.NewReplyKeyboard(tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("⬅Back")))
 			msg.ReplyMarkup = &keyboard
 			bot.Send(msg)
