@@ -126,7 +126,7 @@ func handleMessage(update *tgbotapi.Update) {
                         tgbotapi.NewKeyboardButton("⬅Back"),
                     ),
                 )
-                msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now language is "+nameOfLang)
+                msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now your language is "+nameOfLang + "\n\nPress \"⬅Back\" to exit to menu")
                 msg.ReplyMarkup = keyboard
                 bot.Send(msg)
                 
@@ -142,7 +142,7 @@ func handleMessage(update *tgbotapi.Update) {
                 keyboard := tgbotapi.NewReplyKeyboard(
                     tgbotapi.NewKeyboardButtonRow(
                         tgbotapi.NewKeyboardButton("⬅Back")))
-                msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now language is "+iso6391.Name(codeOfLang))
+                msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now your language is "+iso6391.Name(codeOfLang) + "\n\nPress \"⬅Back\" to exit to menu")
                 msg.ReplyMarkup = keyboard
                 bot.Send(msg)
                 return
@@ -162,7 +162,7 @@ func handleMessage(update *tgbotapi.Update) {
             keyboard := tgbotapi.NewReplyKeyboard(
                 tgbotapi.NewKeyboardButtonRow(
                     tgbotapi.NewKeyboardButton("⬅Back")))
-            msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now language is "+iso6391.Name(lang))
+            msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now your language is "+iso6391.Name(lang) + "\n\nPress \"⬅Back\" to exit to menu")
             msg.ReplyMarkup = keyboard
             bot.Send(msg)
             
@@ -180,7 +180,7 @@ func handleMessage(update *tgbotapi.Update) {
                 keyboard := tgbotapi.NewReplyKeyboard(
                     tgbotapi.NewKeyboardButtonRow(
                         tgbotapi.NewKeyboardButton("⬅Back")))
-                msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now language is "+nameOfLang)
+                msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now translate language is "+nameOfLang + "\n\nPress \"⬅Back\" to exit to menu")
                 msg.ReplyMarkup = keyboard
                 bot.Send(msg)
                 
@@ -196,7 +196,7 @@ func handleMessage(update *tgbotapi.Update) {
                 keyboard := tgbotapi.NewReplyKeyboard(
                     tgbotapi.NewKeyboardButtonRow(
                         tgbotapi.NewKeyboardButton("⬅Back")))
-                msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now language is "+iso6391.Name(codeOfLang))
+                msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now translate language is "+iso6391.Name(codeOfLang) + "\n\nPress \"⬅Back\" to exit to menu")
                 msg.ReplyMarkup = keyboard
                 bot.Send(msg)
                 
@@ -218,7 +218,7 @@ func handleMessage(update *tgbotapi.Update) {
             keyboard := tgbotapi.NewReplyKeyboard(
                 tgbotapi.NewKeyboardButtonRow(
                     tgbotapi.NewKeyboardButton("⬅Back")))
-            msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now language is "+iso6391.Name(lang))
+            msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now translate language is "+iso6391.Name(lang) + "\n\nPress \"⬅Back\" to exit to menu")
             msg.ReplyMarkup = keyboard
             bot.Send(msg)
         default: // У пользователя нет шага и сообщение не команда
