@@ -4,6 +4,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/armanokka/translobot/dashbot"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/valyala/fasthttp"
 	"gorm.io/driver/postgres"
@@ -31,7 +32,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
+	
+	analytics = dashbot.NewAPI(DashBotAPIKey, nil)
+	
 	// Initializing bot
 	const botToken string = "1737819626:AAEoc8WyCq_8rFQcY4q0vtkhqCKro8AudfI"
 	bot, err = tgbotapi.NewBotAPI(botToken)

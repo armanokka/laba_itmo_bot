@@ -14,6 +14,8 @@ func handleMessage(update *tgbotapi.Update) {
         bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Sorry, error caused.\n\nAdmin: Please, don't block the bot, I'll fix the bug in near future, the administrator has already been warned about this error ;)"))
         WarnAdmin(err)
     }
+    analytics.Error = warn
+    analytics.User(update.Message.Text, update.Message.From)
     
     if update.Message.Chat.ID < 0 {
         return
@@ -73,6 +75,7 @@ func handleMessage(update *tgbotapi.Update) {
             warn(err)
             return
         }
+        analytics.Bot(update.Message.Chat.ID, msg.Text, "Main menu")
     case "My Language", "/my_lang":
         msg := tgbotapi.NewMessage(update.Message.Chat.ID, "To setup <b>your language</b>, do <b>one</b> of the following: 👇\n\nℹ️ Send <b>few words</b> in <b>your</b> language, for example: \"<code>Hi, how are you today?</code>\" - language will be English, or \"<code>L'amour ne fait pas d'erreurs</code>\" - language will be French, and so on.\nℹ️ Or send the <b>name</b> of your language <b>in English</b>, e.g. \"<code>Russian</code>\", or \"<code>Japanese</code>\", or  \"<code>Arabic</code>\", e.t.c.")
         msg.ParseMode = tgbotapi.ModeHTML
@@ -86,6 +89,7 @@ func handleMessage(update *tgbotapi.Update) {
             return
         }
     
+        analytics.Bot(update.Message.Chat.ID, msg.Text, "Set my lang")
     case "Translate Language", "/to_lang":
         msg := tgbotapi.NewMessage(update.Message.Chat.ID, "To setup <b>translate language</b>, do <b>one</b> of the following: 👇\n\nℹ️ Send <b>few words</b> in language <b>into you want to translate</b>, for example: \"<code>Hi, how are you today?</code>\" - language will be English, or \"<code>L'amour ne fait pas d'erreurs</code>\" - language will be French, and so on.\nℹ️ Or send the <b>name</b> of language <b>into you want to translate, in English</b>, e.g. \"<code>Russian</code>\", or \"<code>Japanese</code>\", or  \"<code>Arabic</code>\", e.t.c.")
         msg.ParseMode = tgbotapi.ModeHTML
@@ -99,11 +103,13 @@ func handleMessage(update *tgbotapi.Update) {
             return
         }
     
+        analytics.Bot(update.Message.Chat.ID, msg.Text, "Set translate lang")
     case "💡Instruction", "/help":
         msg := tgbotapi.NewMessage(update.Message.Chat.ID, "<b>What can this bot do?</b>\n▫️ Translo allows you to translate your messages into over than 100 languages. (117)\n<b>How to translate message?</b>\n▫️ Firstly, you have to setup your lang (default: English), then setup translate lang (default; Arabic) then send text messages and bot will translate them quickly.\n<b>How to setup my lang?</b>\n▫️ Send /my_lang then send any message <b>IN YOUR LANGUAGE</b>. Bot will detect and suggest you some variants. Select your lang. Done.\n<b>How to setup translate lang?</b>\n▫️ Send /to_lang then send any message <b>IN LANGUAGE YOU WANT TRANSLATE</b>. Bot will detect and suggest you some variants. Select your lang. Done.\n<b>I have a suggestion or I found bug!</b>\n▫️ 👉 Contact me pls - @armanokka")
         msg.ParseMode = tgbotapi.ModeHTML
         bot.Send(msg)
     
+        analytics.Bot(update.Message.Chat.ID, msg.Text, "Help")
     default: // Сообщение не является командой.
         userStep, err := getUserStep(update.Message.Chat.ID)
         if err != nil {
@@ -129,7 +135,8 @@ func handleMessage(update *tgbotapi.Update) {
                 msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now your language is "+nameOfLang + "\n\nPress \"⬅Back\" to exit to menu")
                 msg.ReplyMarkup = keyboard
                 bot.Send(msg)
-                
+    
+                analytics.Bot(update.Message.Chat.ID, msg.Text, "My language detected by code")
                 return
             }
             
@@ -145,6 +152,8 @@ func handleMessage(update *tgbotapi.Update) {
                 msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now your language is "+iso6391.Name(codeOfLang) + "\n\nPress \"⬅Back\" to exit to menu")
                 msg.ReplyMarkup = keyboard
                 bot.Send(msg)
+    
+                analytics.Bot(update.Message.Chat.ID, msg.Text, "My language detected full name of lang")
                 return
             }
             
@@ -165,14 +174,14 @@ func handleMessage(update *tgbotapi.Update) {
             msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now your language is "+iso6391.Name(lang) + "\n\nPress \"⬅Back\" to exit to menu")
             msg.ReplyMarkup = keyboard
             bot.Send(msg)
-            
-            
+    
+            analytics.Bot(update.Message.Chat.ID, msg.Text, "My language detected default")
             return
         case "set_translate_lang":
             lowerUserMsg := strings.ToLower(update.Message.Text)
             
             if nameOfLang := iso6391.Name(lowerUserMsg); nameOfLang != "" { // Юзер отправил сразу код языка
-                err = db.Model(&Users{}).Where("id", update.Message.Chat.ID).Update("my_lang", lowerUserMsg).Error
+                err = db.Model(&Users{}).Where("id", update.Message.Chat.ID).Update("to_lang", lowerUserMsg).Error
                 if err != nil {
                     warn(err)
                     return
@@ -183,12 +192,13 @@ func handleMessage(update *tgbotapi.Update) {
                 msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now translate language is "+nameOfLang + "\n\nPress \"⬅Back\" to exit to menu")
                 msg.ReplyMarkup = keyboard
                 bot.Send(msg)
-                
+    
+                analytics.Bot(update.Message.Chat.ID, msg.Text, "Translate language detected by code")
                 return
             }
             
             if codeOfLang := iso6391.CodeForName(strings.Title(lowerUserMsg)); codeOfLang != "" { // Юзер полное его название языка
-                err = db.Model(&Users{}).Where("id", update.Message.Chat.ID).Update("my_lang", codeOfLang).Error
+                err = db.Model(&Users{}).Where("id", update.Message.Chat.ID).Update("to_lang", codeOfLang).Error
                 if err != nil {
                     warn(err)
                     return
@@ -199,7 +209,8 @@ func handleMessage(update *tgbotapi.Update) {
                 msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now translate language is "+iso6391.Name(codeOfLang) + "\n\nPress \"⬅Back\" to exit to menu")
                 msg.ReplyMarkup = keyboard
                 bot.Send(msg)
-                
+    
+                analytics.Bot(update.Message.Chat.ID, msg.Text, "Translate language detected full name of lang")
                 return
             }
             
@@ -207,10 +218,11 @@ func handleMessage(update *tgbotapi.Update) {
             if err != nil || lang == "" {
                 msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Could not detect language, please send something else again")
                 bot.Send(msg)
-                
+    
+                analytics.Bot(update.Message.Chat.ID, msg.Text, "My language not detected")
                 return
             }
-            err = db.Model(&Users{}).Where("id", update.Message.Chat.ID).Update("my_lang", lang).Error
+            err = db.Model(&Users{}).Where("id", update.Message.Chat.ID).Update("to_lang", lang).Error
             if err != nil {
                 warn(err)
                 return
@@ -221,6 +233,8 @@ func handleMessage(update *tgbotapi.Update) {
             msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now translate language is "+iso6391.Name(lang) + "\n\nPress \"⬅Back\" to exit to menu")
             msg.ReplyMarkup = keyboard
             bot.Send(msg)
+    
+            analytics.Bot(update.Message.Chat.ID, msg.Text, "Translate language detected default")
         default: // У пользователя нет шага и сообщение не команда
             var user Users // Contains only MyLang and ToLang
             err = db.Model(&Users{}).Select("my_lang", "to_lang").Where("id = ?", update.Message.Chat.ID).Limit(1).Find(&user).Error
@@ -239,6 +253,8 @@ func handleMessage(update *tgbotapi.Update) {
             }
             if text == "" {
                 bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, "Please, send text message"))
+    
+                analytics.Bot(update.Message.Chat.ID, msg.Text, "Message is not text message")
                 return
             }
             
@@ -288,6 +304,7 @@ func handleMessage(update *tgbotapi.Update) {
             if err != nil {
                 pp.Println(err)
             }
+            analytics.Bot(update.Message.Chat.ID, msg.Text, "Translated")
         }
         
     }

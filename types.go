@@ -2,15 +2,17 @@ package main
 
 import (
     "database/sql"
+    "github.com/armanokka/translobot/dashbot"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "gorm.io/gorm"
 )
 
-const AdminID = 579515224
+const AdminID, DashBotAPIKey = 579515224, "cjVjdWDRijXDk5kl9yGi5TTS9XImME7HbZMOg09F"
 
 var (
     db  *gorm.DB
     bot *tgbotapi.BotAPI
+    analytics *dashbot.DashBot
 )
 
 // Users is table in DB
