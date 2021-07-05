@@ -2,19 +2,12 @@ package main
 
 import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/armanokka/translobot"
 	"github.com/k0kubun/pp"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"time"
 )
-
-
-type Users struct {
-	ID     int64 `gorm:"primaryKey;index;not null"`
-	MyLang string `gorm:"default:en"`
-	ToLang string `gorm:"default:ar;n"`
-	Act    string
-}
 
 
 func main()  {
@@ -35,7 +28,7 @@ func main()  {
 	}
 
 	for _, user := range users {
-		msg := tgbotapi.NewMessage(user.ID, "👋 Hello, guy! \nPlease, check out our new interface! 🙌\nAlways your, Translo. ❤️")
+		msg := tgbotapi.NewMessage(user.ID, "Hello! 👋\nPlease, check out our new interface! 👇just click the button\nTranslo.")
 		msg.ParseMode = tgbotapi.ModeHTML
 		keyboard := tgbotapi.NewReplyKeyboard(tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Let's check")))
 		msg.ReplyMarkup = keyboard
