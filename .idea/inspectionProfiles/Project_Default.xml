@@ -23,7 +23,13 @@
         <method importPath="strings" receiver="*Builder" name="WriteRune" />
         <method importPath="math/rand" receiver="*Rand" name="Read" />
         <method importPath="github.com/go-telegram-bot-api/telegram-bot-api/v5" receiver="*BotAPI" name="Send" />
+        <method importPath="github.com/go-telegram-bot-api/telegram-bot-api/v5" receiver="*BotAPI" name="AnswerInlineQuery" />
       </methods>
+    </inspection_tool>
+    <inspection_tool class="SpellCheckingInspection" enabled="false" level="TYPO" enabled_by_default="false">
+      <option name="processCode" value="true" />
+      <option name="processLiterals" value="true" />
+      <option name="processComments" value="true" />
     </inspection_tool>
   </profile>
 </component>

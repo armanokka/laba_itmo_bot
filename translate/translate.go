@@ -18,21 +18,21 @@ func (c HTTPError) Error() string {
 }
 
 
-type TranslateGoogleAPIResponse struct {
+type GoogleAPIResponse struct {
 	Text, FromLang string
 }
 
-func TranslateGoogle(from, to, text string) (*TranslateGoogleAPIResponse, error) {
+func GoogleTranslate(from, to, text string) (*GoogleAPIResponse, error) {
 	buf := new(bytes.Buffer)
 	buf.WriteString("async=translate,sl:" + url.QueryEscape(from) + ",tl:" + url.QueryEscape(to) + ",st:" + url.QueryEscape(text) + ",id:1624032860465,qc:true,ac:true,_id:tw-async-translate,_pms:s,_fmt:pc")
 	req, err := http.NewRequest("POST", "https://www.google.com/async/translate?vet=12ahUKEwjFh8rkyaHxAhXqs4sKHYvmAqAQqDgwAHoECAIQJg..i&ei=SMbMYMXDKernrgSLzYuACg&yv=3", buf)
 	if err != nil {
-		return &TranslateGoogleAPIResponse{}, err
+		return &GoogleAPIResponse{}, err
 	}
 	req.Header["content-type"] = []string{"application/x-www-form-urlencoded;charset=UTF-8"}
-	//req.Header["accept"] = []string{"*/*"}
-	//req.Header["accept-encoding"] = []string{"gzip, deflate, br"}
-	//req.Header["accept-language"] = []string{"ru-RU,ru;q=0.9"}
+	// req.Header["accept"] = []string{"*/*"}
+	// req.Header["accept-encoding"] = []string{"gzip, deflate, br"}
+	// req.Header["accept-language"] = []string{"ru-RU,ru;q=0.9"}
 	req.Header["cookie"] = []string{"NID=217=mKKVUv88-BW4Vouxnh-qItLKFt7zm0Gj3yDLC8oDKb_PuLIb-p6fcPVcsXZWeNwkjDSFfypZ8BKqy27dcJH-vFliM4dKaiKdFrm7CherEXVt-u_DPr9Yecyv_tZRSDU7E52n5PWwOkaN2I0-naa85Tb9-uTjaKjO0gmdbShqba5MqKxuTLY; 1P_JAR=2021-06-18-16; DV=A3qPWv6ELckmsH4dFRGdR1fe4Gj-oRcZWqaFSPtAjwAAAAA"}
 	req.Header["origin"] = []string{"https://www.google.com"}
 	req.Header["referer"] = []string{"https://www.google.com/"}
@@ -47,19 +47,19 @@ func TranslateGoogle(from, to, text string) (*TranslateGoogleAPIResponse, error)
 	var client http.Client
 	res, err := client.Do(req)
 	if err != nil {
-		return &TranslateGoogleAPIResponse{}, err
+		return &GoogleAPIResponse{}, err
 	}
 	if res.StatusCode != 200 {
-		return &TranslateGoogleAPIResponse{}, HTTPError{
+		return &GoogleAPIResponse{}, HTTPError{
 			Code:        res.StatusCode,
 			Description: "got non 200 http code",
 		}
 	}
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
-		return &TranslateGoogleAPIResponse{}, err
+		return &GoogleAPIResponse{}, err
 	}
-	return &TranslateGoogleAPIResponse{
+	return &GoogleAPIResponse{
 		Text:     doc.Find("span[id=tw-answ-target-text]").Text(),
 		FromLang: doc.Find("span[id=tw-answ-detected-sl]").Text(),
 	}, err
@@ -73,9 +73,9 @@ func DetectLanguageGoogle(text string) (string, error) {
 		return "", err
 	}
 	req.Header["content-type"] = []string{"application/x-www-form-urlencoded;charset=UTF-8"}
-	//req.Header["accept"] = []string{"*/*"}
-	//req.Header["accept-encoding"] = []string{"gzip, deflate, br"}
-	//req.Header["accept-language"] = []string{"ru-RU,ru;q=0.9"}
+	// req.Header["accept"] = []string{"*/*"}
+	// req.Header["accept-encoding"] = []string{"gzip, deflate, br"}
+	// req.Header["accept-language"] = []string{"ru-RU,ru;q=0.9"}
 	req.Header["cookie"] = []string{"NID=217=mKKVUv88-BW4Vouxnh-qItLKFt7zm0Gj3yDLC8oDKb_PuLIb-p6fcPVcsXZWeNwkjDSFfypZ8BKqy27dcJH-vFliM4dKaiKdFrm7CherEXVt-u_DPr9Yecyv_tZRSDU7E52n5PWwOkaN2I0-naa85Tb9-uTjaKjO0gmdbShqba5MqKxuTLY; 1P_JAR=2021-06-18-16; DV=A3qPWv6ELckmsH4dFRGdR1fe4Gj-oRcZWqaFSPtAjwAAAAA"}
 	req.Header["origin"] = []string{"https://www.google.com"}
 	req.Header["referer"] = []string{"https://www.google.com/"}
@@ -106,12 +106,12 @@ func DetectLanguageGoogle(text string) (string, error) {
 }
 
 
-//type TranslateLingVanexResponse struct {
+// type TranslateLingVanexResponse struct {
 //	Error string `json:"err"`
 //	Result string
-//}
+// }
 //
-//func TranslateLingVanex(from, to, text string) (*TranslateLingVanexResponse, error) {
+// func TranslateLingVanex(from, to, text string) (*TranslateLingVanexResponse, error) {
 //	params := url.Values{}
 //	params.Set("from", from + "_" + strings.ToUpper(from))
 //	params.Set("to", to + "_" + strings.ToUpper(to))
@@ -151,4 +151,4 @@ func DetectLanguageGoogle(text string) (string, error) {
 //	var response TranslateLingVanexResponse
 //	err = json.Unmarshal(body, &response)
 //	return &response, err
-//}
+// }

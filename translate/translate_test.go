@@ -20,7 +20,7 @@ func TestTranslateGoogle(t *testing.T) {
 		{"🤡😈👍👌018^$@#&()??>", "🤡😈👍👌018 ^ $ @ # & () ??>"},
 	}
 	for _, test := range tests {
-		got, err := translate.TranslateGoogle("auto", "en", test.Input)
+		got, err := translate.GoogleTranslate("auto", "en", test.Input)
 		if err != nil {
 			t.Error(err)
 			continue
