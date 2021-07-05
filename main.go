@@ -87,7 +87,7 @@ func botRun(update *tgbotapi.Update) {
 
 		
 		switch update.Message.Text {
-		case "/start", "/start from_inline":
+		case "/start", "/start from_inline", "⬅Back":
 			
 			var userExists bool
 			err := db.Raw("SELECT EXISTS(SELECT id FROM users WHERE id=?)", update.Message.Chat.ID).Find(&userExists).Error
@@ -125,28 +125,57 @@ func botRun(update *tgbotapi.Update) {
 			
 			user.MyLang = iso6391.Name(user.MyLang)
 			user.ToLang = iso6391.Name(user.ToLang)
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Your language is - <b>"+user.MyLang+"</b>, and translate language - <b>"+user.ToLang+"</b>.\n\nNeed help? /help\nChange your lang /my_lang\nChange translate lang /to_lang")
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Your language is - <b>" + user.MyLang + "</b>, and the language for translation is - <b>" + user.ToLang + "</b>.")
+			keyboard := tgbotapi.NewReplyKeyboard(
+				tgbotapi.NewKeyboardButtonRow(
+					tgbotapi.NewKeyboardButton("💡Instruction")),
+					tgbotapi.NewKeyboardButtonRow(
+						tgbotapi.NewKeyboardButton("⚙Settings")))
+			msg.ReplyMarkup = keyboard
 			msg.ParseMode = tgbotapi.ModeHTML
 			bot.Send(msg)
-		case "/my_lang":
-			edit := tgbotapi.NewMessage(update.Message.Chat.ID, "Send few words *in your language*.")
-			edit.ParseMode = tgbotapi.ModeMarkdown
-			kb := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
-			edit.ReplyMarkup = &kb
-			bot.Send(edit)
+			
+			err = setUserStep(update.Message.Chat.ID, "")
+			if err != nil {
+				warn(032, err)
+				return
+			}
+		case "⚙Settings":
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "⚙Settings")
+			keyboard := tgbotapi.NewReplyKeyboard(
+				tgbotapi.NewKeyboardButtonRow(
+					tgbotapi.NewKeyboardButton("Translate Language")),
+				tgbotapi.NewKeyboardButtonRow(
+					tgbotapi.NewKeyboardButton("My Language")),
+				tgbotapi.NewKeyboardButtonRow(
+					tgbotapi.NewKeyboardButton("⬅Back")))
+			msg.ReplyMarkup = keyboard
+			bot.Send(msg)
+			
+			err := setUserStep(update.Message.Chat.ID, "")
+			if err != nil {
+				warn(032, err)
+				return
+			}
+		case "Translate Language", "/my_lang":
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "To setup <b>your language</b>, do <b>one</b> of the following: 👇\n\nℹ️ Send <b>few words</b> in <b>your</b> language, for example: \"<code>Hi, how are you today?</code>\" - language will be English, or \"<code>L'amour ne fait pas d'erreurs</code>\" - language will be French, and so on.\nℹ️ Or send the <b>name</b> of your language <b>in English</b>, e.g. \"<code>Russian</code>\", or \"<code>Japanese</code>\", or  \"<code>Arabic</code>\", e.t.c.")
+			msg.ParseMode = tgbotapi.ModeMarkdown
+			keyboard:= tgbotapi.NewReplyKeyboard(tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("⬅Back")))
+			msg.ReplyMarkup = &keyboard
+			bot.Send(msg)
 
 			err := setUserStep(update.Message.Chat.ID, "set_my_lang")
 			if err != nil {
 				warn(1003, err)
 				return
 			}
-			
-		case "/to_lang":
-			edit := tgbotapi.NewMessage(update.Message.Chat.ID, "Send few words *in your language into you want translate*.")
-			edit.ParseMode = tgbotapi.ModeMarkdown
-			kb := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
-			edit.ReplyMarkup = &kb
-			bot.Send(edit)
+		
+		case "My Language", "/to_lang":
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "To setup <b>translate language</b>, do <b>one</b> of the following: 👇\n\nℹ️ Send <b>few words</b> in language <b>into you want to translate</b>, for example: \"<code>Hi, how are you today?</code>\" - language will be English, or \"<code>L'amour ne fait pas d'erreurs</code>\" - language will be French, and so on.\nℹ️ Or send the <b>name</b> of language <b>into you want to translate, in English</b>, e.g. \"<code>Russian</code>\", or \"<code>Japanese</code>\", or  \"<code>Arabic</code>\", e.t.c.")
+			msg.ParseMode = tgbotapi.ModeMarkdown
+			keyboard := tgbotapi.NewReplyKeyboard(tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("⬅Back")))
+			msg.ReplyMarkup = &keyboard
+			bot.Send(msg)
 
 			err := setUserStep(update.Message.Chat.ID, "set_translate_lang")
 			if err != nil {
@@ -154,7 +183,7 @@ func botRun(update *tgbotapi.Update) {
 				return
 			}
 
-		case "/help":
+		case "💡Instruction", "/help":
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "<b>What can this bot do?</b>\n▫️ Translo allows you to translate your messages into over than 100 languages. (117)\n<b>How to translate message?</b>\n▫️ Firstly, you have to setup your lang (default: English), then setup translate lang (default; Arabic) then send text messages and bot will translate them quickly.\n<b>How to setup my lang?</b>\n▫️ Send /my_lang then send any message <b>IN YOUR LANGUAGE</b>. Bot will detect and suggest you some variants. Select your lang. Done.\n<b>How to setup translate lang?</b>\n▫️ Send /to_lang then send any message <b>IN LANGUAGE YOU WANT TRANSLATE</b>. Bot will detect and suggest you some variants. Select your lang. Done.\n<b>I have a suggestion or I found bug!</b>\n▫️ 👉 Contact me pls - @armanokka")
 			msg.ParseMode = tgbotapi.ModeHTML
 			bot.Send(msg)
@@ -187,6 +216,11 @@ func botRun(update *tgbotapi.Update) {
 					err := db.Model(&Users{}).Where("id", update.Message.Chat.ID).Updates(map[string]interface{}{"act": nil, "my_lang": codeOfLang}).Error
 					if err != nil {
 						warn(301, err)
+						return
+					}
+					err = setUserStep(update.Message.Chat.ID, "")
+					if err != nil {
+						warn(032, err)
 						return
 					}
 					replyMarkup := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", "back")))
@@ -469,6 +503,9 @@ func botRun(update *tgbotapi.Update) {
 
 
 func setUserStep(chatID int64, step string) error {
+	if step == "" {
+		return db.Model(&Users{ID: chatID}).Where("id = ?", chatID).Limit(1).Updates(map[string]interface{}{"act":nil}).Error
+	}
 	return db.Model(&Users{ID: chatID}).Where("id = ?", chatID).Limit(1).Update("act", step).Error
 }
 
