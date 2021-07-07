@@ -127,7 +127,7 @@ func handleMessage(update *tgbotapi.Update) {
                 WarnAdmin(err)
             }
             if referrer {
-                err = db.Model(&Referrers{}).Where("code = ?", parts[1]).Limit(1).Update("users", "users + 1").Error
+                err = db.Raw("UPDATE referrers SET users=users+1 WHERE code=?", parts[1]).Error
                 if err != nil {
                     WarnAdmin(err)
                 }
