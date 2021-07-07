@@ -2,10 +2,14 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/armanokka/translobot/dashbot"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/valyala/fasthttp"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"log"
 	"os"
 )
 
@@ -44,39 +48,39 @@ func main() {
 	if port == "" {
 		port = "80"
 	}
-	
-	updates := bot.GetUpdatesChan(tgbotapi.UpdateConfig{})
-	for update := range updates {
-		go botRun(&update)
-	}
+	//
+	// updates := bot.GetUpdatesChan(tgbotapi.UpdateConfig{})
+	// for update := range updates {
+	// 	go botRun(&update)
+	// }
 	
 	
 	bot.Send(tgbotapi.NewMessage(579515224, "Bot started."))
-	// requestHandler := func(ctx *fasthttp.RequestCtx) {
-	// 	switch string(ctx.Path()) {
-	// 	case "/" + botToken:
-	// 		if isPost := ctx.IsPost(); isPost {
-	// 			data := ctx.PostBody()
-	// 			var update tgbotapi.Update
-	// 			err := json.Unmarshal(data, &update)
-	// 			if err != nil {
-	// 				fmt.Fprint(ctx, "can't parse")
-	// 			} else {
-	// 				go botRun(&update)
-	// 			}
-	// 		} else {
-	// 			fmt.Fprint(ctx, "no way")
-	// 		}
-	// 	default:
-	// 		_, err = fmt.Fprintln(ctx, "ok")
-	// 		if err != nil {
-	// 			panic(err)
-	// 		}
-	// 	}
-	// }
-	// if err = fasthttp.ListenAndServe(":"+port, requestHandler); err != nil {
-	// 	log.Fatalf("Error in ListenAndServe: %s", err)
-	// }
+	requestHandler := func(ctx *fasthttp.RequestCtx) {
+		switch string(ctx.Path()) {
+		case "/" + botToken:
+			if isPost := ctx.IsPost(); isPost {
+				data := ctx.PostBody()
+				var update tgbotapi.Update
+				err := json.Unmarshal(data, &update)
+				if err != nil {
+					fmt.Fprint(ctx, "can't parse")
+				} else {
+					go botRun(&update)
+				}
+			} else {
+				fmt.Fprint(ctx, "no way")
+			}
+		default:
+			_, err = fmt.Fprintln(ctx, "ok")
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+	if err = fasthttp.ListenAndServe(":"+port, requestHandler); err != nil {
+		log.Fatalf("Error in ListenAndServe: %s", err)
+	}
 
 }
 
