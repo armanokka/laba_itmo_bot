@@ -40,7 +40,7 @@ func handleMessage(update *tgbotapi.Update) {
             pp.Println("here 2")
             if referrer {
                 pp.Println("here 3")
-                err = db.Raw("UPDATE referrers SET users=users+1 WHERE code=?", strings.ToLower(parts[1])).Error
+                err = db.Exec("UPDATE referrers SET users=users+1 WHERE code=?", strings.ToLower(parts[1])).Error
                 if err != nil {
                     WarnAdmin(err)
                 }
