@@ -25,3 +25,9 @@ type Users struct {
     ToLang string `gorm:"default:fr"`
     Act sql.NullString `gorm:"default:null"`
 }
+
+type Referrers struct {
+    ID int64 `gorm:"primaryKey;index;not null"`
+    Code string
+    Users int64
+}

@@ -20,6 +20,19 @@ func handleMessage(update *tgbotapi.Update) {
         return
     }
     switch update.Message.Text {
+    case "/start timakrut":
+        var userExists bool
+        err := db.Raw("SELECT EXISTS(SELECT id FROM users WHERE id=?)", update.Message.Chat.ID).Find(&userExists).Error
+        if err != nil {
+            warn(err)
+            return
+        }
+        if !userExists {
+            err = db.Model(&Referrers{}).Where("code", "timakrut").Limit(1).Update("users", "users + 1").Error
+            if err != nil {
+                WarnAdmin(err)
+            }
+        }
     case "/start", "/start from_inline", "⬅Back", "Let's check":
         var userExists bool
         err := db.Raw("SELECT EXISTS(SELECT id FROM users WHERE id=?)", update.Message.Chat.ID).Find(&userExists).Error
