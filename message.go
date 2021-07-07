@@ -29,17 +29,22 @@ func handleMessage(update *tgbotapi.Update) {
     }
     if strings.HasPrefix(update.Message.Text, "/start") || update.Message.Text == "⬅Back" || update.Message.Text == "Let's check" {
         parts := strings.Fields(update.Message.Text)
+        pp.Println(parts)
         if len(parts) == 2 && !userExists {
+            pp.Println("here 1")
             var referrer bool // Check for exists
-            err = db.Raw("SELECT EXISTS(SELECT code FROM referrers WHERE code=?)", parts[1]).Find(&referrer).Error
+            err = db.Raw("SELECT EXISTS(SELECT id FROM referrers WHERE code=?)", parts[1]).Find(&referrer).Error
             if err != nil {
                 WarnAdmin(err)
             }
+            pp.Println("here 2")
             if referrer {
-                err = db.Raw("UPDATE referrers SET users=users+1 WHERE code=?", parts[1]).Error
+                pp.Println("here 3")
+                err = db.Raw("UPDATE referrers SET users=users+1 WHERE code=? LIMIT 1", parts[1]).Error
                 if err != nil {
                     WarnAdmin(err)
                 }
+                pp.Println("here 4")
             }
         }
         
