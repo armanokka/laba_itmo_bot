@@ -28,6 +28,22 @@ func handleMessage(update *tgbotapi.Update) {
         return
     }
     if strings.HasPrefix(update.Message.Text, "/start") || update.Message.Text == "⬅Back" || update.Message.Text == "Let's check" {
+        parts := strings.Fields(update.Message.Text)
+        if len(parts) == 2 && !userExists {
+            var referrer bool // Check for exists
+            err = db.Raw("SELECT EXISTS(SELECT code FROM referrers WHERE code=?)", parts[1]).Find(&referrer).Error
+            if err != nil {
+                WarnAdmin(err)
+            }
+            if referrer {
+                err = db.Raw("UPDATE referrers SET users=users+1 WHERE code=?", parts[1]).Error
+                if err != nil {
+                    WarnAdmin(err)
+                }
+            }
+        }
+        
+        
         if !userExists {
             fromLang := update.Message.From.LanguageCode
             translateLang := "fr"
@@ -76,22 +92,7 @@ func handleMessage(update *tgbotapi.Update) {
             return
         }
         analytics.Bot(update.Message.Chat.ID, msg.Text, "Main menu")
-    
         
-        parts := strings.Fields(update.Message.Text)
-        if len(parts) == 2 {
-            var referrer bool // Check for exists
-            err = db.Raw("SELECT EXISTS(SELECT code FROM referrers WHERE code=?)", parts[1]).Find(&referrer).Error
-            if err != nil {
-                WarnAdmin(err)
-            }
-            if referrer {
-                err = db.Raw("UPDATE referrers SET users=users+1 WHERE code=?", parts[1]).Error
-                if err != nil {
-                    WarnAdmin(err)
-                }
-            }
-        }
         return
     }
     
