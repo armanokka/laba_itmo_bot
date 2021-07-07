@@ -7,7 +7,10 @@ import (
     "gorm.io/gorm"
 )
 
-const AdminID, DashBotAPIKey = 579515224, "cjVjdWDRijXDk5kl9yGi5TTS9XImME7HbZMOg09F"
+const (
+    DashBotAPIKey = "cjVjdWDRijXDk5kl9yGi5TTS9XImME7HbZMOg09F"
+    AdminID       = 579515224
+)
 
 var (
     db  *gorm.DB

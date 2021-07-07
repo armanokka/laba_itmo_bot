@@ -60,7 +60,7 @@ func (d *DashBot) Bot(id int64, message, intent string) {
     if err != nil {
         d.Error(err)
         return    }
-    req.Header.Set("Content-Type", "application/json")
+    req.Header["Content-Type"] = []string{"application/json"}
     res, err := http.DefaultClient.Do(req)
     if err != nil {
         d.Error(err)

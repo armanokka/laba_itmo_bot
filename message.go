@@ -6,7 +6,6 @@ import (
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "github.com/k0kubun/pp"
-    "strings"
 )
 
 func handleMessage(update *tgbotapi.Update) {
@@ -118,122 +117,52 @@ func handleMessage(update *tgbotapi.Update) {
         }
         switch userStep {
         case "set_my_lang":
-            lowerUserMsg := strings.ToLower(update.Message.Text)
-            
-            if nameOfLang := iso6391.Name(lowerUserMsg); nameOfLang != "" { // Юзер отправил сразу код языка
-                err = db.Model(&Users{}).Where("id", update.Message.Chat.ID).Update("my_lang", lowerUserMsg).Error
-                if err != nil {
-                    warn(err)
-                    return
-                }
-                
-                keyboard := tgbotapi.NewReplyKeyboard(
-                    tgbotapi.NewKeyboardButtonRow(
-                        tgbotapi.NewKeyboardButton("⬅Back"),
-                    ),
-                )
-                msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now your language is "+nameOfLang + "\n\nPress \"⬅Back\" to exit to menu")
-                msg.ReplyMarkup = keyboard
+            name, code, err := DetectLang(update.Message.Text)
+            if err != nil {
+                msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Could not detect language, please send something else again")
                 bot.Send(msg)
+        
+                analytics.Bot(update.Message.Chat.ID, msg.Text, "My language not detected")
+                return
+            }
     
-                analytics.Bot(update.Message.Chat.ID, msg.Text, "My language detected by code")
-                return
-            }
-            
-            if codeOfLang := iso6391.CodeForName(strings.Title(lowerUserMsg)); codeOfLang != "" { // Юзер полное его название языка
-                err = db.Model(&Users{}).Where("id", update.Message.Chat.ID).Update("my_lang", codeOfLang).Error
-                if err != nil {
-                    warn(err)
-                    return
-                }
-                keyboard := tgbotapi.NewReplyKeyboard(
-                    tgbotapi.NewKeyboardButtonRow(
-                        tgbotapi.NewKeyboardButton("⬅Back")))
-                msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now your language is "+iso6391.Name(codeOfLang) + "\n\nPress \"⬅Back\" to exit to menu")
-                msg.ReplyMarkup = keyboard
-                bot.Send(msg)
+            keyboard := tgbotapi.NewReplyKeyboard(
+                tgbotapi.NewKeyboardButtonRow(
+                    tgbotapi.NewKeyboardButton("⬅Back")))
+            msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now translate language is " + name + "\n\nPress \"⬅Back\" to exit to menu")
+            msg.ReplyMarkup = keyboard
+            bot.Send(msg)
     
-                analytics.Bot(update.Message.Chat.ID, msg.Text, "My language detected full name of lang")
-                return
-            }
-            
-            
-            lang, err := translate.DetectLanguageGoogle(update.Message.Text)
-            if err != nil || lang == "" {
-                bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Could not detect language, please send something else again"))
-                return
-            }
-            err = db.Model(&Users{}).Where("id", update.Message.Chat.ID).Update("my_lang", lang).Error
+            err = db.Model(&Users{}).Where("id", update.Message.Chat.ID).Update("my_lang", code).Error
             if err != nil {
                 warn(err)
                 return
             }
-            keyboard := tgbotapi.NewReplyKeyboard(
-                tgbotapi.NewKeyboardButtonRow(
-                    tgbotapi.NewKeyboardButton("⬅Back")))
-            msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now your language is "+iso6391.Name(lang) + "\n\nPress \"⬅Back\" to exit to menu")
-            msg.ReplyMarkup = keyboard
-            bot.Send(msg)
-    
-            analytics.Bot(update.Message.Chat.ID, msg.Text, "My language detected default")
-            return
+            
+            analytics.Bot(update.Message.Chat.ID, msg.Text, "Translate language detected default")
         case "set_translate_lang":
-            lowerUserMsg := strings.ToLower(update.Message.Text)
-            
-            if nameOfLang := iso6391.Name(lowerUserMsg); nameOfLang != "" { // Юзер отправил сразу код языка
-                err = db.Model(&Users{}).Where("id", update.Message.Chat.ID).Update("to_lang", lowerUserMsg).Error
-                if err != nil {
-                    warn(err)
-                    return
-                }
-                keyboard := tgbotapi.NewReplyKeyboard(
-                    tgbotapi.NewKeyboardButtonRow(
-                        tgbotapi.NewKeyboardButton("⬅Back")))
-                msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now translate language is "+nameOfLang + "\n\nPress \"⬅Back\" to exit to menu")
-                msg.ReplyMarkup = keyboard
-                bot.Send(msg)
-    
-                analytics.Bot(update.Message.Chat.ID, msg.Text, "Translate language detected by code")
-                return
-            }
-            
-            if codeOfLang := iso6391.CodeForName(strings.Title(lowerUserMsg)); codeOfLang != "" { // Юзер полное его название языка
-                err = db.Model(&Users{}).Where("id", update.Message.Chat.ID).Update("to_lang", codeOfLang).Error
-                if err != nil {
-                    warn(err)
-                    return
-                }
-                keyboard := tgbotapi.NewReplyKeyboard(
-                    tgbotapi.NewKeyboardButtonRow(
-                        tgbotapi.NewKeyboardButton("⬅Back")))
-                msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now translate language is "+iso6391.Name(codeOfLang) + "\n\nPress \"⬅Back\" to exit to menu")
-                msg.ReplyMarkup = keyboard
-                bot.Send(msg)
-    
-                analytics.Bot(update.Message.Chat.ID, msg.Text, "Translate language detected full name of lang")
-                return
-            }
-            
-            lang, err := translate.DetectLanguageGoogle(update.Message.Text)
-            if err != nil || lang == "" {
+            name, code, err := DetectLang(update.Message.Text)
+            if err != nil {
                 msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Could not detect language, please send something else again")
                 bot.Send(msg)
     
                 analytics.Bot(update.Message.Chat.ID, msg.Text, "My language not detected")
                 return
             }
-            err = db.Model(&Users{}).Where("id", update.Message.Chat.ID).Update("to_lang", lang).Error
+            err = db.Model(&Users{}).Where("id", update.Message.Chat.ID).Update("to_lang", code).Error
             if err != nil {
                 warn(err)
                 return
             }
+
+            
             keyboard := tgbotapi.NewReplyKeyboard(
                 tgbotapi.NewKeyboardButtonRow(
                     tgbotapi.NewKeyboardButton("⬅Back")))
-            msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now translate language is "+iso6391.Name(lang) + "\n\nPress \"⬅Back\" to exit to menu")
+            msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Now translate language is " + name + "\n\nPress \"⬅Back\" to exit to menu")
             msg.ReplyMarkup = keyboard
             bot.Send(msg)
-    
+            
             analytics.Bot(update.Message.Chat.ID, msg.Text, "Translate language detected default")
         default: // У пользователя нет шага и сообщение не команда
             var user Users // Contains only MyLang and ToLang

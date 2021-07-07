@@ -2,25 +2,12 @@ package translate
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"net/http"
 	"net/url"
 )
 
-type HTTPError struct {
-	Code int
-	Description string
-}
 
-func (c HTTPError) Error() string {
-	return fmt.Sprintf("HTTP Error [code:%v]:%s", c.Code, c.Description)
-}
-
-
-type GoogleAPIResponse struct {
-	Text, FromLang string
-}
 
 func GoogleTranslate(from, to, text string) (*GoogleAPIResponse, error) {
 	buf := new(bytes.Buffer)
@@ -103,6 +90,19 @@ func DetectLanguageGoogle(text string) (string, error) {
 		return "", err
 	}
 	return doc.Find("span[id=tw-answ-detected-sl]").Text(), err
+}
+
+// MustTranslate translate your text into language you set in Player struct
+func (p *Player) MustTranslate(text string) string {
+	l, err := DetectLanguageGoogle(text)
+	if err != nil {
+		return text
+	}
+	tr, err := GoogleTranslate(l, p.Lang, text)
+	if err != nil {
+		return text
+	}
+	return tr.Text
 }
 
 
