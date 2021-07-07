@@ -27,9 +27,7 @@ func handleMessage(update *tgbotapi.Update) {
         warn(err)
         return
     }
-    
-    switch update.Message.Text {
-    case "/start", "/start from_inline", "⬅Back", "Let's check":
+    if strings.HasPrefix(update.Message.Text, "/start") || update.Message.Text == "⬅Back" || update.Message.Text == "Let's check" {
         if !userExists {
             fromLang := update.Message.From.LanguageCode
             translateLang := "fr"
@@ -50,14 +48,14 @@ func handleMessage(update *tgbotapi.Update) {
                 return
             }
         }
-        
+    
         var user Users
         err = db.Model(&Users{}).Select("my_lang", "to_lang").Where("id = ?", update.Message.Chat.ID).Find(&user).Error
         if err != nil {
             warn(err)
             return
         }
-        
+    
         user.MyLang = iso6391.Name(user.MyLang)
         user.ToLang = iso6391.Name(user.ToLang)
         msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Your language is - <b>" + user.MyLang + "</b>, and the language for translation is - <b>" + user.ToLang + "</b>.")
@@ -71,13 +69,16 @@ func handleMessage(update *tgbotapi.Update) {
         msg.ReplyMarkup = keyboard
         msg.ParseMode = tgbotapi.ModeHTML
         bot.Send(msg)
-        
+    
         err = setUserStep(update.Message.Chat.ID, "")
         if err != nil {
             warn(err)
             return
         }
         analytics.Bot(update.Message.Chat.ID, msg.Text, "Main menu")
+    }
+    
+    switch update.Message.Text {
     case "My Language", "/my_lang":
         msg := tgbotapi.NewMessage(update.Message.Chat.ID, "To setup <b>your language</b>, do <b>one</b> of the following: 👇\n\nℹ️ Send <b>few words</b> in <b>your</b> language, for example: \"<code>Hi, how are you today?</code>\" - language will be English, or \"<code>L'amour ne fait pas d'erreurs</code>\" - language will be French, and so on.\nℹ️ Or send the <b>name</b> of your language <b>in English</b>, e.g. \"<code>Russian</code>\", or \"<code>Japanese</code>\", or  \"<code>Arabic</code>\", e.t.c.")
         msg.ParseMode = tgbotapi.ModeHTML
@@ -92,6 +93,7 @@ func handleMessage(update *tgbotapi.Update) {
         }
     
         analytics.Bot(update.Message.Chat.ID, msg.Text, "Set my lang")
+        
     case "Translate Language", "/to_lang":
         msg := tgbotapi.NewMessage(update.Message.Chat.ID, "To setup <b>translate language</b>, do <b>one</b> of the following: 👇\n\nℹ️ Send <b>few words</b> in language <b>into you want to translate</b>, for example: \"<code>Hi, how are you today?</code>\" - language will be English, or \"<code>L'amour ne fait pas d'erreurs</code>\" - language will be French, and so on.\nℹ️ Or send the <b>name</b> of language <b>into you want to translate, in English</b>, e.g. \"<code>Russian</code>\", or \"<code>Japanese</code>\", or  \"<code>Arabic</code>\", e.t.c.")
         msg.ParseMode = tgbotapi.ModeHTML
@@ -106,6 +108,7 @@ func handleMessage(update *tgbotapi.Update) {
         }
     
         analytics.Bot(update.Message.Chat.ID, msg.Text, "Set translate lang")
+        
     case "💡Instruction", "/help":
         msg := tgbotapi.NewMessage(update.Message.Chat.ID, "<b>What can this bot do?</b>\n▫️ Translo allows you to translate your messages into over than 100 languages. (117)\n<b>How to translate message?</b>\n▫️ Firstly, you have to setup your lang (default: English), then setup translate lang (default; Arabic) then send text messages and bot will translate them quickly.\n<b>How to setup my lang?</b>\n▫️ Send /my_lang then send any message <b>IN YOUR LANGUAGE</b>. Bot will detect and suggest you some variants. Select your lang. Done.\n<b>How to setup translate lang?</b>\n▫️ Send /to_lang then send any message <b>IN LANGUAGE YOU WANT TRANSLATE</b>. Bot will detect and suggest you some variants. Select your lang. Done.\n<b>I have a suggestion or I found bug!</b>\n▫️ 👉 Contact me pls - @armanokka")
         query := "Hi, you look great!"
@@ -119,6 +122,7 @@ func handleMessage(update *tgbotapi.Update) {
         bot.Send(msg)
     
         analytics.Bot(update.Message.Chat.ID, msg.Text, "Help")
+        
     default: // Сообщение не является командой.
         if ok, parts := strings.HasPrefix(update.Message.Text, "/start "), strings.Fields(update.Message.Text); ok && len(parts) == 2 {
             var referrer bool // Check for exists
