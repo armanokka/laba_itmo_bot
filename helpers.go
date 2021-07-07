@@ -8,7 +8,6 @@ import (
     "github.com/armanokka/translobot/translate"
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-    "github.com/k0kubun/pp"
     "runtime/debug"
     "strconv"
     "strings"
@@ -46,17 +45,25 @@ func DetectLang(text string) (string, string, error) {
     if err != nil {
         return "", "", err
     }
+    if lang == "" {
+        lang = "auto"
+    }
     tr, err := translate.GoogleTranslate(lang, "en", text)
     if err != nil {
         return "", "", err
     }
-    pp.Println(tr.Text)
+    
     if c := iso6391.Name(strings.ToLower(tr.Text)); c != "" { // Текст - это код языка, c - его название
         return c, tr.Text, nil
     }
     if c := iso6391.CodeForName(strings.Title(tr.Text)); c != "" { // Текст - это название языка, c - код
         return tr.Text, c, nil
     }
+    
+    if lang != "" && lang != "auto" {
+        return iso6391.Name(lang), lang, nil
+    }
+    
     return "", "", errors.New("could not detect language...")
 }
 
