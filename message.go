@@ -33,14 +33,14 @@ func handleMessage(update *tgbotapi.Update) {
         if len(parts) == 2 && !userExists {
             pp.Println("here 1")
             var referrer bool // Check for exists
-            err = db.Raw("SELECT EXISTS(SELECT id FROM referrers WHERE code=?)", parts[1]).Find(&referrer).Error
+            err = db.Raw("SELECT EXISTS(SELECT id FROM referrers WHERE code=?)", strings.ToLower(parts[1])).Find(&referrer).Error
             if err != nil {
                 WarnAdmin(err)
             }
             pp.Println("here 2")
             if referrer {
                 pp.Println("here 3")
-                err = db.Raw("UPDATE referrers SET users=users+1 WHERE code=? LIMIT 1", parts[1]).Error
+                err = db.Raw("UPDATE referrers SET users=users+1 WHERE code=?", strings.ToLower(parts[1])).Error
                 if err != nil {
                     WarnAdmin(err)
                 }
