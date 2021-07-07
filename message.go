@@ -6,6 +6,7 @@ import (
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "github.com/k0kubun/pp"
+    "strings"
 )
 
 func handleMessage(update *tgbotapi.Update) {
@@ -19,27 +20,16 @@ func handleMessage(update *tgbotapi.Update) {
     if update.Message.Chat.ID < 0 {
         return
     }
+    
+    var userExists bool
+    err := db.Raw("SELECT EXISTS(SELECT id FROM users WHERE id=?)", update.Message.Chat.ID).Find(&userExists).Error
+    if err != nil {
+        warn(err)
+        return
+    }
+    
     switch update.Message.Text {
-    case "/start timakrut":
-        var userExists bool
-        err := db.Raw("SELECT EXISTS(SELECT id FROM users WHERE id=?)", update.Message.Chat.ID).Find(&userExists).Error
-        if err != nil {
-            warn(err)
-            return
-        }
-        if !userExists {
-            err = db.Model(&Referrers{}).Where("code", "timakrut").Limit(1).Update("users", "users + 1").Error
-            if err != nil {
-                WarnAdmin(err)
-            }
-        }
     case "/start", "/start from_inline", "⬅Back", "Let's check":
-        var userExists bool
-        err := db.Raw("SELECT EXISTS(SELECT id FROM users WHERE id=?)", update.Message.Chat.ID).Find(&userExists).Error
-        if err != nil {
-            warn(err)
-            return
-        }
         if !userExists {
             fromLang := update.Message.From.LanguageCode
             translateLang := "fr"
@@ -130,6 +120,21 @@ func handleMessage(update *tgbotapi.Update) {
     
         analytics.Bot(update.Message.Chat.ID, msg.Text, "Help")
     default: // Сообщение не является командой.
+        if ok, parts := strings.HasPrefix(update.Message.Text, "/start "), strings.Fields(update.Message.Text); ok && len(parts) == 2 {
+            var referrer bool // Check for exists
+            err = db.Raw("SELECT EXISTS(SELECT code FROM referrers WHERE code=?)", parts[1]).Find(&referrer).Error
+            if err != nil {
+                WarnAdmin(err)
+            }
+            if referrer {
+                err = db.Model(&Referrers{}).Where("code = ?", parts[1]).Limit(1).Update("users", "users + 1").Error
+                if err != nil {
+                    WarnAdmin(err)
+                }
+            }
+        }
+    
+    
         userStep, err := getUserStep(update.Message.Chat.ID)
         if err != nil {
             warn(err)
