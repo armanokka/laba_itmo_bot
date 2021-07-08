@@ -24,6 +24,8 @@ type Users struct {
     MyLang string `gorm:"default:en"`
     ToLang string `gorm:"default:fr"`
     Act sql.NullString `gorm:"default:null"`
+    Mailing bool `gorm:"default:true"`
+    Usings int64 `gorm:"default:0"`
 }
 
 type Referrers struct {

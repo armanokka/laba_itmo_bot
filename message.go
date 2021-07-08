@@ -27,6 +27,7 @@ func handleMessage(update *tgbotapi.Update) {
         warn(err)
         return
     }
+    
     if strings.HasPrefix(update.Message.Text, "/start") || update.Message.Text == "⬅Back" || update.Message.Text == "Let's check" {
         parts := strings.Fields(update.Message.Text)
         pp.Println(parts)
@@ -271,7 +272,23 @@ func handleMessage(update *tgbotapi.Update) {
             if err != nil {
                 pp.Println(err)
             }
-            analytics.Bot(update.Message.Chat.ID, msg.Text, "Translated")
+            analytics.Bot(update.Message.Chat.ID, tr.Text, "Translated")
+            
+            err = db.Exec("UPDATE users SET usings=usings+1 WHERE id=? LIMIT 1", update.Message.Chat.ID).Error
+            if err != nil {
+                WarnAdmin(err)
+            }
+            // var usings int
+            // err = db.Model(&Users{}).Select("usings").Where("id = ?", update.Message.Chat.ID).Find(&usings).Error
+            // if err != nil {
+            //     WarnAdmin(err)
+            //     return
+            // }
+            // if usings == 5 {
+            //     msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please rate the bot 👇")
+            //     keyboard := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(
+            //         ))
+            // }
         }
         
     }
