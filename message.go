@@ -274,7 +274,7 @@ func handleMessage(update *tgbotapi.Update) {
             }
             analytics.Bot(update.Message.Chat.ID, tr.Text, "Translated")
             
-            err = db.Exec("UPDATE users SET usings=usings+1 WHERE id=? LIMIT 1", update.Message.Chat.ID).Error
+            err = db.Exec("UPDATE users SET usings=usings+1 WHERE id=?", update.Message.Chat.ID).Error
             if err != nil {
                 WarnAdmin(err)
             }
