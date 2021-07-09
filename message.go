@@ -139,7 +139,7 @@ func handleMessage(update *tgbotapi.Update) {
         btn := tgbotapi.InlineKeyboardButton{
             Text:                         "Inline Mode",
             SwitchInlineQuery:            &query,
-        }g
+        }
         keyboard := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(btn))
         msg.ParseMode = tgbotapi.ModeHTML
         msg.ReplyMarkup = keyboard
