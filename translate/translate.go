@@ -9,17 +9,17 @@ import (
 
 
 
-func GoogleTranslate(from, to, text string) (*GoogleAPIResponse, error) {
+func GoogleTranslate(from, to, text string) (*TranslateGoogleAPIResponse, error) {
 	buf := new(bytes.Buffer)
 	buf.WriteString("async=translate,sl:" + url.QueryEscape(from) + ",tl:" + url.QueryEscape(to) + ",st:" + url.QueryEscape(text) + ",id:1624032860465,qc:true,ac:true,_id:tw-async-translate,_pms:s,_fmt:pc")
 	req, err := http.NewRequest("POST", "https://www.google.com/async/translate?vet=12ahUKEwjFh8rkyaHxAhXqs4sKHYvmAqAQqDgwAHoECAIQJg..i&ei=SMbMYMXDKernrgSLzYuACg&yv=3", buf)
 	if err != nil {
-		return &GoogleAPIResponse{}, err
+		return &TranslateGoogleAPIResponse{}, err
 	}
 	req.Header["content-type"] = []string{"application/x-www-form-urlencoded;charset=UTF-8"}
-	// req.Header["accept"] = []string{"*/*"}
-	// req.Header["accept-encoding"] = []string{"gzip, deflate, br"}
-	// req.Header["accept-language"] = []string{"ru-RU,ru;q=0.9"}
+	//req.Header["accept"] = []string{"*/*"}
+	//req.Header["accept-encoding"] = []string{"gzip, deflate, br"}
+	//req.Header["accept-language"] = []string{"ru-RU,ru;q=0.9"}
 	req.Header["cookie"] = []string{"NID=217=mKKVUv88-BW4Vouxnh-qItLKFt7zm0Gj3yDLC8oDKb_PuLIb-p6fcPVcsXZWeNwkjDSFfypZ8BKqy27dcJH-vFliM4dKaiKdFrm7CherEXVt-u_DPr9Yecyv_tZRSDU7E52n5PWwOkaN2I0-naa85Tb9-uTjaKjO0gmdbShqba5MqKxuTLY; 1P_JAR=2021-06-18-16; DV=A3qPWv6ELckmsH4dFRGdR1fe4Gj-oRcZWqaFSPtAjwAAAAA"}
 	req.Header["origin"] = []string{"https://www.google.com"}
 	req.Header["referer"] = []string{"https://www.google.com/"}
@@ -34,22 +34,37 @@ func GoogleTranslate(from, to, text string) (*GoogleAPIResponse, error) {
 	var client http.Client
 	res, err := client.Do(req)
 	if err != nil {
-		return &GoogleAPIResponse{}, err
+		return &TranslateGoogleAPIResponse{}, err
 	}
 	if res.StatusCode != 200 {
-		return &GoogleAPIResponse{}, HTTPError{
+		return &TranslateGoogleAPIResponse{}, HTTPError{
 			Code:        res.StatusCode,
 			Description: "got non 200 http code",
 		}
 	}
+	
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
-		return &GoogleAPIResponse{}, err
+		return &TranslateGoogleAPIResponse{}, err
 	}
-	return &GoogleAPIResponse{
+	result := &TranslateGoogleAPIResponse{
 		Text:     doc.Find("span[id=tw-answ-target-text]").Text(),
 		FromLang: doc.Find("span[id=tw-answ-detected-sl]").Text(),
-	}, err
+		FromLangNativeName: doc.Find("span[id=tw-answ-detected-sl-name]").Text(),
+		SourceRomanization: doc.Find("span[id=tw-answ-source-romanization]").Text(),
+	}
+	
+	doc.Find(`div[class~=tw-bilingual-entry]`).Each(func(i int, s *goquery.Selection) {
+		result.Variants = append(result.Variants, &Variant{
+			Word:    s.Find("span > span").Text(),
+			Meaning: s.Find("div").Text(),
+		})
+	})
+	doc.Find("img[data-src]").Each(func(i int, selection *goquery.Selection) {
+		link, _ := selection.Attr("data-src")
+		result.Images = append(result.Images, link)
+	})
+	return result, err
 }
 
 func DetectLanguageGoogle(text string) (string, error) {

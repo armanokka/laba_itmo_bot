@@ -12,8 +12,18 @@ func (c HTTPError) Error() string {
 }
 
 
-type GoogleAPIResponse struct {
-    Text, FromLang string
+type Variant struct {
+    Word string
+    Meaning string
+}
+
+type TranslateGoogleAPIResponse struct {
+    Text string `json:"text"`
+    FromLang string `json:"translated_from"`
+    FromLangNativeName string `json:"from_lang_native_name"`
+    Variants []*Variant `json:"synonyms,omitempty"`
+    SourceRomanization string `json:"source_romanization"`
+    Images []string `json:"images"`
 }
 
 type Player struct {

@@ -12,6 +12,19 @@ func handleCallback(update *tgbotapi.Update) {
         WarnAdmin(err)
     }
     switch update.CallbackQuery.Data {
+    // case "images":
+    //     var callbackAnswer string
+    //     defer func() {
+    //         bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, callbackAnswer))
+    //     }()
+    //     text := update.CallbackQuery.Message.Text
+    //     lang, err := translate.DetectLanguageGoogle(text)
+    //     if err != nil {
+    //         callbackAnswer = "error"
+    //         return
+    //     }
+    //     tr, err := translate.GoogleTranslate(lang, )
+    //     tr, err := translate.GoogleTranslate()
     case "back":
         defer bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
         var user Users
