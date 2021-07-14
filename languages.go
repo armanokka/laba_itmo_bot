@@ -191,12 +191,25 @@ func Localize(text, lang string, placeholders ...string) string {
     }
     if df, ok := languages[text]; ok {
         if v, ok := df[lang]; ok {
-            return fmt.Sprintf(v, placeholders)
+            if len(placeholders) == 0 {
+                return v
+            } else {
+                return fmt.Sprintf(v, placeholders)
+            }
+            
+        } else {
+            if len(placeholders) == 0 {
+                return text
+            } else {
+                return fmt.Sprintf(text, placeholders)
+            }
+        }
+    } else {
+        if len(placeholders) == 0 {
+            return text
         } else {
             return fmt.Sprintf(text, placeholders)
         }
-    } else {
-        return fmt.Sprintf(text, placeholders)
     }
     
 }
