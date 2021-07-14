@@ -369,12 +369,15 @@ func (bot *BotAPI) Request(c Chattable) (*APIResponse, error) {
 func (bot *BotAPI) Send(c Chattable) (Message, error) {
 	resp, err := bot.Request(c)
 	if err != nil {
+		fmt.Println(err)
 		return Message{}, err
 	}
 
 	var message Message
 	err = json.Unmarshal(resp.Result, &message)
-
+	if err != nil {
+		fmt.Println(err)
+	}
 	return message, err
 }
 
