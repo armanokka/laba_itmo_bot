@@ -3,8 +3,14 @@ package main
 import "fmt"
 
 func Localize(text, lang string, placeholders ...string) string {
+    
+    var values []interface{}
+    for _, v := range placeholders {
+        values = append(values, v)
+    }
+    
     if lang == "" || lang == "en" {
-        return fmt.Sprintf(text, placeholders)
+        return fmt.Sprintf(text, values)
     }
     
     var languages = map[string]map[string]string{
@@ -180,26 +186,27 @@ func Localize(text, lang string, placeholders ...string) string {
             "es": "Error, lo siento.",
         },
     }
+
     if df, ok := languages[text]; ok {
         if v, ok := df[lang]; ok {
             if len(placeholders) == 0 {
                 return v
             } else {
-                return fmt.Sprintf(v, placeholders)
+                return fmt.Sprintf(v, values)
             }
             
         } else {
             if len(placeholders) == 0 {
                 return text
             } else {
-                return fmt.Sprintf(text, placeholders)
+                return fmt.Sprintf(text, values)
             }
         }
     } else {
         if len(placeholders) == 0 {
             return text
         } else {
-            return fmt.Sprintf(text, placeholders)
+            return fmt.Sprintf(text, values)
         }
     }
     
