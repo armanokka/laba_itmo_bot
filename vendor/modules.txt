@@ -48,11 +48,12 @@ github.com/klauspost/compress/gzip
 github.com/klauspost/compress/zlib
 # github.com/m90/go-chatbase v2.0.0+incompatible
 ## explicit
-github.com/m90/go-chatbase
 # github.com/mattn/go-colorable v0.1.6
 github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.12
 github.com/mattn/go-isatty
+# github.com/technoweenie/multipartstreamer v1.0.1
+## explicit
 # github.com/valyala/bytebufferpool v1.0.0
 github.com/valyala/bytebufferpool
 # github.com/valyala/fasthttp v1.27.0

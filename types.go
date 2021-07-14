@@ -26,6 +26,7 @@ type Users struct {
     Act sql.NullString `gorm:"default:null"`
     Mailing bool `gorm:"default:true"`
     Usings int64 `gorm:"default:0"`
+    Lang string
 }
 
 type Referrers struct {

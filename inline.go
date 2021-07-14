@@ -4,7 +4,6 @@ import (
     "github.com/armanokka/translobot/translate"
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-    "github.com/k0kubun/pp"
     "strconv"
 )
 
@@ -78,7 +77,7 @@ func handleInline(update *tgbotapi.Update) {
         nextOffset = end
     }
     
-    ok, err := bot.AnswerInlineQuery(tgbotapi.InlineConfig{
+    bot.AnswerInlineQuery(tgbotapi.InlineConfig{
         InlineQueryID:     update.InlineQuery.ID,
         Results:           results,
         CacheTime:         300,
@@ -87,7 +86,4 @@ func handleInline(update *tgbotapi.Update) {
         SwitchPMText:      "Translo",
         SwitchPMParameter: "from_inline",
     })
-    if err != nil || !ok {
-        pp.Println(err)
-    }
 }
