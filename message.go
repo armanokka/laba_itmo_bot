@@ -95,13 +95,13 @@ func handleMessage(update *tgbotapi.Update) {
         msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("/start", user.Lang, user.MyLang, user.ToLang))
         keyboard := tgbotapi.NewReplyKeyboard(
             tgbotapi.NewKeyboardButtonRow(
-                tgbotapi.NewKeyboardButton(Localize("💬 Change bot language", UserLang))),
+                tgbotapi.NewKeyboardButton(Localize("💬 Change bot language", user.Lang))),
             tgbotapi.NewKeyboardButtonRow(
-                tgbotapi.NewKeyboardButton(Localize("💡Instruction", UserLang))),
+                tgbotapi.NewKeyboardButton(Localize("💡Instruction", user.Lang))),
             tgbotapi.NewKeyboardButtonRow(
-                tgbotapi.NewKeyboardButton(Localize("My Language", UserLang))),
+                tgbotapi.NewKeyboardButton(Localize("My Language", user.Lang))),
             tgbotapi.NewKeyboardButtonRow(
-                tgbotapi.NewKeyboardButton(Localize("Translate Language", UserLang))))
+                tgbotapi.NewKeyboardButton(Localize("Translate Language", user.Lang))))
         msg.ReplyMarkup = keyboard
         msg.ParseMode = tgbotapi.ModeHTML
         bot.Send(msg)
