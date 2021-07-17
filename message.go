@@ -34,6 +34,9 @@ func handleMessage(update *tgbotapi.Update) {
         warn(err)
         return
     }
+    if UserLang == "" {
+        UserLang = "en"
+    }
     
     if strings.HasPrefix(update.Message.Text, "/start") || inArray(update.Message.Text, []string{"⬅Back", "Let's check", "⬅️Zurück","⬅️Atrás","⬅️Kembali","⬅️Indietro","⬅️Back","⬅️Назад","⬅️Arka", "⬅Zurück","⬅Atrás","⬅Kembali","⬅Indietro","⬅Back","⬅Назад","⬅Назад","⬅Arka"}) {
         parts := strings.Fields(update.Message.Text)
