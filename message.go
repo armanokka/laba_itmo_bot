@@ -84,7 +84,7 @@ func handleMessage(update *tgbotapi.Update) {
         }
     
         var user Users
-        err = db.Model(&Users{}).Select("my_lang", "to_lang").Where("id = ?", update.Message.Chat.ID).Find(&user).Error
+        err = db.Model(&Users{}).Select("my_lang", "to_lang", "lang").Where("id = ?", update.Message.Chat.ID).Find(&user).Error
         if err != nil {
             warn(err)
             return
@@ -92,7 +92,7 @@ func handleMessage(update *tgbotapi.Update) {
     
         user.MyLang = iso6391.Name(user.MyLang)
         user.ToLang = iso6391.Name(user.ToLang)
-        msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("/start", UserLang, user.MyLang, user.ToLang))
+        msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("/start", user.Lang, user.MyLang, user.ToLang))
         keyboard := tgbotapi.NewReplyKeyboard(
             tgbotapi.NewKeyboardButtonRow(
                 tgbotapi.NewKeyboardButton(Localize("💬 Change bot language", UserLang))),
