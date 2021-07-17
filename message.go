@@ -89,6 +89,9 @@ func handleMessage(update *tgbotapi.Update) {
             warn(err)
             return
         }
+        if user.Lang == "" {
+            user.Lang = "en"
+        }
     
         user.MyLang = iso6391.Name(user.MyLang)
         user.ToLang = iso6391.Name(user.ToLang)

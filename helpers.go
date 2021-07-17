@@ -99,3 +99,15 @@ func inArray(k string, arr []string,) bool {
     }
     return false
 }
+
+func userLang(id int64) (string, error) {
+    var user Users
+    err := db.Model(&Users{}).Select("lang").Where("id = ?", id).Find(&user).Error
+    if err != nil {
+        return "", err
+    }
+    if user.Lang == "" {
+        return "en", nil
+    }
+    return user.Lang, nil
+}
