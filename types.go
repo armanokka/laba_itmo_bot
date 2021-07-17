@@ -10,7 +10,7 @@ import (
 const (
     DashBotAPIKey = "cjVjdWDRijXDk5kl9yGi5TTS9XImME7HbZMOg09F"
     AdminID       = 579515224
-    botToken string = "1849130443:AAHCiy5yHT2j6YfOYxgG66KTf9Eo-b3Onug"
+    botToken string = "1737819626:AAEoc8WyCq_8rFQcY4q0vtkhqCKro8AudfI"
 )
 
 var (
