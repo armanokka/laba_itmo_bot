@@ -6,12 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/k0kubun/pp"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
 )
-
 
 
 func GoogleTranslate(from, to, text string) (*TranslateGoogleAPIResponse, error) {
@@ -153,14 +153,16 @@ func TTS(to, text string) ([]byte, error) {
 	if err != nil {
 		panic(err)
 	}
-	if res.StatusCode != 200 {
-		panic(errors.New("non 200 http code"))
-	}
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		panic(err)
 	}
 	text = string(body)
+	if res.StatusCode != 200 {
+		pp.Println(text)
+		panic(errors.New("non 200 http code"))
+	}
+
 	idx := strings.IndexByte(text, '\n') + 1
 	text = text[idx:]
 	var out = struct {

@@ -13,6 +13,7 @@ import (
 	"os"
 )
 
+
 // botRun is main handler of bot
 func botRun(update *tgbotapi.Update) {
 	if update.Message != nil {
@@ -36,7 +37,6 @@ func main() {
 	analytics = dashbot.NewAPI(DashBotAPIKey, nil)
 	
 	// Initializing bot
-	const botToken string = "1737819626:AAEoc8WyCq_8rFQcY4q0vtkhqCKro8AudfI"
 	bot, err = tgbotapi.NewBotAPI(botToken)
 	if err != nil {
 		panic(err)
@@ -48,7 +48,6 @@ func main() {
 	if port == "" {
 		port = "80"
 	}
-	//
 	// updates := bot.GetUpdatesChan(tgbotapi.UpdateConfig{})
 	// for update := range updates {
 	// 	go botRun(&update)

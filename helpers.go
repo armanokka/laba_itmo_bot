@@ -35,10 +35,10 @@ func WarnAdmin(args ...interface{}) {
 
 // DetectLang detect language of text and return 1) name of language, 2) code of language, 3) error
 func DetectLang(text string) (string, string, error) {
-    if c := iso6391.Name(text); c != "" { // Текст - код языка, c - его название
+    if c := iso6391.Name(text); c != "" { // Текст - код языка на английском
         return c, text, nil
     }
-    if c := iso6391.CodeForName(text); c != "" { // Текст - это название языка, c - код
+    if c := iso6391.CodeForName(text); c != "" { // Текст - это название языка на английском
         return text, c, nil
     }
     lang, err := translate.DetectLanguageGoogle(text)
@@ -53,10 +53,10 @@ func DetectLang(text string) (string, string, error) {
         return "", "", err
     }
     
-    if c := iso6391.Name(strings.ToLower(tr.Text)); c != "" { // Текст - это код языка, c - его название
+    if c := iso6391.Name(strings.ToLower(tr.Text)); c != "" { // Текст - это код языка на английском
         return c, tr.Text, nil
     }
-    if c := iso6391.CodeForName(strings.Title(tr.Text)); c != "" { // Текст - это название языка, c - код
+    if c := iso6391.CodeForName(strings.Title(tr.Text)); c != "" { // Текст - это название языка на английском
         return tr.Text, c, nil
     }
     
@@ -64,7 +64,7 @@ func DetectLang(text string) (string, string, error) {
         return iso6391.Name(lang), lang, nil
     }
     
-    return "", "", errors.New("could not detect language...")
+    return "", "", errors.New("could not detect language")
 }
 
 // setUserStep set user's step to your. If string is empty "", then step will be null
@@ -91,3 +91,11 @@ func cutString (text string, limit int) string {
     return text
 }
 
+func inArray(k string, arr []string,) bool {
+    for _, v := range arr {
+        if k == v {
+             return true
+        }
+    }
+    return false
+}

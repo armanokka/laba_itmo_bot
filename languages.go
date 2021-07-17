@@ -2,16 +2,8 @@ package main
 
 import "fmt"
 
-func Localize(text, lang string, placeholders ...string) string {
+func Localize(text, lang string, placeholders ...interface{}) string {
     
-    var values []interface{}
-    for _, v := range placeholders {
-        values = append(values, v)
-    }
-    
-    if lang == "" || lang == "en" {
-        return fmt.Sprintf(text, values)
-    }
     
     var languages = map[string]map[string]string{
         "Sorry, error caused.\n\nPlease, don't block the bot, I'll fix the bug in near future, the administrator has already been warned about this error ;)": {
@@ -24,15 +16,16 @@ func Localize(text, lang string, placeholders ...string) string {
             "uz": "Uzr, xato sabab.\n\nIltimos, botni bloklamang, yaqin kelajakda xatoni tuzataman, administrator bu xato haqida allaqachon ogohlantirilgan ;)",
             "de": "Sorry, Fehler verursacht.\n\nBitte blockieren Sie den Bot nicht, ich werde den Fehler in naher Zukunft beheben, der Administrator wurde bereits vor diesem Fehler gewarnt ;)",
         },
-        "Your language is - <b>%s</b>, and the language for translation is - <b>%s</b>.": {
-            "ru": "Ваш язык - <b>%s</b>, а язык для перевода - <b>%s</b>.",
-            "es": "Su idioma es - <b>%s</b>, y el idioma de la traducción es - <b>%s</b>.",
-            "uk": "Ваша мова - <B>%s</b>, а мова для перекладу - <B>%s</b>.",
-            "pt": "A sua língua é - <b>%s</b>, e a língua para a tradução é- <b>%s</b>.",
-            "id": "Bahasa Anda - <b>%s</b>, dan bahasa untuk Terjemahan adalah - <b>%s</b>.",
-            "it":"La tua lingua è - < b > %s< / b>, e la lingua per la traduzione è - <b>%s</b>.",
-            "uz":"Sizning til - <b>%s</b>, va - <b tarjima qilish uchun til>%bo'ladi s</b>.",
-            "de":"Ihre Sprache ist - <b>%s</b> und die Sprache für die Übersetzung ist - <b>%s< / b>.",
+        "/start": {
+            "it": "La tua lingua è - %se la lingua per la traduzione è - %s.",
+            "de": "Ihre Sprache ist - %s und die Sprache für die Übersetzung ist - %s.",
+            "es": "Su idioma es - %s, y el idioma de traducción es - %s.",
+            "id": "Bahasa Anda adalah - %s, dan bahasa terjemahannya adalah - %s.",
+            "en": "Your language is - %s, and the language for translation is - %s.",
+            "uz": "Sizning tilingiz - %s, tarjima qilish uchun - %s.",
+            "ru": "Ваш язык - %s, а язык перевода - %s.",
+            "uk": "Ваша мова - %s, а мова перекладу - %s.",
+            "pt": "Seu idioma é - %s, e o idioma para tradução é - %s.",
         },
         "💡Instruction": {
             "ru":"💡Инструкция",
@@ -55,45 +48,90 @@ func Localize(text, lang string, placeholders ...string) string {
             "de":"Meine Sprache",
         },
         "Translate Language": {
-            "de": "Sprache übersetzen",
-            "es": "Traducir idioma",
-            "id": "Terjemahkan Bahasa",
-            "it": "Traduci lingua",
-            "pt": "Traduzir idioma",
-            "ru": "Перевести язык",
-            "uk": "Перекласти мову",
-            "uz": "Tarjima qilish tili",
+            "de": "Sprache zum Übersetzen",
+            "es": "Idioma para traducir",
+            "id": "Bahasa untuk menerjemahkan",
+            "it": "Lingua per tradurre",
+            "pt": "Língua para tradução",
+            "ru": "Язык перевода",
+            "uk": "Мова перекладу",
+            "uz": "Tarjima qilish uchun til",
         },
-        "To setup <b>your language</b>, do <b>one</b> of the following: 👇\n\nℹ️ Send <b>few words</b> in <b>your</b> language, for example: \"<code>Hi, how are you today?</code>\" - language will be English, or \"<code>L'amour ne fait pas d'erreurs</code>\" - language will be French, and so on.\nℹ️ Or send the <b>name</b> of your language <b>in English</b>, e.g. \"<code>Russian</code>\", or \"<code>Japanese</code>\", or  \"<code>Arabic</code>\", e.t.c.": {
-            "uk": "Щоб налаштувати <b>свою мову</b>, виконайте <b>одне</b>з наступного: 👇\n\nℹ️ Надішліть <b>кілька слів</b><b>вашою</b>мовою, наприклад: \"<code>Привіт, як справи сьогодні?</code>\" - мова буде англійською, або \"< code> L'amour ne fait pas d'erreurs</code> \"- мовою буде французька тощо.\nℹ️ Або надішліть <b>назву</b>вашої мови <b>англійською мовою</b>, напр. \"<code>російська</code>\", або \"<code>японська</code>\", або \"<code>арабська</code>\", напр.",
-            "pt": "Para configurar <b>seu idioma</b>, faça <b>um</b>dos seguintes: 👇\n\nℹ️ Envie <b>algumas palavras</b>em <b>seu</b>idioma, por exemplo: \"<code>Olá, como você está hoje?</code>\" - o idioma será inglês ou \"< code> L'amour ne fait pas d'erreurs</code> \"- o idioma será o francês e assim por diante.\nℹ️ Ou envie o <b>nome</b>do seu idioma <b>em inglês</b>, por exemplo \"<code>Russo</code>\", ou \"<code>Japonês</code>\" ou \"<code>Árabe</code>\", e.t.c.",
-            "id": "Untuk menyiapkan <b>bahasa Anda</b>, lakukan <b>salah satu</b> berikut ini:\n\n️ Kirim <b>beberapa kata</b> dalam bahasa <b>Anda</b>, misalnya: \"<code>Hai, apa kabar hari ini?</code>\" - bahasa akan menjadi bahasa Inggris, atau \"< code>L'amour ne fait pas d'erreurs</code>\" - bahasa akan menjadi bahasa Prancis, dan seterusnya.\n️ Atau kirimkan <b>nama</b> bahasa Anda <b>dalam bahasa Inggris</b>, mis. \"<code>Rusia</code>\", atau \"<code>Jepang</code>\", atau \"<code>Arab</code>\", dll.",
-            "it": "Per impostare la <b>lingua</b>, esegui <b>una</b> delle seguenti operazioni: 👇\n\nℹ️ Invia <b>poche parole</b> nella <b>tua</b> lingua, ad esempio: \"<code>Ciao, come stai oggi?</code>\" - la lingua sarà inglese, o \"< code>L'amour ne fait pas d'erreurs</code>\" - la lingua sarà il francese e così via.\nℹ️ Oppure invia il <b>nome</b> della tua lingua <b>in inglese</b>, ad es. \"<code>Russo</code>\", o \"<code>Giapponese</code>\", o \"<code>Arabo</code>\", ecc.",
-            "uz": "O'zingizning tilingizni</b>sozlash uchun quyidagilardan <b>birini</b>bajaring: 👇\n\nℹ️ o'z tilingizda <b>bir nechta so'zlar</b>ni yuboring, masalan: \"<code>salom, bugun yaxshimisiz?</code>\" - bu til inglizcha bo'ladi yoki \"<\" code> L'amour ne fait pas d'erreurs</code> \"- til frantsuzcha bo'ladi va hokazo.\nℹ️ Yoki o'z tilingiz <b>ning ismini <b>ingliz tilida</b>yuboring, masalan. \"<code>Russian</code>\", yoki \"<code>Japanese</code>\", or \"<code>Arabic</code>\", e.t.c.",
-            "de": "Um <b>Ihre Sprache</b> einzurichten, führen Sie <b>einen</b> der folgenden Schritte aus: 👇\n\nℹ️ Senden Sie <b>ein paar Wörter</b> in <b>Ihrer</b> Sprache, zum Beispiel: \"<code>Hallo, wie geht es Ihnen heute?</code>\" - Sprache ist Englisch oder \"< code>L'amour ne fait pas d'erreurs</code>\" - Sprache wird Französisch sein und so weiter.\nℹ️ Oder sende den <b>Namen</b> deiner Sprache <b>auf Englisch</b>, z.B. \"<code>Russisch</code>\", oder \"<code>Japanisch</code>\", oder \"<code>Arabisch</code>\", usw.",
-            "ru": "Чтобы настроить <b>свой язык</b>, выполните <b>одно</b>из следующего: 👇\n\nℹ️ Отправьте <b>несколько слов</b>на <b>своем</b>языке, например: \"<code>Привет, как дела?</code>\" - язык будет английский, или \"<code>L'amour ne fait pas d'erreurs</code> \"- язык будет французский, и так далее.\nℹ️ Или отправьте <b>название</b>вашего языка <b>на английском</b>, например \"<code>русский</code>\", или \"<code>японский</code>\", или \"<code>арабский</code>\" и т. д.",
-            "es": "Para configurar <b>su idioma</b>, haga <b>una</b>de las siguientes opciones: 👇\n\nℹ️ Envíe <b>algunas palabras</b>en <b>su</b>idioma, por ejemplo: \"<code>Hola, ¿cómo está hoy?</code>\" - el idioma será inglés o \"< code> L'amour ne fait pas d'erreurs</code> \"- el idioma será el francés, y así sucesivamente.\nℹ️ O envíe el <b>nombre</b>de su idioma <b>en inglés</b>, p. ej. \"<code>Ruso</code>\", o \"<code>Japonés</code>\", o \"<code>Árabe</code>\", e.t.c.",
+        "/my_lang": {
+            "pt": "Para configurar  seu idioma , faça  uma  das seguintes opções: 👇\n\nℹ️ Envie  algumas palavras  em seu idioma, por exemplo: \"Hi, how are you today?\" - o idioma será o inglês, ou \"L'amour ne fait pas d'erreurs\" - o idioma será francês e assim por diante.\nℹ️ Ou envie o nome do seu idioma, por ex. \"Russian\", ou \"Japanese\", ou \"Arabic\", e.t.c.",
+            "en": "To setup your language, do one of the following: 👇\n\nℹ️ Send few words in your language, for example: \"Hi, how are you today?\" - language will be English, or \"L'amour ne fait pas d'erreurs\" - language will be French, and so on.\nℹ️ Or send the name of your language, e.g. \"Russian\", or \"Japanese\", or  \"Arabic\", e.t.c.",
+            "it": "Per impostare la tua lingua, esegui una delle seguenti operazioni: .\n\nℹ️ Invia poche parole nella tua lingua, ad esempio: \"Hi, how are you today?\" - la lingua sarà l'inglese, o \"L'amour ne fait pas d'erreurs\" - la lingua sarà francese, e così via.\nℹ️ Oppure invia il nome della tua lingua, ad es. \"Russo\", o \"Giapponese\", o \"Arabo\", ecc.",
+            "de": "Führen Sie eine der folgenden Schritte aus, um Ihre Sprache einzurichten: 👇\n\nℹ️ Sende einige Wörter in deiner Sprache, zum Beispiel: \"Hi, how are you today?\" - Sprache wird Englisch sein, oder \"L'amour ne fait pas d'erreurs\" - Sprache wird französisch sein und so weiter.\nℹ️ Oder schicke den Namen deiner Sprache, z.B. \"Russisch\", oder \"Japanisch\", oder \"Arabisch\", usw.",
+            "ru": "Чтобы настроить  свой язык , выполните  одно  из следующих действий: 👇\n\nℹ️ Отправьте  несколько слов  на своем языке, например: \"Hi, how are you today?\" - язык будет английский, или «« L'amour ne fait pas d'erreurs »- язык будет французским и так далее.\nℹ️ Или отправьте название своего языка, например «Русский», «Японский», «Арабский» и т. Д.",
+            "es": "Para configurar  su idioma , haga  una  de las siguientes opciones: 👇\n\nℹ️ Envía  algunas palabras  en tu idioma, por ejemplo: \"Hi, how are you today?\" - el idioma será el inglés, o \"L'amour ne fait pas d'erreurs\" - idioma será francés, etc.\nℹ️ O envíe el nombre de su idioma, p. ej. \"Ruso ''\", o \"Japonés\", o \"Árabe\", e.t.c.",
+            "uz": " Tilingizni  sozlash uchun quyidagilardan  birini bajaring: 👇\n\nℹ️ O'zingizning tilingizda  bir nechta so'zlarni  yuboring, masalan: \"Hi, how are you today? \"\" \"- til ingliz tilida bo'ladi yoki\" \"L'amour ne fait pas d'erreurs`\" - til frantsuzcha bo'ladi va hokazo.\nℹ️ Yoki o'z tilingiz nomini yuboring, masalan. \"\" \"Ruscha\" yoki \"\" Yaponcha \"yoki\" \"Arabcha\", e.t.c.",
+            "uk": "Щоб налаштувати  свою мову , виконайте  одне  з наступного: 👇\n\nℹ️ Надішліть  кілька слів  своєю мовою, наприклад: \"Hi, how are you today?\" - мова буде англійською, або \"L'amour ne fait pas d'erreurs\" - мова буде французькою тощо.\nℹ️ Або надішліть назву вашої мови, напр. \"Російська\", або\"японська\", або  арабська, тощо",
+            "id": "Untuk mengatur Bahasa anda, melakukan satu hal:\n\nℹ️ contoh: \"hai, bagaimana kabarmu hari ini?\"- bahasa akan bahasa Inggris, atau \"l'amour ne fait pas d'erreurs\" - bahasa akan Perancis, dan seterusnya.\nℹ️ atau kirim Nama bahasa Anda dalam bahasa Inggris, misal \"rusia\", atau \"jepang\", atau \"arab\", e.t.c.",
         },
-        "To setup <b>translate language</b>, do <b>one</b> of the following: 👇\n\nℹ️ Send <b>few words</b> in language <b>into you want to translate</b>, for example: \"<code>Hi, how are you today?</code>\" - language will be English, or \"<code>L'amour ne fait pas d'erreurs</code>\" - language will be French, and so on.\nℹ️ Or send the <b>name</b> of language <b>into you want to translate, in English</b>, e.g. \"<code>Russian</code>\", or \"<code>Japanese</code>\", or  \"<code>Arabic</code>\", e.t.c.": {
-            "ru": "Чтобы настроить <b>язык перевода</b>, выполните <b>одно</b>из следующего: 👇\n\nℹ️ Отправьте <b>несколько слов</b>на языке <b>, на который вы хотите перевести</b>, например: «<code>Привет, как дела?</code>» - язык будет английский. , или \"<code>L'amour ne fait pas d'erreurs</code>\" - языком будет французский и т. д.\nℹ️ Или отправьте <b>название</b>языка <b>, на который вы хотите перевести, на английский</b>, например \"<code>русский</code>\", или \"<code>японский</code>\", или \"<code>арабский</code>\" и т. д.",
-            "es": "Para configurar el <b>idioma de traducción</b>, realice <b>una</b>de las siguientes acciones: 👇\n\nℹ️ Envíe <b>algunas palabras</b>en el idioma <b>al que desea traducir</b>, por ejemplo: \"<code>Hola, ¿cómo estás hoy?</code>\" - el idioma será inglés , o \"<code>L'amour ne fait pas d'erreurs</code>\" - el idioma será el francés, y así sucesivamente.\nℹ️ O envíe el <b>nombre</b>del idioma <b>al que desea traducir, en inglés</b>, p. ej. \"<code>Ruso</code>\", o \"<code>Japonés</code>\", o \"<code>Árabe</code>\", e.t.c.",
-            "uk": "Щоб встановити <b>переклад мови</b>, виконайте <b>одне</b>з наступного: 👇\n\nℹ️ Надішліть <b>кілька слів</b>мовою <b>на ту, яку хочете перекласти</b>, наприклад: «<code>Привіт, як справи сьогодні?</code>« - мова буде англійською , або \"<code>L'amour ne fait pas d'erreurs</code>\" - мовою буде французька тощо.\nℹ️ Або надішліть <b>назву</b>мови <b>на ту мову, яку потрібно перекласти, англійською мовою</b>, напр. \"<code>російська</code>\", або \"<code>японська</code>\", або \"<code>арабська</code>\", напр.",
-            "pt": "Para configurar a <b>tradução do idioma</b>, faça <b>um</b>dos seguintes: 👇\n\nℹ️ Envie <b>algumas palavras</b>no idioma <b>para o qual deseja traduzir</b>, por exemplo: \"<code>Olá, como você está hoje?</code>\" - o idioma será o inglês ou \"<code>L'amour ne fait pas d'erreurs</code>\" - o idioma será o francês e assim por diante.\nℹ️ Ou envie o <b>nome</b>do idioma <b>para o qual deseja traduzir, em inglês</b>, por exemplo \"<code>Russo</code>\", ou \"<code>Japonês</code>\" ou \"<code>Árabe</code>\", e.t.c.",
-            "id": "Untuk menyiapkan <b>terjemahkan bahasa</b>, lakukan <b>salah satu</b> berikut ini:\n\n️ Kirim <b>beberapa kata</b> dalam bahasa <b>ke dalam bahasa yang ingin Anda terjemahkan</b>, misalnya: \"<code>Hai, apa kabar hari ini?</code>\" - bahasa akan menjadi bahasa Inggris , atau \"<code>L'amour ne fait pas d'erreurs</code>\" - bahasa akan menjadi bahasa Prancis, dan seterusnya.\n️ Atau kirimkan <b>nama</b> bahasa <b>ke dalam bahasa yang ingin Anda terjemahkan, dalam bahasa Inggris</b>, mis. \"<code>Rusia</code>\", atau \"<code>Jepang</code>\", atau \"<code>Arab</code>\", dll.",
-            "it": "Per impostare la <b>lingua di traduzione</b>, esegui <b>una</b> delle seguenti operazioni: 👇\n\nℹ️ Invia <b>poche parole</b> nella lingua <b>nella quale vuoi tradurre</b>, ad esempio: \"<code>Ciao, come stai oggi?</code>\" - la lingua sarà l'inglese , o \"<code>L'amour ne fait pas d'erreurs</code>\" - la lingua sarà il francese e così via.\nℹ️ Oppure invia il <b>nome</b> della lingua <b>in cui desideri tradurre, in inglese</b>, ad es. \"<code>Russo</code>\", o \"<code>Giapponese</code>\", o \"<code>Arabo</code>\", ecc.",
-            "uz": "Tilni tarjima qilish</b>ni sozlash uchun quyidagilardan <b>birini</b>bajaring: 👇\n\nℹ️ tarjima qilmoqchi bo'lgan tilingizga <b>bir nechta so'zlarni <b>yuboring</b>, masalan: \"<kod> salom, bugun yaxshimisiz?</code>\" - til ingliz tilida bo'ladi , yoki \"<code>L'amour ne fait pas d'erreurs</code>\" - til frantsuzcha bo'ladi va hokazo.\nℹ️ Yoki tarjima qilmoqchi bo'lgan tilga <b>ismini</b>ingliz tilida</b>yuboring, masalan. \"<code>Russian</code>\", yoki \"<code>Japanese</code>\", or \"<code>Arabic</code>\", e.t.c.",
-            "de": "Um die <b>Übersetzungssprache</b> einzurichten, führen Sie <b>einen</b> der folgenden Schritte aus:\n\nℹ️ Senden Sie <b>wenige Wörter</b> in der Sprache <b>in die Sie übersetzen möchten</b>, zum Beispiel: \"<code>Hallo, wie geht es Ihnen heute?</code>\" - die Sprache wird Englisch sein , oder \"<code>L'amour ne fait pas d'erreurs</code>\" - die Sprache ist Französisch und so weiter.\nℹ️ Oder senden Sie den <b>Namen</b> der Sprache <b>in die Sie übersetzen möchten, auf Englisch</b>, z.B. \"<code>Russisch</code>\", oder \"<code>Japanisch</code>\", oder \"<code>Arabisch</code>\", usw.",
+        "/to_lang": {
+            "uk": "Щоб налаштувати мову перекладу, виконайте одну з таких дій: 👇\n\nℹ️ Надішліть кілька слів мовою на мову, яку потрібно перекласти, наприклад: \"Hi, how are you?\" - мовою буде англійська, або \"L'amour ne fait pas d'erreurs\" - мовою буде французька тощо.\nℹ️ Або надішліть назву мови, напр. \"російська\", або \"японська\", або \"арабська\", напр.",
+            "pt": "Para configurar o idioma de tradução, siga um destes procedimentos: 👇\n\nℹ️ Envie algumas palavras no idioma que deseja traduzir, por exemplo: \"Hi, how are you?\" - o idioma será inglês ou \"L'amour ne fait pas d'erreurs\" - o idioma será o francês e assim por diante.\nℹ️ Ou envie o nome do idioma, por ex. \"Russo\" ou \"Japonês\" ou \"Árabe\", e.t.c.",
+            "id": "Untuk menerjemahkan bahasa, lakukan satu bahasa berikut:\n\nℹ mengirim beberapa kata dalam bahasa ke dalam Anda ingin menerjemahkan, misalnya: \"hai, apa kabar?\"- bahasa akan bahasa Inggris, atau \"l'amour ne fait pas d'erreurs\" - bahasa akan Perancis, dan seterusnya.\nℹ️atau kirim Nama bahasa, misalnya \"Rusia\", atau \"Jepang\", atau \"Arab\", misalnya. t.c.",
+            "en": "To setup translate language, do one of the following: 👇\n\nℹ Send few words in language into you want to translate, for example: \"Hi, how are you?\" - language will be English, or \"L'amour ne fait pas d'erreurs\" - language will be French, and so on.\nℹ️ Or send the name of language, e.g. \"Russian\", or \"Japanese\", or  \"Arabic\", e.t.c.",
+            "it": "Per impostare la lingua di traduzione, esegui una delle seguenti operazioni: 👇\n\nℹ️ Invia poche parole nella lingua che vuoi tradurre, ad esempio: \"Hi, how are you?\" - la lingua sarà l'inglese, o \"L'amour ne fait pas d'erreurs\" - la lingua sarà il francese, e così via.\nℹ️ Oppure inviare il nome della lingua, ad es. \"Russo\" o \"Giapponese\" o \"Arabo\", ecc.",
+            "uz": "Tarjima tilini sozlash uchun quyidagilardan birini bajaring: 👇\n\nℹ️ O'zingizning tilingizga tarjima qilishni xohlagan bir nechta so'zlarni yuboring, masalan: \"Hi, how are you?\" - til inglizcha bo'ladi yoki \"L'amour ne fait pas d'erreurs\" - frantsuzcha bo'ladi va hokazo.\nℹ️ Yoki til nomini yuboring, masalan. \"Ruscha\", yoki \"Yaponcha\" yoki \"Arabcha\", e.t.c.",
+            "de": "Um die Übersetzungssprache einzurichten, führen Sie einen der folgenden Schritte aus:\n\nℹ️ Schicke ein paar Wörter in die Sprache, die du übersetzen möchtest, zum Beispiel: \"Hi, how are you?\" - Sprache ist Englisch oder \"L'amour ne fait pas d'erreurs\" - Sprache ist Französisch und so weiter.\nℹ️ Oder sende den Namen der Sprache, z.B. \"Russisch\" oder \"Japanisch\" oder \"Arabisch\", usw.",
+            "ru": "Чтобы настроить язык перевода, выполните одно из следующих действий: 👇\n\nℹ️ Отправьте несколько слов на языке, который вы хотите перевести, например: «Hi, how are you?» - язык будет английский, или \"L'amour ne fait pas d'erreurs\" - язык будет французским, и так далее.\nℹ️ Или отправьте название языка, например «русский», или «японский», или «арабский» и т. Д.",
+            "es": "Para configurar el idioma de traducción, realice una de las siguientes acciones: 👇\n\nℹ️ Envíe algunas palabras en el idioma que desea traducir, por ejemplo: \"Hi, how are you?\" - el idioma será el inglés, o \"L'amour ne fait pas d'erreurs\" - el idioma será el francés, etc.\nℹ️ O envíe el nombre del idioma, p. ej. \"Ruso\", \"Japonés\" o \"Árabe\", etc.",
         },
-        "⬅Back":{},
-        "<b>What can this bot do?</b>\n▫️ Translo allow you to translate messages into 182+ languages.\n<b>How to translate message?</b>\n▫️ Firstly, you have to setup your language, then setup translate language, next send text messages and bot will translate them quickly.\n<b>How to setup my language?</b>\n▫️ Click on the button below called \"My Language\"\n<b>How to setup language into I want to translate?</b>\n▫️ Click on the button below called \"Translate Language\"\n<b>Are there any other interesting things?\n</b>▫️ Yes, the bot support inline mode. Start typing the nickname @translobot in the message input field and then write there the text you want to translate.\n<b>I have a suggestion or I found bug!</b>\n▫️ 👉 Contact me pls - @armanokka": {
-            "it": "<b>Cosa può fare questo bot?</b>\n▫️ Translo ti consente di tradurre i messaggi in oltre 182 lingue.\n<b>Come tradurre il messaggio?</b>\n▫️ In primo luogo, devi impostare la tua lingua, quindi impostare la lingua di traduzione, quindi inviare messaggi di testo e il bot li tradurrà rapidamente.\n<b>Come impostare la mia lingua?</b>\n▫️ Clicca sul pulsante in basso chiamato \"La mia lingua\"\n<b>Come impostare la lingua in cui voglio tradurre?</b>\n▫️ Clicca sul pulsante in basso chiamato \"Traduci lingua\"\n<b>Ci sono altre cose interessanti?\n</b>▫️ Sì, il bot supporta la modalità in linea. Inizia a digitare il nickname @translobot nel campo di inserimento del messaggio e poi scrivi lì il testo che vuoi tradurre.\n<b>Ho un suggerimento o ho trovato un bug!</b>\n▫️ 👉 Contattami per favore - @armanokka",
-            "uz": "<b>Ushbu bot nima qila oladi?</b>\n▫️ Translo sizga xabarlarni 182+ tilga tarjima qilishga imkon beradi.\n<b>Xabarni qanday tarjima qilish kerak?</b>\n▫️ Birinchidan, siz o'z tilingizni o'rnatishingiz kerak, so'ngra tarjima tilini sozlashingiz kerak, keyin matnli xabarlarni yuboring va bot ularni tezda tarjima qiladi.\n<b>Mening tilimni qanday sozlashim kerak?</b>\n▫️ Quyidagi \"Mening tilim\" deb nomlangan tugmani bosing.\n<b>Tilni qanday tarjima qilishni xohlayman?</b>\n▫️ \"Tilni tarjima qilish\" deb nomlangan tugmani bosing.\n<b>Boshqa qiziqarli narsalar bormi?\n</b> ▫️ Ha, botni qo'llab-quvvatlash inline rejimida. Xabarlarni kiritish maydoniga @translobot taxallusini yozishni boshlang va keyin tarjima qilmoqchi bo'lgan matni yozing.\n<b>Menda bir taklif bor yoki men xato topdim!</b>\n▫️ 👉 Men bilan bog'laning pls - @armanokka",
-            "de": "<b>Was kann dieser Bot tun?</b>\n▫️ Mit Translo können Sie Nachrichten in mehr als 182 Sprachen übersetzen.\n<b>Wie übersetzt man eine Nachricht?</b>\n▫️ Zuerst müssen Sie Ihre Sprache einrichten, dann die Übersetzungssprache einrichten, als nächstes Textnachrichten senden und der Bot wird sie schnell übersetzen.\n<b>Wie richte ich meine Sprache ein?</b>\n▫️ Klicken Sie unten auf die Schaltfläche \"Meine Sprache\"\n<b>Wie richte ich die Sprache ein, in die ich übersetzen möchte?</b>\n▫️ Klicken Sie unten auf die Schaltfläche \"Sprache übersetzen\"\n<b>Gibt es noch andere interessante Dinge?\n</b>▫️ Ja, der Bot unterstützt den Inline-Modus. Geben Sie den Spitznamen @translobot in das Nachrichteneingabefeld ein und schreiben Sie dort den Text, den Sie übersetzen möchten.\n<b>Ich habe einen Vorschlag oder ich habe einen Fehler gefunden!</b>\n▫️ 👉 Kontaktieren Sie mich bitte - @armanokka",
-            "ru": "<b>Что умеет этот бот?</b>\n▫️ Translo позволяет переводить сообщения на 182+ языков.\n<b>Как перевести сообщение?</b>\n▫️ Во-первых, вам нужно настроить свой язык, затем настроить язык перевода, затем отправить текстовые сообщения, и бот быстро их переведет.\n<b>Как настроить мой язык?</b>\n▫️ Нажмите кнопку ниже под названием «Мой язык».\n<b>Как установить язык, на котором я хочу переводить?</b>\n▫️ Нажмите кнопку ниже под названием «Перевести язык».\n<b>Есть еще что-нибудь интересное?\n</b> ▫️ Да, бот поддерживает встроенный режим. Начните вводить псевдоним @translobot в поле ввода сообщения, а затем впишите туда текст, который хотите перевести.\n<b>У меня есть предложение или я обнаружил ошибку!</b>\n▫️ 👉 Свяжитесь со мной, пожалуйста - @armanokka",
-            "es": "<b>¿Qué puede hacer este bot?</b>\n▫️ Translo te permite traducir mensajes a más de 182 idiomas.\n<b>¿Cómo traducir un mensaje?</b>\n▫️ En primer lugar, debe configurar su idioma, luego configurar el idioma de traducción, luego enviar mensajes de texto y el bot los traducirá rápidamente.\n<b>¿Cómo configurar mi idioma?</b>\n▫️ Haga clic en el botón de abajo llamado \"Mi idioma\"\n<b>¿Cómo configurar el idioma al que quiero traducir?</b>\n▫️ Haga clic en el botón de abajo llamado \"Traducir idioma\"\n<b>¿Hay otras cosas interesantes?\n</b> ▫️ Sí, el bot admite el modo en línea. Comience a escribir el apodo @translobot en el campo de entrada del mensaje y luego escriba allí el texto que desea traducir.\n<b>¡Tengo una sugerencia o encontré un error!</b>\n▫️ 👉 Contáctame por favor - @armanokka",
-            "uk": "<b>Що може зробити цей бот?</b>\n▫️ Translo дозволяє перекладати повідомлення 182+ мовами.\n<b>Як перекласти повідомлення?</b>\n▫️ По-перше, вам потрібно налаштувати свою мову, потім налаштувати переклад мови, наступне надіслати текстові повідомлення і бот швидко їх перекладе.\n<b>Як налаштувати мову?</b>\n▫️ Клацніть на кнопку під назвою \"Моя мова\"\n<b>Як налаштувати мову на мову, яку я хочу перекласти?</b>\nКлацніть на кнопку нижче під назвою \"Перекласти мову\"\n<b>Чи є якісь інші цікаві речі?\n</b> ▫️ Так, бот підтримує вбудований режим. Почніть вводити псевдонім @translobot у поле введення повідомлення, а потім напишіть туди текст, який потрібно перекласти.\n<b>У мене є пропозиція або я знайшов помилку!</b>\n👉 Зв’яжіться зі мною pls - @armanokka",
-            "pt": "<b>O que este bot pode fazer?</b>\n▫️ Translo permite que você traduza mensagens em mais de 182 idiomas.\n<b>Como traduzir mensagem?</b>\n▫️ Em primeiro lugar, você deve configurar seu idioma, depois configurar traduzir o idioma, em seguida enviar mensagens de texto e o bot irá traduzi-las rapidamente.\n<b>Como configurar meu idioma?</b>\n▫️ Clique no botão abaixo chamado \"Meu Idioma\"\n<b>Como configurar o idioma para o qual desejo traduzir?</b>\n▫️ Clique no botão abaixo chamado \"Traduzir Idioma\"\n<b>Existem outras coisas interessantes?\n</b> ▫️ Sim, o bot suporta o modo inline. Comece digitando o apelido @translobot no campo de entrada da mensagem e então escreva lá o texto que deseja traduzir.\n<b>Tenho uma sugestão ou encontrei um bug!</b>\n▫️ 👉 Contate-me, pls - @armanokka",
-            "id": "<b>Apa yang bisa dilakukan bot ini?</b>\n️ Translo memungkinkan Anda menerjemahkan pesan ke dalam 182+ bahasa.\n<b>Bagaimana cara menerjemahkan pesan?</b>\n️ Pertama, Anda harus mengatur bahasa Anda, lalu mengatur bahasa terjemahan, selanjutnya mengirim pesan teks dan bot akan menerjemahkannya dengan cepat.\n<b>Bagaimana cara mengatur bahasa saya?</b>\n️ Klik tombol di bawah yang disebut \"Bahasa Saya\"\n<b>Bagaimana cara mengatur bahasa yang ingin saya terjemahkan?</b>\n️ Klik tombol di bawah yang disebut \"Terjemahkan Bahasa\"\n<b>Apakah ada hal menarik lainnya?\n</b>▫️ Ya, bot mendukung mode sebaris. Mulai ketikkan nickname @translobot di kolom input pesan lalu tulis di sana teks yang ingin Anda terjemahkan.\n<b>Saya punya saran atau saya menemukan bug!</b>\n️ Hubungi saya pls - @armanokka",
+        "💬 Change bot language":{
+            "de": "💬 Bot-Sprache ändern",
+            "ru": "💬 Изменить язык бота",
+            "uk": "💬 Змінити мову бота",
+            "pt": "💬 Alterar o idioma do bot",
+            "en": "💬 Change bot language",
+            "it": "💬 Cambia la lingua del bot",
+            "uz": "💬 Bot Bot tilini o'zgartiring",
+            "es": "💬 Cambiar el idioma del bot",
+            "id": "💬 Ubah bahasa bot",
+        },
+        "Please, select bot language":{
+            "es": "Por favor, seleccione el idioma del bot",
+            "en": "Please, select bot language",
+            "uk": "Виберіть мову бота",
+            "pt": "Por favor, selecione o idioma do bot",
+            "id": "Silakan, pilih bahasa bot",
+            "it": "Per favore, seleziona la lingua del bot",
+            "uz": "Iltimos, bot tilini tanlang",
+            "de": "Bitte Bot-Sprache auswählen",
+            "ru": "Пожалуйста, выберите язык бота",
+        },
+        "Now press /start 👈":{
+            "it": "Ora premi /start 👈",
+            "uz": "Endi /start tugmachasini bosing 👈",
+            "id": "Sekarang tekan /start 👈",
+            "en": "Now press /start 👈",
+            "de": "Drücken Sie nun /start 👈",
+            "ru": "Теперь нажмите /start 👈",
+            "es": "Ahora presione /start 👈",
+            "uk": "Тепер натисніть /start 👈",
+            "pt": "Agora pressione /start 👈",
+        },
+        "⬅Back":{
+            "de": "⬅Zurück",
+            "es": "⬅Atrás",
+            "id": "⬅Kembali",
+            "it": "⬅Indietro",
+            "pt": "⬅Back",
+            "ru": "⬅Назад",
+            "uk": "⬅Назад",
+            "uz": "⬅Arka",
+        },
+        "/help": {
+            "de": "Was kann dieser Bot tun?\n▫️ Mit Translo können Sie Nachrichten in mehr als 182 Sprachen übersetzen.\nWie übersetzt man eine Nachricht?\n▫️ Zuerst müssen Sie Ihre Sprache einrichten, dann die Übersetzungssprache einrichten, als nächstes Textnachrichten senden und der Bot wird sie schnell übersetzen.\nWie richte ich meine Sprache ein?\n▫️ Klicken Sie unten auf die Schaltfläche \"Meine Sprache\"\nWie richte ich die Sprache ein, in die ich übersetzen möchte?\n▫️ Klicken Sie unten auf die Schaltfläche \"Sprache übersetzen\"\nGibt es noch andere interessante Dinge?\n▫️ Ja, der Bot unterstützt den Inline-Modus. Geben Sie den Spitznamen @translobot in das Nachrichteneingabefeld ein und schreiben Sie dort den Text, den Sie übersetzen möchten.\nIch habe einen Vorschlag oder ich habe einen Fehler gefunden!\n▫️ 👉 Kontaktieren Sie mich bitte - @armanokka",
+            "ru": " Что умеет этот бот? \n▫️ Translo позволяет переводить сообщения на 182+ языков.\n Как перевести сообщение? \n▫️ Во-первых, вам нужно настроить свой язык, затем настроить язык перевода, затем отправить текстовые сообщения, и бот быстро их переведет.\n Как настроить мой язык? \n▫️ Нажмите на кнопку под названием «Мой язык».\n Как установить язык, на котором я хочу переводить? \n▫️ Нажмите кнопку ниже под названием «Перевести язык».\n Есть еще что-нибудь интересное? \n▫️ Да, бот поддерживает встроенный режим. Начните вводить псевдоним @translobot в поле ввода сообщения, а затем впишите туда текст, который хотите перевести.\n У меня есть предложение или я обнаружил ошибку! \n▫️ 👉 Свяжитесь со мной, пожалуйста - @armanokka",
+            "es": " ¿Qué puede hacer este bot? \n▫️ Translo te permite traducir mensajes a más de 182 idiomas.\n ¿Cómo traducir un mensaje? \n▫️ En primer lugar, debe configurar su idioma, luego configurar el idioma de traducción, luego enviar mensajes de texto y el bot los traducirá rápidamente.\n ¿Cómo configurar mi idioma? \n▫️ Haga clic en el botón de abajo llamado \"Mi idioma\"\n ¿Cómo configurar el idioma al que quiero traducir? \n▫️ Haga clic en el botón de abajo llamado \"Traducir idioma\"\n ¿Hay otras cosas interesantes? \n▫️ Sí, el bot admite el modo en línea. Comience a escribir el apodo @translobot en el campo de entrada del mensaje y luego escriba allí el texto que desea traducir.\n ¡Tengo una sugerencia o encontré un error! \n▫️ 👉 Contáctame por favor - @armanokka",
+            "uk": " Що може зробити цей бот? \n▫️ Translo дозволяє перекладати повідомлення 182+ мовами.\n Як перекласти повідомлення? \n▫️ По-перше, вам потрібно налаштувати свою мову, потім налаштувати переклад мови, наступне надіслати текстові повідомлення і бот швидко їх перекладе.\n Як налаштувати мову? \n▫️ Клацніть на кнопку під назвою \"Моя мова\"\n Як налаштувати мову на мову, яку я хочу перекласти? \nКлацніть на кнопку нижче під назвою \"Перекласти мову\"\n Чи є якісь інші цікаві речі? \nТак, бот підтримує вбудований режим. Почніть вводити псевдонім @translobot у поле введення повідомлення, а потім напишіть туди текст, який потрібно перекласти.\n У мене є пропозиція або я знайшов помилку! \n👉 Зв’яжіться зі мною pls - @armanokka",
+            "pt": " O que este bot pode fazer? \n▫️ Translo permite que você traduza mensagens em mais de 182 idiomas.\n Como traduzir a mensagem? \n▫️ Em primeiro lugar, você tem que configurar seu idioma, depois configurar traduzir o idioma, em seguida enviar mensagens de texto e o bot irá traduzi-las rapidamente.\n Como configurar meu idioma? \n▫️ Clique no botão abaixo chamado \"Meu Idioma\"\n Como configurar o idioma para o que desejo traduzir? \n▫️ Clique no botão abaixo chamado \"Traduzir Idioma\"\n Existem outras coisas interessantes? \n▫️ Sim, o bot suporta o modo inline. Comece digitando o apelido @translobot no campo de entrada da mensagem e então escreva lá o texto que deseja traduzir.\n Tenho uma sugestão ou encontrei um bug! \n▫️ 👉 Contate-me, pls - @armanokka",
+            "id": "Apa yang bisa dilakukan robot ini?\n▫️ ️ooo memungkinkan Anda untuk menerjemahkan pesan ke 182+ bahasa.\nBagaimana menerjemahkan pesan?\n▫️  Anda harus menata bahasa Anda, kemudian menerjemahkan bahasa, teks kirim pesan teks dan keduanya akan menerjemahkannya dengan cepat.\n▫️ Bagaimana cara mengatur bahasaku?\n▫️ ️ Klik di tombol di bawah ini disebut \" Bahasa saya\"\nBagaimana mengatur bahasa ke dalam saya ingin menerjemahkan?\nKlik di tombol di bawah ini yang disebut \"menerjemahkan Bahasa\"\n▫️ ️ Apakah ada hal-hal yang menarik lainnya?\nYa, dukungan robot dalam mode inline. Mulai mengetik Nama panggilan @translobot dalam kolom masukan pesan dan kemudian menulis di sana teks yang ingin Anda terjemahkan.\n▫️ ️ Aku punya saran atau aku menemukan bug!\nHubungi aku pls - @armanokka",
+            "en": "What can this bot do?\n▫️ Translo allow you to translate messages into 182+ languages.\nHow to translate message?\n▫️ Firstly, you have to setup your language, then setup translate language, next send text messages and bot will translate them quickly.\nHow to setup my language?\n▫️ Click on the button below called \"My Language\"\nHow to setup language into I want to translate?\n▫️ Click on the button below called \"Translate Language\"\nAre there any other interesting things?\n▫️ Yes, the bot support inline mode. Start typing the nickname @translobot in the message input field and then write there the text you want to translate.\nI have a suggestion or I found bug!\n▫️ 👉 Contact me pls - @armanokka",
+            "it": "Cosa può fare questo bot?\n▫️ Translo ti consente di tradurre i messaggi in oltre 182 lingue.\nCome tradurre il messaggio?\n▫️ In primo luogo, devi impostare la tua lingua, quindi impostare la lingua di traduzione, quindi inviare messaggi di testo e il bot li tradurrà rapidamente.\nCome impostare la mia lingua?\n▫️ Clicca sul pulsante in basso chiamato \"La mia lingua\"\nCome impostare la lingua in cui voglio tradurre?\n▫️ Clicca sul pulsante in basso chiamato \"Traduci lingua\"\nCi sono altre cose interessanti?\n▫️ Sì, il bot supporta la modalità in linea. Inizia a digitare il nickname @translobot nel campo di inserimento del messaggio e poi scrivi lì il testo che vuoi tradurre.\nHo un suggerimento o ho trovato un bug!\n▫️ 👉 Contattami per favore - @armanokka",
+            "uz": " Bu bot nima qila oladi? \n▫️ Translo sizga xabarlarni 182+ tilga tarjima qilishga imkon beradi.\n Xabarni qanday tarjima qilish kerak? \n▫️ Birinchidan, siz o'z tilingizni o'rnatishingiz kerak, so'ngra tarjima tilini sozlashingiz kerak, keyin matnli xabarlarni yuboring va bot ularni tezda tarjima qiladi.\n Mening tilimni qanday o'rnatish kerak? \n▫️ Quyidagi \"Mening tilim\" deb nomlangan tugmani bosing.\n Men tarjima qilishni xohlagan tilni qanday o'rnataman? \n▫️ \"Tilni tarjima qilish\" deb nomlangan tugmani bosing.\n Boshqa qiziqarli narsalar bormi? \n▫️ Ha, botni inline rejimida qo'llab-quvvatlash. Xabarlarni kiritish maydoniga @translobot taxallusini yozishni boshlang va keyin tarjima qilmoqchi bo'lgan matni yozing.\n Menda taklif bor yoki men xato topdim! \n▫️ 👉 Men bilan bog'laning pls - @armanokka",
         },
         "Failed to detect the language. Please enter something else": {
             "it": "Impossibile rilevare la lingua. Per favore inserisci qualcos'altro",
@@ -104,6 +142,26 @@ func Localize(text, lang string, placeholders ...string) string {
             "uk": "Не вдалося виявити мову. Будь ласка, введіть щось інше",
             "pt": "Falha ao detectar o idioma. Por favor, insira outra coisa",
             "id": "Gagal mendeteksi bahasa. Silakan masukkan sesuatu yang lain",
+        },
+        "To voice":{
+            "it": "esprimere",
+            "ru": "Озвучить",
+            "es": "a voz",
+            "pt": "dar voz",
+            "id": "untuk menyuarakan",
+            "uz": "ovoz berish",
+            "de": "aussprechen",
+            "uk": "озвучити",
+        },
+        "Ok, close": {
+            "es": "Ok cerrar",
+            "pt": "Ok fechar",
+            "id": "Oke, tutup",
+            "uk": "Гаразд, близько",
+            "it": "Ok, chiudi",
+            "uz": "Yaxshi, yaqin",
+            "de": "Okay, nah",
+            "ru": "Хорошо, закрыть",
         },
         "Now your language is %s\n\nPress \"⬅Back\" to exit to menu": {
             "es": "Ahora tu idioma es %s\n\nPresione \"⬅Back\" para salir al menú",
@@ -187,27 +245,10 @@ func Localize(text, lang string, placeholders ...string) string {
         },
     }
 
-    if df, ok := languages[text]; ok {
-        if v, ok := df[lang]; ok {
-            if len(placeholders) == 0 {
-                return v
-            } else {
-                return fmt.Sprintf(v, values)
-            }
-            
-        } else {
-            if len(placeholders) == 0 {
-                return text
-            } else {
-                return fmt.Sprintf(text, values)
-            }
-        }
-    } else {
-        if len(placeholders) == 0 {
-            return text
-        } else {
-            return fmt.Sprintf(text, values)
+    if df, ok := languages[text]; ok { // Текст подходит под варианты
+        if v, ok := df[lang]; ok { // Есть соответствующий язык
+            return fmt.Sprintf(v, placeholders...)
         }
     }
-    
+   return fmt.Sprintf(text, placeholders...)
 }

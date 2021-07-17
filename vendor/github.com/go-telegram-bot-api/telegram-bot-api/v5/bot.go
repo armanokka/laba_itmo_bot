@@ -708,3 +708,8 @@ func (bot *BotAPI) AnswerInlineQuery(config InlineConfig) (interface{}, interfac
     params, _ := config.params()
     return bot.MakeRequest(config.method(), params)
 }
+
+func (bot *BotAPI) AnswerCallbackQuery(callback CallbackConfig) {
+	params, _ := callback.params()
+	bot.MakeRequest(callback.method(), params)
+}
