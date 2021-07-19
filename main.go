@@ -23,6 +23,13 @@ func botRun(update *tgbotapi.Update) {
 	} else if update.InlineQuery != nil {
 		handleInline(update)
 	}
+	// f, err := os.Create("mem.out")
+	// if err != nil {
+	// 	panic(err)// !
+	// }
+	// if err := pprof.WriteHeapProfile(f); err != nil {
+	// 	panic(err) // !
+	// }
 }
 
 
@@ -34,7 +41,7 @@ func main() {
 		panic(err)
 	}
 	
-	analytics = dashbot.NewAPI(DashBotAPIKey, nil)
+	analytics = dashbot.NewAPI(DashBotAPIKey, WarnErrorAdmin)
 	
 	// Initializing bot
 	bot, err = tgbotapi.NewBotAPI(botToken)
@@ -48,6 +55,8 @@ func main() {
 	if port == "" {
 		port = "80"
 	}
+	
+	// bot.Buffer = 0
 	// updates := bot.GetUpdatesChan(tgbotapi.UpdateConfig{})
 	// for update := range updates {
 	// 	go botRun(&update)

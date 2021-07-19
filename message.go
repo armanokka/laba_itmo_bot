@@ -21,15 +21,8 @@ func handleMessage(update *tgbotapi.Update) {
         return
     }
     
-    var userExists bool
-    err := db.Raw("SELECT EXISTS(SELECT id FROM users WHERE id=?)", update.Message.Chat.ID).Find(&userExists).Error
-    if err != nil {
-        warn(err)
-        return
-    }
-    
     var UserLang string
-    err = db.Model(&Users{}).Select("lang").Where("id = ?", update.Message.Chat.ID).Limit(1).Find(&UserLang).Error
+    err := db.Model(&Users{}).Select("lang").Where("id = ?", update.Message.Chat.ID).Limit(1).Find(&UserLang).Error
     if err != nil {
         warn(err)
         return
@@ -39,6 +32,13 @@ func handleMessage(update *tgbotapi.Update) {
     }
     
     if strings.HasPrefix(update.Message.Text, "/start") || inArray(update.Message.Text, []string{"⬅Back", "Let's check", "⬅️Zurück","⬅️Atrás","⬅️Kembali","⬅️Indietro","⬅️Back","⬅️Назад","⬅️Arka", "⬅Zurück","⬅Atrás","⬅Kembali","⬅Indietro","⬅Back","⬅Назад","⬅Назад","⬅Arka"}) {
+        var userExists bool
+        err = db.Raw("SELECT EXISTS(SELECT id FROM users WHERE id=?)", update.Message.Chat.ID).Find(&userExists).Error
+        if err != nil {
+            warn(err)
+            return
+        }
+        
         parts := strings.Fields(update.Message.Text)
         if len(parts) == 2 && !userExists { // Рефка
             var referrerExists bool // Check for exists
@@ -287,7 +287,7 @@ func handleMessage(update *tgbotapi.Update) {
                 return
             }
             pp.Println(tr)
-            keyboard := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(Localize("To voice", UserLang), "speech")))
+            keyboard := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(Localize("To voice", UserLang), "speech:"+to)))
             _, err = bot.Send(tgbotapi.NewEditMessageTextAndMarkup(update.Message.Chat.ID, msg.MessageID, tr.Text, keyboard))
             if err != nil {
                 pp.Println(err)

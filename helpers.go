@@ -33,8 +33,14 @@ func WarnAdmin(args ...interface{}) {
     bot.Send(msg)
 }
 
+func WarnErrorAdmin(err error) {
+    msg := tgbotapi.NewMessage(AdminID, err.Error() + "\n\n" + string(debug.Stack()))
+    bot.Send(msg)
+}
+
 // DetectLang detect language of text and return 1) name of language, 2) code of language, 3) error
 func DetectLang(text string) (string, string, error) {
+    text = strings.ToLower(text)
     if c := iso6391.Name(text); c != "" { // Текст - код языка на английском
         return c, text, nil
     }
@@ -98,16 +104,4 @@ func inArray(k string, arr []string,) bool {
         }
     }
     return false
-}
-
-func userLang(id int64) (string, error) {
-    var user Users
-    err := db.Model(&Users{}).Select("lang").Where("id = ?", id).Find(&user).Error
-    if err != nil {
-        return "", err
-    }
-    if user.Lang == "" {
-        return "en", nil
-    }
-    return user.Lang, nil
 }
