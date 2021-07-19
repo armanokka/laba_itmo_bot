@@ -60,7 +60,7 @@ func handleCallback(update *tgbotapi.Update) {
             return
         }
         audio.Title = cutString(update.CallbackQuery.Message.Text, 25)
-        audio.Performer = "Google"
+        audio.Performer = "@TransloBot"
         audio.ReplyToMessageID = update.CallbackQuery.Message.MessageID
         bot.Send(audio)
     }
