@@ -42,10 +42,10 @@ func handleCallback(update *tgbotapi.Update) {
             if e, ok := err.(translate.TTSError); ok {
                 if e.Code == 500 {
                     bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "Too big text"))
+                    return
                 }
-            } else {
-                bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "Iternal error"))
             }
+            bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "Iternal error"))
             warn(err)
             return
         }
