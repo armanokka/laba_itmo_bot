@@ -39,9 +39,15 @@ func handleCallback(update *tgbotapi.Update) {
     case "speech": // arr[1] - lang code
         sdec, err := translate.TTS(arr[1], update.CallbackQuery.Message.Text)
         if err != nil {
-            bot.Send(tgbotapi.NewCallback(update.CallbackQuery.ID, "Too big text of iternal error"))
+            if e, ok := err.(translate.TTSError); ok {
+                if e.Code == 500 {
+                    bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "Too big text"))
+                }
+            } else {
+                bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "Iternal error"))
+            }
             warn(err)
-            return
+            returng
         }
         f, err := os.CreateTemp("", "")
         if err != nil {

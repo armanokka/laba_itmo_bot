@@ -160,9 +160,12 @@ func TTS(to, text string) ([]byte, error) {
 	text = string(body)
 	if res.StatusCode != 200 {
 		pp.Println(text)
-		panic(errors.New("non 200 http code"))
+		return nil, TTSError{
+			Code:        res.StatusCode,
+			Description: "Non 200 HTTP code",
+		}
 	}
-
+	
 	idx := strings.IndexByte(text, '\n') + 1
 	text = text[idx:]
 	var out = struct {
@@ -178,3 +181,4 @@ func TTS(to, text string) ([]byte, error) {
 	sDec, err := base64.StdEncoding.DecodeString(out.TranslateTTS[0])
 	return sDec, err
 }
+
