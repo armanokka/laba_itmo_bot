@@ -47,7 +47,7 @@ func handleCallback(update *tgbotapi.Update) {
                 bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "Iternal error"))
             }
             warn(err)
-            returng
+            return
         }
         f, err := os.CreateTemp("", "")
         if err != nil {
