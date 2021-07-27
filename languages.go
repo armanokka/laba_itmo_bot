@@ -243,6 +243,37 @@ func Localize(text, lang string, placeholders ...interface{}) string {
             "ru": "Ошибка, извините.",
             "es": "Error, lo siento.",
         },
+        "Rate": {
+            "uk": "Оцініть бота",
+            "de": "Bitte bewerte den Bot",
+            "id": "Tolong, beri peringkat bot",
+            "it": "Per favore, vota il bot",
+            "ru": "Пожалуйста, оцените бота",
+            "es": "Por favor, califica al bot",
+            "pt": "Por favor, avalie o bot",
+            "uz": "Iltimos, botga baho bering",
+            "en": "Please, rate the bot",
+        },
+        "Variants": {
+            "ru": "Варианты",
+            "uk": "Варіанти",
+            "uz": "Variantlar",
+            "de": "Varianten",
+            "es": "Variantes",
+            "id": "Varian",
+            "it": "varianti",
+            "pt": "Variantes",
+        },
+        "Images":{
+            "es": "Imagenes",
+            "id": "Gambar-gambar",
+            "it": "immagini",
+            "pt": "Imagens",
+            "ru": "Картинки",
+            "uz": "Tasvirlar",
+            "de": "Bilder",
+            "uk": "Зображення",
+        },
     }
 
     if df, ok := languages[text]; ok { // Текст подходит под варианты

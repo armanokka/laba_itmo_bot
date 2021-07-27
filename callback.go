@@ -1,8 +1,10 @@
 package main
 
 import (
+    "errors"
     "github.com/armanokka/translobot/translate"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+    "github.com/k0kubun/pp"
     "os"
     "strings"
 )
@@ -19,6 +21,9 @@ func handleCallback(update *tgbotapi.Update) {
             MessageID:       update.CallbackQuery.Message.MessageID,
         })
         return
+    // case "rate":
+    //     bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
+    //     bot.Send()
     }
     arr := strings.Split(update.CallbackQuery.Data, ":")
     if len(arr) == 0 {
@@ -69,5 +74,37 @@ func handleCallback(update *tgbotapi.Update) {
         audio.Performer = "@TransloBot"
         audio.ReplyToMessageID = update.CallbackQuery.Message.MessageID
         bot.Send(audio)
+    case "variants": // arr[1] - from, arr[2] - to
+        tr, err := translate.GoogleTranslate(arr[1], arr[2], update.CallbackQuery.Message.Text)
+        if err != nil {
+            warn(err)
+        }
+        if tr.Variants == nil {
+            warn(errors.New("не найдено вариантов перевода"))
+        }
+        var text string
+        for _, variant := range tr.Variants {
+            text += "\n<b>" + variant.Word + "</b> - " + variant.Meaning
+        }
+        msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, text)
+        msg.ParseMode = tgbotapi.ModeHTML
+        bot.Send(msg)
+    case "images": // arr[1] - from, arr[2] - to
+        tr, err := translate.GoogleTranslate(arr[1], arr[2], update.CallbackQuery.Message.Text)
+        if err != nil {
+            warn(err)
+        }
+        if tr.Images == nil {
+            warn(errors.New("не найдено вариантов перевода"))
+        }
+        var photos []interface{}
+        for _, image := range tr.Images {
+            photos = append(photos, tgbotapi.NewInputMediaPhoto(tgbotapi.FileURL(image)))
+        }
+        mediagroup := tgbotapi.NewMediaGroup(update.CallbackQuery.From.ID, photos)
+        _, err = bot.Send(mediagroup)
+        if err != nil {
+            pp.Println(err)
+        }
     }
 }

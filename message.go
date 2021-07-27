@@ -226,7 +226,7 @@ func handleMessage(update *tgbotapi.Update) {
             analytics.Bot(update.Message.Chat.ID, msg.Text, "Translate language detected default")
         default: // У пользователя нет шага и сообщение не команда
             var user Users // Contains only MyLang and ToLang
-            err = db.Model(&Users{}).Select("my_lang", "to_lang").Where("id = ?", update.Message.Chat.ID).Limit(1).Find(&user).Error
+            err = db.Model(&Users{}).Select("my_lang", "to_lang", "usings").Where("id = ?", update.Message.Chat.ID).Limit(1).Find(&user).Error
             if err != nil {
                 warn(err)
                 return
@@ -287,8 +287,20 @@ func handleMessage(update *tgbotapi.Update) {
                 return
             }
             pp.Println(tr)
-            keyboard := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(Localize("To voice", UserLang), "speech:"+to)))
-            _, err = bot.Send(tgbotapi.NewEditMessageTextAndMarkup(update.Message.Chat.ID, msg.MessageID, tr.Text, keyboard))
+            keyboard := tgbotapi.NewInlineKeyboardMarkup(
+                tgbotapi.NewInlineKeyboardRow(
+                    tgbotapi.NewInlineKeyboardButtonData(Localize("To voice", UserLang), "speech:"+to),
+                    ),
+                )
+            if tr.Variants != nil {
+                keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(Localize("Variants", UserLang), "variants:"+lang+":"+to)))
+            }
+            if tr.Images != nil {
+                keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(Localize("Images", UserLang), "images:"+lang+":"+to)))
+            }
+            edit := tgbotapi.NewEditMessageTextAndMarkup(update.Message.Chat.ID, msg.MessageID, tr.Text, keyboard)
+            edit.ParseMode = tgbotapi.ModeHTML
+            _, err = bot.Send(edit)
             if err != nil {
                 pp.Println(err)
             }
@@ -299,6 +311,17 @@ func handleMessage(update *tgbotapi.Update) {
             // }
             
             analytics.Bot(update.Message.Chat.ID, tr.Text, "Translated")
+
+            // if user.Usings == 10 || user.Usings % 20 == 0 && user.Usings != 20 {
+            //     msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("Rate", UserLang))
+            //     kb := tgbotapi.NewInlineKeyboardMarkup(
+            //         tgbotapi.NewInlineKeyboardRow(
+            //             tgbotapi.NewInlineKeyboardButtonData("👍", "rate")),
+            //         tgbotapi.NewInlineKeyboardRow(
+            //             tgbotapi.NewInlineKeyboardButtonData("👎", "delete")))
+            //     msg.ReplyMarkup = kb
+            //     bot.Send(msg)
+            // }
             
             
             err = db.Exec("UPDATE users SET usings=usings+1 WHERE id=?", update.Message.Chat.ID).Error
