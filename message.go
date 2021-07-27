@@ -263,8 +263,10 @@ func handleMessage(update *tgbotapi.Update) {
             var to string // language into need to translate
             if lang == user.ToLang {
                 to = user.MyLang
-            } else {
+            } else if lang == user.MyLang {
                 to = user.ToLang
+            } else { // никакой из
+                to = user.MyLang
             }
             
             tr, err := translate.GoogleTranslate(lang, to, text)
