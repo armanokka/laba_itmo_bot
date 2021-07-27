@@ -274,6 +274,17 @@ func Localize(text, lang string, placeholders ...interface{}) string {
             "de": "Bilder",
             "uk": "Зображення",
         },
+        "Delete":{
+            "pt": "Excluir",
+            "uk": "Видалити",
+            "uz": "O'chirish",
+            "es": "Borrar",
+            "id": "Menghapus",
+            "it": "Elimina",
+            "ru": "Удалить",
+            "en": "Delete",
+            "de": "Löschen",
+        },
     }
 
     if df, ok := languages[text]; ok { // Текст подходит под варианты

@@ -73,6 +73,8 @@ func handleCallback(update *tgbotapi.Update) {
         audio.Title = cutString(update.CallbackQuery.Message.Text, 25)
         audio.Performer = "@TransloBot"
         audio.ReplyToMessageID = update.CallbackQuery.Message.MessageID
+        kb := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
+        audio.ReplyMarkup = kb
         bot.Send(audio)
     case "variants": // arr[1] - from, arr[2] - to
         tr, err := translate.GoogleTranslate(arr[1], arr[2], update.CallbackQuery.Message.ReplyToMessage.Text)
@@ -83,12 +85,19 @@ func handleCallback(update *tgbotapi.Update) {
             warn(errors.New("не найдено вариантов перевода"))
         }
         var text string
+        var limit uint8
         for _, variant := range tr.Variants {
+            if limit >= 5 {
+                break
+            }
             text += "\n<b>" + variant.Word + "</b> - " + variant.Meaning
+            limit++
         }
         msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, text)
         msg.ParseMode = tgbotapi.ModeHTML
         msg.ReplyToMessageID = update.CallbackQuery.Message.MessageID
+        kb := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
+        msg.ReplyMarkup = kb
         bot.Send(msg)
     case "images": // arr[1] - from, arr[2] - to
         tr, err := translate.GoogleTranslate(arr[1], arr[2], update.CallbackQuery.Message.ReplyToMessage.Text)
@@ -98,10 +107,10 @@ func handleCallback(update *tgbotapi.Update) {
         if len(tr.Images) == 0 {
             warn(errors.New("не найдено вариантов перевода"))
         }
-        var photos []interface{}
+        photos := make([]interface{}, 0, len(tr.Images))
         var limit uint8
         for _, image := range tr.Images {
-            if limit >= 5 {
+            if limit >= 2 {
                 break
             }
             photos = append(photos, tgbotapi.NewInputMediaPhoto(tgbotapi.FileURL(image)))
