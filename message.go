@@ -31,7 +31,7 @@ func handleMessage(update *tgbotapi.Update) {
         UserLang = "en"
     }
     
-    if strings.HasPrefix(update.Message.Text, "/start") || inArray(update.Message.Text, []string{"⬅Back", "Let's check", "⬅️Zurück","⬅️Atrás","⬅️Kembali","⬅️Indietro","⬅️Back","⬅️Назад","⬅️Arka", "⬅Zurück","⬅Atrás","⬅Kembali","⬅Indietro","⬅Back","⬅Назад","⬅Назад","⬅Arka"}) {
+    if strings.HasPrefix(update.Message.Text, "/start") || inArray(update.Message.Text, []string{"⬅Back", "⬅️Zurück","⬅️Atrás","⬅️Kembali","⬅️Indietro","⬅️Back","⬅️Назад","⬅️Arka", "⬅Zurück","⬅Atrás","⬅Kembali","⬅Indietro","⬅Back","⬅Назад","⬅Назад","⬅Arka"}) {
         var userExists bool
         err = db.Raw("SELECT EXISTS(SELECT id FROM users WHERE id=?)", update.Message.Chat.ID).Find(&userExists).Error
         if err != nil {
@@ -98,13 +98,17 @@ func handleMessage(update *tgbotapi.Update) {
         msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("/start", user.Lang, user.MyLang, user.ToLang))
         keyboard := tgbotapi.NewReplyKeyboard(
             tgbotapi.NewKeyboardButtonRow(
-                tgbotapi.NewKeyboardButton(Localize("💬 Change bot language", user.Lang))),
+                tgbotapi.NewKeyboardButton(Localize("🙎‍♂️Profile", user.Lang)),
+                ),
             tgbotapi.NewKeyboardButtonRow(
-                tgbotapi.NewKeyboardButton(Localize("💡Instruction", user.Lang))),
+                tgbotapi.NewKeyboardButton(Localize("💬 Bot language", user.Lang)),
+                tgbotapi.NewKeyboardButton(Localize("💡 Instruction", user.Lang)),
+                ),
             tgbotapi.NewKeyboardButtonRow(
-                tgbotapi.NewKeyboardButton(Localize("My Language", user.Lang))),
-            tgbotapi.NewKeyboardButtonRow(
-                tgbotapi.NewKeyboardButton(Localize("Translate Language", user.Lang))))
+                tgbotapi.NewKeyboardButton(Localize("My Language", user.Lang)),
+                tgbotapi.NewKeyboardButton(Localize("Translate Language", user.Lang)),
+                ),
+            )
         msg.ReplyMarkup = keyboard
         msg.ParseMode = tgbotapi.ModeHTML
         bot.Send(msg)
@@ -122,6 +126,18 @@ func handleMessage(update *tgbotapi.Update) {
     }
     
     switch update.Message.Text {
+    case "🙎‍♂️Profile", "🙎‍♂️Profil", "🙎‍♂️Perfil", "🙎‍♂️Профиль", "🙎‍♂️Profilo", "🙎‍♂️Профіль":
+        var user Users
+        err = db.Model(&Users{}).Select("my_lang", "to_lang", "lang").Where("id = ?", update.Message.Chat.ID).Find(&user).Error
+        if err != nil {
+            warn(err)
+            return
+        }
+        msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("/start", user.Lang, user.MyLang, user.ToLang))
+        msg.ParseMode = tgbotapi.ModeHTML
+        bot.Send(msg)
+    
+        analytics.Bot(update.Message.Chat.ID, msg.Text, "Profile")
     case "My Language", "/my_lang", "Мой Язык","Mi Idioma","Моя Мова","A Minha Língua","Bahasa Saya","La mia lingua","Tilimni","Meine Sprache":
         msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("/my_lang", UserLang))
         msg.ParseMode = tgbotapi.ModeHTML
@@ -136,7 +152,6 @@ func handleMessage(update *tgbotapi.Update) {
         }
     
         analytics.Bot(update.Message.Chat.ID, msg.Text, "Set my lang")
-        
     case "Translate Language", "/to_lang", "Sprache zum Übersetzen","Idioma para traducir","Bahasa untuk menerjemahkan","Lingua per tradurre","Língua para tradução","Язык перевода","Мова перекладу","Tarjima qilish uchun til":
         msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("/to_lang", UserLang))
         msg.ParseMode = tgbotapi.ModeHTML
@@ -152,14 +167,14 @@ func handleMessage(update *tgbotapi.Update) {
     
         analytics.Bot(update.Message.Chat.ID, msg.Text, "Set translate lang")
         
-    case "💡Instruction", "/help", "💡Инструкция", "💡Instrucción","💡Інструкція","💡Instrucao","💡Instruksi","💡Istruzione","💡Yo'riqnoma","💡Anweisung":
+    case "💡 Instruction", "/help", "💡 Инструкция", "💡 Instrucción","💡 Інструкція","💡 Instrucao","💡 Instruksi","💡 Istruzione","💡 Yo'riqnoma","💡 Anweisung":
         msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("/help", UserLang))
         msg.ParseMode = tgbotapi.ModeHTML
         bot.Send(msg)
     
         analytics.Bot(update.Message.Chat.ID, msg.Text, "Help")
 
-    case "💬 Change bot language", "/bot_lang", "💬 Bot-Sprache ändern","💬 Изменить язык бота", "💬 Змінити мову бота", "💬 Alterar o idioma do bot", "💬 Cambia la lingua del bot", "💬 Bot Bot tilini o'zgartiring", "💬 Cambiar el idioma del bot", "💬 Ubah bahasa bot":
+    case "💬 Bot language", "💬 Bot-Sprache","💬 Lenguaje bot","💬 Linguagem de bot", "💬 Бот-мова", "💬 Bot tili", "💬 Bahasa bot", "💬 Linguaggio Bot", "💬 Язык бота":
         langs := map[string]string{"en": "🇬🇧 English", "it": "🇮🇹 Italiano", "uz":"🇺🇿 O'zbek tili", "de":"🇩🇪 Deutsch", "ru":"🇷🇺 Русский", "es":"🇪🇸 Español", "uk":"🇺🇦 Український", "pt":"🇵🇹 Português", "id":"🇮🇩 Indonesia"}
         keyboard := tgbotapi.NewInlineKeyboardMarkup()
         for code, name := range langs {

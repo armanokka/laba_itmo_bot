@@ -2,6 +2,7 @@ package main
 
 import "fmt"
 
+
 func Localize(text, lang string, placeholders ...interface{}) string {
     
     
@@ -27,15 +28,25 @@ func Localize(text, lang string, placeholders ...interface{}) string {
             "uk": "Ваша мова - %s, а мова перекладу - %s.",
             "pt": "Seu idioma é - %s, e o idioma para tradução é - %s.",
         },
-        "💡Instruction": {
-            "ru":"💡Инструкция",
-            "es":"💡Instrucción",
-            "uk":"💡Інструкція",
-            "pt":"💡Instrucao",
-            "id":"💡Instruksi",
-            "it":"💡Istruzione",
-            "uz":"💡Yo'riqnoma",
-            "de":"💡Anweisung",
+        "💡 Instruction": {
+            "ru":"💡 Инструкция",
+            "es":"💡 Instrucción",
+            "uk":"💡 Інструкція",
+            "pt":"💡 Instrucao",
+            "id":"💡 Instruksi",
+            "it":"💡 Istruzione",
+            "uz":"💡 Yo'riqnoma",
+            "de":"💡 Anweisung",
+        },
+        "🙎‍♂️Profile": {
+            "id": "🙎‍♂️Profil",
+            "pt": "🙎‍♂️Perfil",
+            "ru": "🙎‍♂️Профиль",
+            "de": "🙎‍♂️Profil",
+            "es": "🙎‍♂️Perfil",
+            "uz": "🙎‍♂️Profil",
+            "it": "🙎‍♂️Profilo",
+            "uk": "🙎‍♂️Профіль",
         },
         "My Language": {
             "ru":"Мой Язык",
@@ -79,16 +90,16 @@ func Localize(text, lang string, placeholders ...interface{}) string {
             "ru": "Чтобы настроить язык перевода, выполните одно из следующих действий: 👇\n\nℹ️ Отправьте несколько слов на языке, который вы хотите перевести, например: «Hi, how are you?» - язык будет английский, или \"L'amour ne fait pas d'erreurs\" - язык будет французским, и так далее.\nℹ️ Или отправьте название языка, например «русский», или «японский», или «арабский» и т. Д.",
             "es": "Para configurar el idioma de traducción, realice una de las siguientes acciones: 👇\n\nℹ️ Envíe algunas palabras en el idioma que desea traducir, por ejemplo: \"Hi, how are you?\" - el idioma será el inglés, o \"L'amour ne fait pas d'erreurs\" - el idioma será el francés, etc.\nℹ️ O envíe el nombre del idioma, p. ej. \"Ruso\", \"Japonés\" o \"Árabe\", etc.",
         },
-        "💬 Change bot language":{
-            "de": "💬 Bot-Sprache ändern",
-            "ru": "💬 Изменить язык бота",
-            "uk": "💬 Змінити мову бота",
-            "pt": "💬 Alterar o idioma do bot",
-            "en": "💬 Change bot language",
-            "it": "💬 Cambia la lingua del bot",
-            "uz": "💬 Bot Bot tilini o'zgartiring",
-            "es": "💬 Cambiar el idioma del bot",
-            "id": "💬 Ubah bahasa bot",
+        "💬 Bot language":{
+            "de": "💬 Bot-Sprache",
+            "es": "💬 Lenguaje bot",
+            "pt": "💬 Linguagem de bot",
+            "uk": "💬 Бот-мова",
+            "uz": "💬 Bot tili",
+            "id": "💬 Bahasa bot",
+            "it": "💬 Linguaggio Bot",
+            "ru": "💬 Язык бота",
+            "en": "💬 Bot language",
         },
         "Please, select bot language":{
             "es": "Por favor, seleccione el idioma del bot",
