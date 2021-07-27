@@ -75,7 +75,7 @@ func handleCallback(update *tgbotapi.Update) {
         audio.ReplyToMessageID = update.CallbackQuery.Message.MessageID
         bot.Send(audio)
     case "variants": // arr[1] - from, arr[2] - to
-        tr, err := translate.GoogleTranslate(arr[2], arr[1], update.CallbackQuery.Message.Text)
+        tr, err := translate.GoogleTranslate(arr[1], arr[2], update.CallbackQuery.Message.ReplyToMessage.Text)
         if err != nil {
             warn(err)
         }
@@ -91,7 +91,7 @@ func handleCallback(update *tgbotapi.Update) {
         msg.ReplyToMessageID = update.CallbackQuery.Message.MessageID
         bot.Send(msg)
     case "images": // arr[1] - from, arr[2] - to
-        tr, err := translate.GoogleTranslate(arr[2], arr[1], update.CallbackQuery.Message.Text)
+        tr, err := translate.GoogleTranslate(arr[1], arr[2], update.CallbackQuery.Message.ReplyToMessage.Text)
         if err != nil {
             warn(err)
         }

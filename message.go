@@ -231,7 +231,9 @@ func handleMessage(update *tgbotapi.Update) {
                 warn(err)
                 return
             }
-            msg, err := bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, Localize("⏳ Translating...", UserLang)))
+            x := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("⏳ Translating...", UserLang))
+            x.ReplyToMessageID = update.Message.MessageID
+            msg, err := bot.Send(x)
             if err != nil {
                 return
             }
