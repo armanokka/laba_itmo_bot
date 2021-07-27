@@ -79,7 +79,7 @@ func handleCallback(update *tgbotapi.Update) {
         if err != nil {
             warn(err)
         }
-        if tr.Variants == nil {
+        if len(tr.Variants) == 0 {
             warn(errors.New("не найдено вариантов перевода"))
         }
         var text string
@@ -95,7 +95,7 @@ func handleCallback(update *tgbotapi.Update) {
         if err != nil {
             warn(err)
         }
-        if tr.Images == nil {
+        if len(tr.Images) == 0 {
             warn(errors.New("не найдено вариантов перевода"))
         }
         var photos []interface{}
