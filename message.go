@@ -133,6 +133,8 @@ func handleMessage(update *tgbotapi.Update) {
             warn(err)
             return
         }
+        user.ToLang = iso6391.Name(user.ToLang)
+        user.MyLang = iso6391.Name(user.MyLang)
         msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("/start", user.Lang, user.MyLang, user.ToLang))
         msg.ParseMode = tgbotapi.ModeHTML
         bot.Send(msg)

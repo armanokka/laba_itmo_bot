@@ -30,6 +30,11 @@ type Users struct {
     Lang string `gorm:"default:en"`
 }
 
+type Localization struct {
+    LanguageCode string
+    Text string
+}
+
 // type Referrers struct {
 //     ID int64 `gorm:"primaryKey;index;not null"`
 //     Code string
