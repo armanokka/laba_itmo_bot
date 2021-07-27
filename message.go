@@ -294,10 +294,10 @@ func handleMessage(update *tgbotapi.Update) {
                     tgbotapi.NewInlineKeyboardButtonData(Localize("To voice", UserLang), "speech:"+to),
                     ),
                 )
-            if tr.Variants != nil {
+            if len(tr.Variants) > 0 {
                 keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(Localize("Variants", UserLang), "variants:"+lang+":"+to)))
             }
-            if tr.Images != nil {
+            if len(tr.Images) > 0 {
                 keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(Localize("Images", UserLang), "images:"+lang+":"+to)))
             }
             edit := tgbotapi.NewEditMessageTextAndMarkup(update.Message.Chat.ID, msg.MessageID, tr.Text, keyboard)

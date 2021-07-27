@@ -99,8 +99,13 @@ func handleCallback(update *tgbotapi.Update) {
             warn(errors.New("не найдено вариантов перевода"))
         }
         var photos []interface{}
+        var limit uint8
         for _, image := range tr.Images {
+            if limit >= 5 {
+                break
+            }
             photos = append(photos, tgbotapi.NewInputMediaPhoto(tgbotapi.FileURL(image)))
+            limit++
         }
         mediagroup := tgbotapi.NewMediaGroup(update.CallbackQuery.From.ID, photos)
         mediagroup.ReplyToMessageID = update.CallbackQuery.Message.MessageID
