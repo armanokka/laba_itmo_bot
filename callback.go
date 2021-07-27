@@ -88,6 +88,7 @@ func handleCallback(update *tgbotapi.Update) {
         }
         msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, text)
         msg.ParseMode = tgbotapi.ModeHTML
+        msg.ReplyToMessageID = update.CallbackQuery.Message.MessageID
         bot.Send(msg)
     case "images": // arr[1] - from, arr[2] - to
         tr, err := translate.GoogleTranslate(arr[1], arr[2], update.CallbackQuery.Message.Text)
@@ -102,6 +103,7 @@ func handleCallback(update *tgbotapi.Update) {
             photos = append(photos, tgbotapi.NewInputMediaPhoto(tgbotapi.FileURL(image)))
         }
         mediagroup := tgbotapi.NewMediaGroup(update.CallbackQuery.From.ID, photos)
+        mediagroup.ReplyToMessageID = update.CallbackQuery.Message.MessageID
         _, err = bot.Send(mediagroup)
         if err != nil {
             pp.Println(err)
