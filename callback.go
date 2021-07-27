@@ -16,6 +16,7 @@ func handleCallback(update *tgbotapi.Update) {
     }
     switch update.CallbackQuery.Data {
     case "delete":
+        bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
         bot.Send(tgbotapi.DeleteMessageConfig{
             ChatID:          update.CallbackQuery.From.ID,
             MessageID:       update.CallbackQuery.Message.MessageID,
@@ -31,7 +32,6 @@ func handleCallback(update *tgbotapi.Update) {
     }
     switch arr[0] {
     case "set_bot_lang": // arr[1] - lang code
-        bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
         err := db.Model(&Users{}).Where("id = ?", update.CallbackQuery.From.ID).Limit(1).Update("lang", arr[1]).Error
         if err != nil {
             warn(err)
@@ -41,6 +41,7 @@ func handleCallback(update *tgbotapi.Update) {
             MessageID:       update.CallbackQuery.Message.MessageID,
         })
         bot.Send(tgbotapi.NewMessage(update.CallbackQuery.From.ID, Localize("Now press /start 👈", arr[1])))
+        bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
     case "speech": // arr[1] - lang code
         sdec, err := translate.TTS(arr[1], update.CallbackQuery.Message.Text)
         if err != nil {
@@ -76,6 +77,7 @@ func handleCallback(update *tgbotapi.Update) {
         kb := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
         audio.ReplyMarkup = kb
         bot.Send(audio)
+        bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
     case "variants": // arr[1] - from, arr[2] - to
         tr, err := translate.GoogleTranslate(arr[1], arr[2], update.CallbackQuery.Message.ReplyToMessage.Text)
         if err != nil {
@@ -99,6 +101,7 @@ func handleCallback(update *tgbotapi.Update) {
         kb := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
         msg.ReplyMarkup = kb
         bot.Send(msg)
+        bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
     case "images": // arr[1] - from, arr[2] - to
         tr, err := translate.GoogleTranslate(arr[1], arr[2], update.CallbackQuery.Message.ReplyToMessage.Text)
         if err != nil {
@@ -122,5 +125,6 @@ func handleCallback(update *tgbotapi.Update) {
         if err != nil {
             pp.Println(err)
         }
+        bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
     }
 }
