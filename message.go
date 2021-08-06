@@ -125,7 +125,7 @@ func handleMessage(update *tgbotapi.Update) {
     }
     
     switch update.Message.Text {
-    case "🙎‍♂️Profile", "🙎‍♂️Profil", "🙎‍♂️Perfil", "🙎‍♂️Профиль", "🙎‍♂️Profilo", "🙎‍♂️Профіль":
+    case "🙎‍♂️Profile", "🙍‍♂️Profil", "🙍‍♂️Perfil", "🙍‍♂️Профиль", "🙍‍♂️Profilo", "🙍‍♂️Профіль":
         var user Users
         err = db.Model(&Users{}).Select("my_lang", "to_lang", "lang").Where("id = ?", update.Message.Chat.ID).Find(&user).Error
         if err != nil {
