@@ -36,7 +36,7 @@ func botRun(update *tgbotapi.Update) {
 func main() {
 	// Initializing PostgreSQL DB
 	var err error
-	db, err = gorm.Open(mysql.Open("f0568401_user:8J8cu9FWg@tcp(141.8.193.236:3306)/f0568401_user?charset=utf8mb4&parseTime=True&loc=Local"), &gorm.Config{SkipDefaultTransaction: true, PrepareStmt: false})
+	db, err = gorm.Open(mysql.Open("f0568401_user:NlEbEgda@tcp(141.8.193.236:3306)/f0568401_user?charset=utf8mb4&parseTime=True&loc=Local"), &gorm.Config{SkipDefaultTransaction: true, PrepareStmt: false})
 	if err != nil {
 		panic(err)
 	}
