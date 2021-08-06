@@ -3,7 +3,6 @@ package main
 import (
     "database/sql"
     "github.com/armanokka/translobot/dashbot"
-    tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "gorm.io/gorm"
 )
 
@@ -15,7 +14,7 @@ const (
 
 var (
     db  *gorm.DB
-    bot *tgbotapi.BotAPI
+    bot *BotAPI
     analytics *dashbot.DashBot
 )
 

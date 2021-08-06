@@ -44,10 +44,11 @@ func main() {
 	analytics = dashbot.NewAPI(DashBotAPIKey, WarnErrorAdmin)
 	
 	// Initializing bot
-	bot, err = tgbotapi.NewBotAPI(botToken)
+	api, err := tgbotapi.NewBotAPI(botToken)
 	if err != nil {
 		panic(err)
 	}
+	bot = &BotAPI{api}
 	bot.Debug = false // >:(
 
 	// Ports for Heroku
