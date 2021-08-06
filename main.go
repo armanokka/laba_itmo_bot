@@ -7,7 +7,7 @@ import (
 	"github.com/armanokka/translobot/dashbot"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/valyala/fasthttp"
-	"gorm.io/driver/postgres"
+	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"log"
 	"os"
@@ -36,7 +36,7 @@ func botRun(update *tgbotapi.Update) {
 func main() {
 	// Initializing PostgreSQL DB
 	var err error
-	db, err = gorm.Open(postgres.Open("host=ec2-63-34-97-163.eu-west-1.compute.amazonaws.com user=wzlryrrgxbgsbw password=b578bdbc77b5394a60f57660487149ca2238e0cbaf1cdbfb8b931f1168af24c7 dbname=d21k8q9pl6acl4 port=5432 TimeZone=Europe/Moscow"), &gorm.Config{SkipDefaultTransaction: true, PrepareStmt: false})
+	db, err = gorm.Open(mysql.Open("f0568401_user:rVw5N5Sn@tcp(141.8.193.236:3306)/f0568401_user?charset=utf8mb4&parseTime=True&loc=Local/Moscow"), &gorm.Config{SkipDefaultTransaction: true, PrepareStmt: false})
 	if err != nil {
 		panic(err)
 	}

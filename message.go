@@ -14,7 +14,6 @@ func handleMessage(update *tgbotapi.Update) {
         bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, Localize("Sorry, error caused.\n\nPlease, don't block the bot, I'll fix the bug in near future, the administrator has already been warned about this error ;)", update.Message.From.LanguageCode)))
         WarnAdmin(err)
     }
-    analytics.Error = warn
     analytics.User(update.Message.Text, update.Message.From)
     
     if update.Message.Chat.ID < 0 {

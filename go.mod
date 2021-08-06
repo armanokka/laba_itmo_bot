@@ -13,6 +13,7 @@ require (
 	github.com/m90/go-chatbase v2.0.0+incompatible // indirect
 	github.com/technoweenie/multipartstreamer v1.0.1 // indirect
 	github.com/valyala/fasthttp v1.27.0
-	gorm.io/driver/postgres v1.1.0
-	gorm.io/gorm v1.21.11
+	gorm.io/driver/mysql v1.1.1
+	gorm.io/driver/postgres v1.1.0 // indirect
+	gorm.io/gorm v1.21.12
 )

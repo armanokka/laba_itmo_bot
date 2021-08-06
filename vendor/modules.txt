@@ -8,31 +8,13 @@ github.com/andybalholm/cascadia
 # github.com/emvi/iso-639-1 v1.0.1
 ## explicit
 github.com/emvi/iso-639-1
+# github.com/go-sql-driver/mysql v1.6.0
+github.com/go-sql-driver/mysql
 # github.com/go-telegram-bot-api/telegram-bot-api v4.6.4+incompatible
 ## explicit
 # github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.0.0-rc1.0.20210608165722-fb1de2fb48dd
 ## explicit
 github.com/go-telegram-bot-api/telegram-bot-api/v5
-# github.com/jackc/chunkreader/v2 v2.0.1
-github.com/jackc/chunkreader/v2
-# github.com/jackc/pgconn v1.8.1
-github.com/jackc/pgconn
-github.com/jackc/pgconn/internal/ctxwatch
-github.com/jackc/pgconn/stmtcache
-# github.com/jackc/pgio v1.0.0
-github.com/jackc/pgio
-# github.com/jackc/pgpassfile v1.0.0
-github.com/jackc/pgpassfile
-# github.com/jackc/pgproto3/v2 v2.0.6
-github.com/jackc/pgproto3/v2
-# github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b
-github.com/jackc/pgservicefile
-# github.com/jackc/pgtype v1.7.0
-github.com/jackc/pgtype
-# github.com/jackc/pgx/v4 v4.11.0
-github.com/jackc/pgx/v4
-github.com/jackc/pgx/v4/internal/sanitize
-github.com/jackc/pgx/v4/stdlib
 # github.com/jinzhu/inflection v1.0.0
 github.com/jinzhu/inflection
 # github.com/jinzhu/now v1.1.2
@@ -61,32 +43,18 @@ github.com/valyala/bytebufferpool
 github.com/valyala/fasthttp
 github.com/valyala/fasthttp/fasthttputil
 github.com/valyala/fasthttp/stackless
-# golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a
-golang.org/x/crypto/pbkdf2
 # golang.org/x/net v0.0.0-20210510120150-4163338589ed
 golang.org/x/net/html
 golang.org/x/net/html/atom
 # golang.org/x/sys v0.0.0-20210514084401-e8d321eab015
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
-# golang.org/x/text v0.3.6
-golang.org/x/text/cases
-golang.org/x/text/internal
-golang.org/x/text/internal/language
-golang.org/x/text/internal/language/compact
-golang.org/x/text/internal/tag
-golang.org/x/text/language
-golang.org/x/text/runes
-golang.org/x/text/secure/bidirule
-golang.org/x/text/secure/precis
-golang.org/x/text/transform
-golang.org/x/text/unicode/bidi
-golang.org/x/text/unicode/norm
-golang.org/x/text/width
+# gorm.io/driver/mysql v1.1.1
+## explicit
+gorm.io/driver/mysql
 # gorm.io/driver/postgres v1.1.0
 ## explicit
-gorm.io/driver/postgres
-# gorm.io/gorm v1.21.11
+# gorm.io/gorm v1.21.12
 ## explicit
 gorm.io/gorm
 gorm.io/gorm/callbacks
