@@ -465,7 +465,7 @@ func Localize(text, lang string, placeholders ...interface{}) string {
                 Text:         "Please, rate the bot",
             },
         },
-        "🙍‍♂️Profile": {
+        "🙎‍♂️Profile": {
             {
             LanguageCode: "es",
                 Text:         "🙍‍♂️Perfil",
