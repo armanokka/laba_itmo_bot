@@ -42,7 +42,8 @@ func handleCallback(update *tgbotapi.Update) {
         bot.Send(tgbotapi.NewMessage(update.CallbackQuery.From.ID, Localize("Now press /start 👈", arr[1])))
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
     case "speech": // arr[1] - lang code
-        sdec, err := translate.TTS(arr[1], update.CallbackQuery.Message.Text)
+        parts := strings.Split(update.CallbackQuery.Message.Text, "\n")
+        sdec, err := translate.TTS(arr[1], strings.Join(parts[:len(parts)-1], ""))
         if err != nil {
             if e, ok := err.(translate.TTSError); ok {
                 if e.Code == 500 || e.Code == 414 {
