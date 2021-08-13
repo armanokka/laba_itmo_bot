@@ -184,7 +184,7 @@ func handleMessage(update *tgbotapi.Update) {
         msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("Please, select bot language", UserLang))
         msg.ReplyMarkup = keyboard
         bot.Send(msg)
-    case "/advertise":
+    case "/sponsorship":
         // msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
         // bot.Send()
     default: // Сообщение не является командой.

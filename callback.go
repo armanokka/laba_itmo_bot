@@ -43,7 +43,8 @@ func handleCallback(update *tgbotapi.Update) {
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
     case "speech": // arr[1] - lang code
         parts := strings.Split(update.CallbackQuery.Message.Text, "\n")
-        sdec, err := translate.TTS(arr[1], strings.Join(parts[:len(parts)-1], ""))
+        update.CallbackQuery.Message.Text = strings.Join(parts[:len(parts)-1], "")
+        sdec, err := translate.TTS(arr[1], update.CallbackQuery.Message.Text)
         if err != nil {
             if e, ok := err.(translate.TTSError); ok {
                 if e.Code == 500 || e.Code == 414 {
@@ -71,7 +72,7 @@ func handleCallback(update *tgbotapi.Update) {
             warn(err)
             return
         }
-        audio.Title = cutString(update.CallbackQuery.Message.Text, 25)
+        audio.Title = update.CallbackQuery.Message.Text
         audio.Performer = "@TransloBot"
         audio.ReplyToMessageID = update.CallbackQuery.Message.MessageID
         kb := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
