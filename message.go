@@ -184,6 +184,9 @@ func handleMessage(update *tgbotapi.Update) {
         msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("Please, select bot language", UserLang))
         msg.ReplyMarkup = keyboard
         bot.Send(msg)
+    case "/advertise":
+        // msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+        // bot.Send()
     default: // Сообщение не является командой.
     
         userStep, err := getUserStep(update.Message.Chat.ID)
@@ -240,6 +243,7 @@ func handleMessage(update *tgbotapi.Update) {
             bot.Send(msg)
             
             analytics.Bot(update.Message.Chat.ID, msg.Text, "Translate language detected default")
+
         default: // У пользователя нет шага и сообщение не команда
             var user Users // Contains only MyLang and ToLang
             err = db.Model(&Users{}).Select("my_lang", "to_lang", "usings").Where("id = ?", update.Message.Chat.ID).Limit(1).Find(&user).Error
@@ -319,12 +323,12 @@ func handleMessage(update *tgbotapi.Update) {
             edit := tgbotapi.NewEditMessageTextAndMarkup(update.Message.Chat.ID, msg.MessageID, tr.Text, keyboard)
             edit.ParseMode = tgbotapi.ModeHTML
             edit.DisableWebPagePreview = true
-            var offer Offers
-            err = db.Model(&Offers{}).Select("name", "link").Where("start <= current_timestamp AND finish >= current_timestamp").Limit(1).Find(&offer).Error
+            var sponsorship Sponsorships
+            err = db.Model(&Sponsorships{}).Select("name", "link").Where("start <= current_timestamp AND finish >= current_timestamp").Limit(1).Find(&sponsorship).Error
             if err != nil {
                 WarnAdmin(err)
             } else { // no error
-                edit.Text += "\n"+Localize("Powered by", UserLang) + ` <a href="` + offer.Link + `">` + offer.Name + `</a>`
+                edit.Text += "\n⚡️"+Localize("Powered by", UserLang) + ` <a href="` + sponsorship.Link + `">` + sponsorship.Name + `</a>`
             }
 
             _, err = bot.Send(edit)

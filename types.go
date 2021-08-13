@@ -31,7 +31,7 @@ type Users struct {
 }
 
 // Offers is table in DB
-type Offers struct {
+type Sponsorships struct {
     ID int64 // ID of user that bought offer
     Name string // Text of hyperlink
     Link string // t.me/armanokka, or t.me/joinchat/...

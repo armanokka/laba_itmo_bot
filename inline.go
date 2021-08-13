@@ -8,6 +8,8 @@ import (
 )
 
 func handleInline(update *tgbotapi.Update) {
+    analytics.User(update.InlineQuery.Query, update.InlineQuery.From)
+    
     warn := func(err error) {
         bot.AnswerInlineQuery(tgbotapi.InlineConfig{
             InlineQueryID:     update.InlineQuery.ID,
@@ -102,4 +104,6 @@ func handleInline(update *tgbotapi.Update) {
         SwitchPMText:      "Translo",
         SwitchPMParameter: "from_inline",
     })
+    
+    analytics.Bot(update.InlineQuery.From.ID, "Inline succeeded", "Inline succeeded")
 }
