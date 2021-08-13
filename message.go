@@ -191,7 +191,9 @@ func handleMessage(update *tgbotapi.Update) {
         
         photo2 := tgbotapi.NewInputMediaPhoto("images/pic2.jpg")
         media := tgbotapi.NewMediaGroup(update.Message.Chat.ID, []interface{}{photo1, photo2})
-        bot.Send(media)
+        if _, err = bot.Send(media); err != nil {
+            pp.Println(err)
+        }
     default: // Сообщение не является командой.
     
         userStep, err := getUserStep(update.Message.Chat.ID)
