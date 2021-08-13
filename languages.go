@@ -995,7 +995,45 @@ func Localize(text, lang string, placeholders ...interface{}) string {
                 Text:         "Tasvirlar",
             },
         },
-    }
+        "Powered by": {
+            {
+                LanguageCode: "de",
+                Text:         "Gesponsert von",
+            },
+            {
+                LanguageCode: "es",
+                Text:         "Patrocinado por",
+            },
+            {
+                LanguageCode: "id",
+                Text:         "Disponsori oleh",
+            },
+            {
+                LanguageCode: "it",
+                Text:         "Sponsorizzato da",
+            },
+            {
+                LanguageCode: "pt",
+                Text:         "Distribuído por",
+            },
+            {
+                LanguageCode: "ru",
+                Text:         "При поддержке",
+            },
+            {
+                LanguageCode: "uk",
+                Text:         "Спонсорується",
+            },
+            {
+                LanguageCode: "uz",
+                Text:         "Tomonidan qo'llab-quvvatlanadi",
+            },
+            {
+                LanguageCode: "en",
+                Text:         "Powered by",
+            },
+        },
+}
     
     if df, ok := languages[text]; ok { // Текст подходит под варианты
         if v, ok := CorrespLang(&df, lang); ok {

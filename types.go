@@ -4,6 +4,7 @@ import (
     "database/sql"
     "github.com/armanokka/translobot/dashbot"
     "gorm.io/gorm"
+    "time"
 )
 
 const (
@@ -27,6 +28,15 @@ type Users struct {
     Mailing bool `gorm:"default:true"`
     Usings int64 `gorm:"default:0"`
     Lang string `gorm:"default:en"`
+}
+
+// Offers is table in DB
+type Offers struct {
+    ID int64 // ID of user that bought offer
+    Name string // Text of hyperlink
+    Link string // t.me/armanokka, or t.me/joinchat/...
+    Start time.Time // When offer starts
+    Finish time.Time // When offer finish
 }
 
 type Localization struct {

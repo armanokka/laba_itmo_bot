@@ -315,11 +315,18 @@ func handleMessage(update *tgbotapi.Update) {
             if len(tr.Variants) > 0 {
                 keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(Localize("Variants", UserLang), "variants:"+lang+":"+to)))
             }
-            if len(tr.Images) > 0 {
-                keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(Localize("Images", UserLang), "images:"+lang+":"+to)))
-            }
+    
             edit := tgbotapi.NewEditMessageTextAndMarkup(update.Message.Chat.ID, msg.MessageID, tr.Text, keyboard)
             edit.ParseMode = tgbotapi.ModeHTML
+            
+            var offer Offers
+            err = db.Model(&Offers{}).Select("name", "link").Where("start <= current_timestamp AND finish >= current_timestamp").Limit(1).Find(&offer).Error
+            if err != nil {
+                WarnAdmin(err)
+            } else { // no error
+                edit.Text += "\n"+Localize("Powered by", UserLang) + ` <a href="` + offer.Link + `">` + offer.Name + `</a>`
+            }
+
             _, err = bot.Send(edit)
             if err != nil {
                 pp.Println(err)

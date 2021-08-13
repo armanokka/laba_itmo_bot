@@ -4,7 +4,6 @@ import (
     "errors"
     "github.com/armanokka/translobot/translate"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-    "github.com/k0kubun/pp"
     "os"
     "strings"
 )
@@ -46,7 +45,7 @@ func handleCallback(update *tgbotapi.Update) {
         sdec, err := translate.TTS(arr[1], update.CallbackQuery.Message.Text)
         if err != nil {
             if e, ok := err.(translate.TTSError); ok {
-                if e.Code == 500 {
+                if e.Code == 500 || e.Code == 414 {
                     bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "Too big text"))
                     return
                 }
@@ -101,30 +100,6 @@ func handleCallback(update *tgbotapi.Update) {
         kb := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
         msg.ReplyMarkup = kb
         bot.Send(msg)
-        bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
-    case "images": // arr[1] - from, arr[2] - to
-        tr, err := translate.GoogleTranslate(arr[1], arr[2], update.CallbackQuery.Message.ReplyToMessage.Text)
-        if err != nil {
-            warn(err)
-        }
-        if len(tr.Images) == 0 {
-            warn(errors.New("не найдено вариантов перевода"))
-        }
-        photos := make([]interface{}, 0, len(tr.Images))
-        var limit uint8
-        for _, image := range tr.Images {
-            if limit >= 2 {
-                break
-            }
-            photos = append(photos, tgbotapi.NewInputMediaPhoto(tgbotapi.FileURL(image)))
-            limit++
-        }
-        mediagroup := tgbotapi.NewMediaGroup(update.CallbackQuery.From.ID, photos)
-        mediagroup.ReplyToMessageID = update.CallbackQuery.Message.MessageID
-        _, err = bot.Send(mediagroup)
-        if err != nil {
-            pp.Println(err)
-        }
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
     }
 }
