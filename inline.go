@@ -65,6 +65,17 @@ func handleInline(update *tgbotapi.Update) {
         end = languagesLen - 1
     }
     results := make([]interface{}, 0, 10)
+    
+    var sponsorship Sponsorships
+    var sponsorText string
+    err = db.Model(&Sponsorships{}).Select("name", "link").Where("start <= current_timestamp AND finish >= current_timestamp").Limit(1).Find(&sponsorship).Error
+    if err != nil {
+        WarnAdmin(err)
+    } else { // no error
+        sponsorText = "\n⚡️"+Localize("Powered by", update.InlineQuery.From.LanguageCode) + ` <a href="` + sponsorship.Link + `">` + sponsorship.Name + `</a>`
+    }
+    
+    
     for ;offset < end; offset++ {
         to := languages[offset] // language code to translate
         tr, err := translate.GoogleTranslate(from, to, update.InlineQuery.Query)
@@ -75,6 +86,7 @@ func handleInline(update *tgbotapi.Update) {
         if tr.Text == "" {
             continue // ну не вышло, так не вышло, че бубнить-то
         }
+        tr.Text += "\n"+sponsorText
         inputMessageContent := map[string]interface{}{
             "message_text":tr.Text,
             "disable_web_page_preview":true,
