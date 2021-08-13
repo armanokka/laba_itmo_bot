@@ -72,7 +72,7 @@ func handleInline(update *tgbotapi.Update) {
     if err != nil {
         WarnAdmin(err)
     } else { // no error
-        sponsorText = "⚡️"+Localize("Powered by", update.InlineQuery.From.LanguageCode) + ` <a href="` + sponsorship.Link + `">` + sponsorship.Name + `</a>`
+        sponsorText = "\n⚡️"+Localize("Powered by", update.InlineQuery.From.LanguageCode) + ` <a href="` + sponsorship.Link + `">` + sponsorship.Name + `</a>`
     }
     
     
@@ -86,9 +86,9 @@ func handleInline(update *tgbotapi.Update) {
         if tr.Text == "" {
             continue // ну не вышло, так не вышло, че бубнить-то
         }
-        tr.Text += "\n"+sponsorText
+        
         inputMessageContent := map[string]interface{}{
-            "message_text":tr.Text,
+            "message_text":tr.Text + sponsorText,
             "parse_mode": tgbotapi.ModeHTML,
             "disable_web_page_preview":true,
         }
@@ -99,7 +99,7 @@ func handleInline(update *tgbotapi.Update) {
             InputMessageContent: inputMessageContent,
             URL:                 "https://t.me/TransloBot?start=from_inline",
             HideURL:             true,
-            Description:         cutString(tr.Text, 40),
+            Description:         tr.Text,
         })
     }
     
