@@ -72,7 +72,7 @@ func handleInline(update *tgbotapi.Update) {
     if err != nil {
         WarnAdmin(err)
     } else { // no error
-        sponsorText = "\n⚡️"+Localize("Powered by", update.InlineQuery.From.LanguageCode) + ` <a href="` + sponsorship.Link + `">` + sponsorship.Name + `</a>`
+        sponsorText = "⚡️"+Localize("Powered by", update.InlineQuery.From.LanguageCode) + ` <a href="` + sponsorship.Link + `">` + sponsorship.Name + `</a>`
     }
     
     
@@ -89,6 +89,7 @@ func handleInline(update *tgbotapi.Update) {
         tr.Text += "\n"+sponsorText
         inputMessageContent := map[string]interface{}{
             "message_text":tr.Text,
+            "parse_mode": tgbotapi.ModeHTML,
             "disable_web_page_preview":true,
         }
         results = append(results, tgbotapi.InlineQueryResultArticle{
