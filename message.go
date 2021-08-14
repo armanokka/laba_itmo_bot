@@ -332,11 +332,14 @@ func handleMessage(update *tgbotapi.Update) {
             edit.DisableWebPagePreview = true
             
             var sponsorship Sponsorships
-            err = db.Model(&Sponsorships{}).Select("name", "link").Where("start <= current_timestamp AND finish >= current_timestamp").Limit(1).Find(&sponsorship).Error
+            err = db.Model(&Sponsorships{}).Select("text", "to_langs").Where("start <= current_timestamp AND finish >= current_timestamp").Limit(1).Find(&sponsorship).Error
             if err != nil {
                 WarnAdmin(err)
             } else { // no error
-                edit.Text += "\n⚡️"+Localize("Powered by", UserLang) + ` <a href="` + sponsorship.Link + `">` + sponsorship.Name + `</a>`
+                langs := strings.Split(sponsorship.ToLangs, ",")
+                if inArray(UserLang, langs) {
+                    edit.Text += "\n⚡️" + sponsorship.Text
+                }
             }
 
             _, err = bot.Send(edit)

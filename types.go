@@ -33,8 +33,8 @@ type Users struct {
 // Offers is table in DB
 type Sponsorships struct {
     ID int64 // ID of user that bought offer
-    Name string // Text of hyperlink
-    Link string // t.me/armanokka, or t.me/joinchat/...
+    Text string // Advertise
+    ToLangs string // String of languages separated by "," of users that must to receive advertise
     Start time.Time // When offer starts
     Finish time.Time // When offer finish
 }

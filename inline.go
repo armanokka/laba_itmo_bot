@@ -5,6 +5,7 @@ import (
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "strconv"
+    "strings"
 )
 
 func handleInline(update *tgbotapi.Update) {
@@ -68,11 +69,14 @@ func handleInline(update *tgbotapi.Update) {
     
     var sponsorship Sponsorships
     var sponsorText string
-    err = db.Model(&Sponsorships{}).Select("name", "link").Where("start <= current_timestamp AND finish >= current_timestamp").Limit(1).Find(&sponsorship).Error
+    err = db.Model(&Sponsorships{}).Select("text", "to_langs").Where("start <= current_timestamp AND finish >= current_timestamp").Limit(1).Find(&sponsorship).Error
     if err != nil {
         WarnAdmin(err)
     } else { // no error
-        sponsorText = "\n⚡️"+Localize("Powered by", update.InlineQuery.From.LanguageCode) + ` <a href="` + sponsorship.Link + `">` + sponsorship.Name + `</a>`
+        langs := strings.Split(sponsorship.ToLangs, ",")
+        if inArray(update.InlineQuery.From.LanguageCode, langs) {
+            sponsorText = "\n⚡️" + sponsorship.Text
+        }
     }
     
     
