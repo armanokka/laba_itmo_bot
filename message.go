@@ -193,6 +193,7 @@ func handleMessage(update *tgbotapi.Update) {
             tgbotapi.NewKeyboardButtonRow(
                 tgbotapi.NewKeyboardButton(Localize("⬅Back", UserLang))))
         msg.ReplyMarkup = keyboard
+        msg.ParseMode = tgbotapi.ModeHTML
         bot.Send(msg)
         
         if err = setUserStep(update.Message.Chat.ID, "sponsorship_set_text"); err != nil {
