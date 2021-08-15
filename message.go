@@ -213,13 +213,27 @@ func handleMessage(update *tgbotapi.Update) {
                 bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, Localize("Too big text", UserLang)))
                 return
             }
-            if err = db.Create(&SponsorshipsOffers{
-                ID:      update.Message.Chat.ID,
-                Text:    update.Message.Text,
-            }).Error; err != nil {
+            var sponsorshipExists bool
+            err = db.Model(&SponsorshipsOffers{}).Raw("SELECT EXISTS(SELECT id FROM sponsorships_offers WHERE id=?)", update.Message.From.ID).Find(&sponsorshipExists).Error
+            if err != nil {
                 warn(err)
                 return
             }
+            if sponsorshipExists {
+                if err = db.Where("id = ?", update.Message.From.ID).Update("text", update.Message.Text).Error; err != nil {
+                    warn(err)
+                    return
+                }
+            } else {
+                if err = db.Create(&SponsorshipsOffers{
+                    ID:      update.Message.Chat.ID,
+                    Text:    update.Message.Text,
+                }).Error; err != nil {
+                    warn(err)
+                    return
+                }
+            }
+
             bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, Localize("sponsorship_set_days", UserLang)))
             
             if err = setUserStep(update.Message.Chat.ID, "sponsorship_set_days"); err != nil {
