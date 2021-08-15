@@ -14,7 +14,10 @@ func handleCallback(update *tgbotapi.Update) {
         bot.Send(tgbotapi.NewCallback(update.CallbackQuery.ID, "Error, sorry"))
         WarnAdmin(err)
     }
-    switch update.CallbackQuery.Data {
+
+    arr := strings.Split(update.CallbackQuery.Data, ":")
+
+    switch arr[0] {
     case "delete":
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
         bot.Send(tgbotapi.DeleteMessageConfig{
@@ -22,15 +25,6 @@ func handleCallback(update *tgbotapi.Update) {
             MessageID:       update.CallbackQuery.Message.MessageID,
         })
         return
-    // case "rate":
-    //     bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
-    //     bot.Send()
-    }
-    arr := strings.Split(update.CallbackQuery.Data, ":")
-    if len(arr) < 2 {
-        return
-    }
-    switch arr[0] {
     case "set_bot_lang": // arr[1] - lang code
         err := db.Model(&Users{}).Where("id = ?", update.CallbackQuery.From.ID).Limit(1).Update("lang", arr[1]).Error
         if err != nil {
