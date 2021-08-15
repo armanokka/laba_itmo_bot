@@ -220,7 +220,7 @@ func handleMessage(update *tgbotapi.Update) {
                 return
             }
             if sponsorshipExists {
-                if err = db.Where("id = ?", update.Message.From.ID).Update("text", update.Message.Text).Error; err != nil {
+                if err = db.Model(&SponsorshipsOffers{}).Where("id = ?", update.Message.From.ID).Update("text", update.Message.Text).Error; err != nil {
                     warn(err)
                     return
                 }
