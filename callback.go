@@ -168,6 +168,10 @@ func handleCallback(update *tgbotapi.Update) {
         }
         bot.Send(tgbotapi.NewEditMessageReplyMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, *update.CallbackQuery.Message.ReplyMarkup))
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
-    
+    case "sponsorship_pay":
+        bot.Send(tgbotapi.NewMessage(update.CallbackQuery.From.ID, "Скоро будет дальше, а пока тут пусто"))
+        if err := setUserStep(update.CallbackQuery.From.ID, ""); err != nil {
+            warn(err)
+        }
     }
 }

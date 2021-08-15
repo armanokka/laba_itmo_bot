@@ -1185,42 +1185,80 @@ func Localize(text, lang string, placeholders ...interface{}) string {
                 Text:         "The number of days must be from 1 to 30 inclusive",
             },
         },
-        "Выберите страны пользователей, которые получат вашу рассылку.": {
+        "Выберите страны пользователей, которые получат вашу рассылку. Когда закончите, нажмите кнопку Далее": {
             {
                 LanguageCode: "de",
-                Text:         "Wählen Sie die Länder der Benutzer aus, die Ihren Newsletter erhalten.",
+                Text:         "Wählen Sie die Länder der Benutzer aus, die Ihren Newsletter erhalten. Wenn Sie fertig sind, klicken Sie auf Weiter",
             },
             {
                 LanguageCode: "es",
-                Text:         "Seleccione los países de los usuarios que recibirán su newsletter.",
+                Text:         "Seleccione los países de los usuarios que recibirán su newsletter. Cuando termine, haga clic en Siguiente",
             },
             {
                 LanguageCode: "id",
-                Text:         "Pilih negara pengguna yang akan menerima buletin Anda.",
+                Text:         "Pilih negara pengguna yang akan menerima buletin Anda. Setelah selesai, klik Berikutnya",
             },
             {
                 LanguageCode: "it",
-                Text:         "Seleziona i paesi degli utenti che riceveranno la tua newsletter.",
+                Text:         "Seleziona i paesi degli utenti che riceveranno la tua newsletter. Al termine, fai clic su Avanti",
             },
             {
                 LanguageCode: "pt",
-                Text:         "Selecione os países dos usuários que receberão sua newsletter.",
+                Text:         "Selecione os países dos usuários que receberão sua newsletter. Quando terminar, clique em Avançar",
             },
             {
                 LanguageCode: "ru",
-                Text:         "Выберите страны пользователей, которые получат вашу рассылку.",
+                Text:         "Выберите страны пользователей, которые получат вашу рассылку. Когда закончите, нажмите кнопку Далее",
             },
             {
                 LanguageCode: "uk",
-                Text:         "Виберіть країни користувачів, які отримають вашу розсилку.",
+                Text:         "Виберіть країни користувачів, які отримають вашу розсилку. Коли закінчите, натисніть кнопку Далі",
             },
             {
                 LanguageCode: "uz",
-                Text:         "Sizning axborot byulleteningizni oladigan foydalanuvchilarning mamlakatlarini tanlang.",
+                Text:         "Sizning axborot byulleteningizni oladigan foydalanuvchilarning mamlakatlarini tanlang. Ish tugagach, Keyingiga bosing",
             },
             {
                 LanguageCode: "en",
-                Text:         "Select the countries of the users who will receive your newsletter.",
+                Text:         "Select the countries of the users who will receive your newsletter. When done, click Next",
+            },
+        },
+        "Далее": {
+            {
+                LanguageCode: "de",
+                Text:         "Weiter ▶",
+            },
+            {
+                LanguageCode: "es",
+                Text:         "Siguiente ▶",
+            },
+            {
+                LanguageCode: "id",
+                Text:         "Selanjutnya",
+            },
+            {
+                LanguageCode: "it",
+                Text:         "Avanti ▶",
+            },
+            {
+                LanguageCode: "pt",
+                Text:         "Próximo ▶",
+            },
+            {
+                LanguageCode: "ru",
+                Text:         "Далее ▶",
+            },
+            {
+                LanguageCode: "uk",
+                Text:         "Далі ▶",
+            },
+            {
+                LanguageCode: "uz",
+                Text:         "Keyingi ▶",
+            },
+            {
+                LanguageCode: "en",
+                Text:         "Next ▶",
             },
         },
 }

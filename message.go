@@ -240,13 +240,13 @@ func handleMessage(update *tgbotapi.Update) {
                 warn(err)
                 return
             }
-            msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("Выберите страны пользователей, которые получат вашу рассылку.", UserLang))
-            bot.Send(msg)
+            msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("Выберите языки пользователей, которые получат вашу рассылку.", UserLang))
             langs := map[string]string{"en": "🇬🇧 English", "it": "🇮🇹 Italiano", "uz":"🇺🇿 O'zbek tili", "de":"🇩🇪 Deutsch", "ru":"🇷🇺 Русский", "es":"🇪🇸 Español", "uk":"🇺🇦 Український", "pt":"🇵🇹 Português", "id":"🇮🇩 Indonesia"}
             keyboard := tgbotapi.NewInlineKeyboardMarkup()
             for code, name := range langs {
                 keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(name, "country:"+code)))
             }
+            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(Localize("Далее", UserLang), "sponsorship_pay")))
             msg.ReplyMarkup = keyboard
             bot.Send(msg)
             if err = setUserStep(update.Message.Chat.ID, "sponsorship_set_langs"); err != nil {
