@@ -115,3 +115,61 @@ func CorrespLang(arr *[]Localization, lang string)  (string, bool) {
     }
     return "", false
 }
+
+func GetTickedCallbacks(keyboard *tgbotapi.InlineKeyboardMarkup) []string {
+    callbacks := make([]string, 0)
+    for _, row := range keyboard.InlineKeyboard {
+        for _, button := range row {
+            if strings.HasPrefix(button.Text, "✅") {
+                callbacks = append(callbacks, *button.CallbackData)
+            }
+        }
+    }
+    return callbacks
+}
+
+func TickByCallback(uniqueCallbackData string, keyboard *tgbotapi.InlineKeyboardMarkup) {
+    var done bool
+    for i1, row := range keyboard.InlineKeyboard {
+        if done {
+            break
+        }
+        for i2, button := range row {
+            if *button.CallbackData == uniqueCallbackData && !strings.HasPrefix(*button.CallbackData, "✅ ") {
+                keyboard.InlineKeyboard[i1][i2].Text = "✅ " + button.Text
+                done = true
+                break
+            }
+        }
+    }
+}
+
+func UnTickByCallback(uniqueCallbackData string, keyboard *tgbotapi.InlineKeyboardMarkup) {
+    var done bool
+    for i1, row := range keyboard.InlineKeyboard {
+        if done {
+            break
+        }
+        for i2, button := range row {
+            if *button.CallbackData == uniqueCallbackData {
+                keyboard.InlineKeyboard[i1][i2].Text = strings.TrimPrefix(button.Text, "✅ ")
+                done = true
+                break
+            }
+        }
+    }
+}
+
+func IsTicked(callback string, keyboard *tgbotapi.InlineKeyboardMarkup) bool {
+    for _, row := range keyboard.InlineKeyboard {
+        for _, button := range row {
+            if *button.CallbackData != callback {
+                continue
+            }
+            if strings.HasPrefix(button.Text, "✅") {
+                return true
+            }
+        }
+    }
+    return false
+}

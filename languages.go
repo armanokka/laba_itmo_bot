@@ -1033,6 +1033,196 @@ func Localize(text, lang string, placeholders ...interface{}) string {
                 Text:         "Powered by",
             },
         },
+        "sponsorship": {
+            {
+                LanguageCode: "de",
+                Text:         "Werbung in @TransloBot\n\nUnter <b> jeder </b> übersetzten Nachricht befindet sich die Aufschrift \"Unterstützt von {Ihrem Hyperlink}\"\nWarum so?\n\nVorteile\n• Sie zahlen nur für <b> Vermögenswerte </b>\n• Deutlich <b> günstiger als der Versand </b>\n• Inline-Modus ist in den Bedingungen enthalten\n• Wenn ein Nutzer den Inline-Modus in einer Gruppe verwendet, wird Ihre Anzeige von allen Chat-Teilnehmern gesehen, das heißt <b> Zehntausende </b>\n\nGeben Sie Ihren Nachrichtentext ein,\n- 130 Zeichen inklusive Leerzeichen\n- ohne Fotos und Gifs\n- keine Wörter verwenden: abonnieren, reinkommen, gehen usw.",
+            },
+            {
+                LanguageCode: "es",
+                Text:         "Publicidad en @TransloBot\n\nDebajo de <b> cada </b> mensaje traducido habrá una inscripción \"Compatible con {su hipervínculo}\".\n¿Por qué de esta manera?\n\nVentajas\n• Paga solo por <b> activo </b>\n• Significativamente <b> más económico que el envío por correo </b>\n• El modo en línea está incluido en las condiciones\n• Si un usuario usa el modo en línea en un grupo, todos los participantes del chat ven su anuncio, es decir, <b> decenas de miles </b>.\n\nIngrese el texto de su mensaje,\n- 130 caracteres incluyendo espacios\n- sin fotos y gifs\n- no uses palabras: suscríbete, entra, ve, etc.",
+            },
+            {
+                LanguageCode: "id",
+                Text:         "Beriklan di @TransloBot\n\nDi bawah <b> setiap </b> pesan yang diterjemahkan akan ada tulisan \"Didukung oleh {your hyperlink}\"\nMengapa dengan cara ini?\n\nKeuntungan\n• Anda hanya membayar untuk <b> aset </b>\n• Secara signifikan <b> lebih murah daripada mengirim surat </b>\n• Mode sebaris termasuk dalam ketentuan\n• Jika pengguna menggunakan mode sebaris dalam grup, maka iklan Anda dilihat oleh semua peserta obrolan, yaitu <b> puluhan ribu </b>\n\nMasukkan teks pesan Anda,\n- 130 karakter termasuk spasi\n- tanpa foto dan gif\n- jangan menggunakan kata-kata: berlangganan, masuk, pergi, dll.",
+            },
+            {
+                LanguageCode: "it",
+                Text:         "Pubblicità in @TransloBot\n\nSotto <b> ogni </b> messaggio tradotto ci sarà la scritta \"Supportato da {your hyperlink}\"\nPerché in questo modo?\n\nVantaggi\n• Paghi solo per <b> asset </b>\n• Significativamente <b> più economico della spedizione postale </b>\n• La modalità in linea è inclusa nelle condizioni\n• Se un utente utilizza la modalità in linea in un gruppo, il tuo annuncio viene visualizzato da tutti i partecipanti alla chat, ovvero <b> decine di migliaia </b>\n\nInserisci il testo del tuo messaggio,\n- 130 caratteri spazi inclusi\n- senza foto e gif\n- non usare parole: iscriviti, entra, vai, ecc.",
+            },
+            {
+                LanguageCode: "pt",
+                Text:         "Publicidade em @TransloBot\n\nAbaixo de <b> cada </b> mensagem traduzida, haverá uma inscrição \"Apoiado por {seu hiperlink}\"\nPor que assim?\n\nVantagens\n• Você paga apenas por <b> ativos </b>\n• Significativamente <b> mais barato do que enviar pelo correio </b>\n• O modo inline está incluído nas condições\n• Se um usuário usa o modo inline em um grupo, seu anúncio é visto por todos os participantes do bate-papo, ou seja, <b> dezenas de milhares </b>\n\nDigite o texto da sua mensagem,\n- 130 caracteres incluindo espaços\n- sem fotos e gifs\n- não use palavras: assine, entre, vá, etc.",
+            },
+            {
+                LanguageCode: "ru",
+                Text:         "Реклама в @TransloBot\n\nПод <b>каждым</b> переведенным сообщением будет надпись \"При поддержке {ваша гиперссылка}\"\nПочему такой способ?\n\nПреимущества\n• Вы платите только за <b>актив</b>\n• Значительно <b>дешевле рассылки</b>\n• Инлайн-режим включен в условия\n• Если пользователь пользуется инлайн-режимом в группе, то вашу рекламу видят все участники чата, то есть <b>десятки тысяч</b>\n\nВведите текст вашего сообщения, \n- 130 символов с учетом пробелов\n- без фото и гиф\n- не использовать слова : подписывайся, заходи, переходи и т.д.",
+            },
+            {
+                LanguageCode: "uk",
+                Text:         "Реклама в @TransloBot\n\nПід <b> кожним </b> переведеним повідомленням буде напис \"За підтримки {ваша гіперпосилання}\"\nЧому такий спосіб?\n\nпереваги\n• Ви платите тільки за <b> актив </b>\n• Значно <b> дешевше розсилки </b>\n• Інлайн-режим включений в умови\n• Якщо користувач користується інлайн-режимом в групі, то вашу рекламу бачать всі учасники чату, тобто <b> десятки тисяч </b>\n\nВведіть текст вашого повідомлення,\n- 130 символів, враховуючи пробіли\n- без фото і гіф\n- не використовувати слова: підписуйся, заходь, переходь і т.д.",
+            },
+            {
+                LanguageCode: "uz",
+                Text:         "@TransloBot -da reklama\n\n<b> Har bir </b> tarjima qilingan xabar ostida \"{sizning giperhavola} tomonidan qo'llab -quvvatlanadi\" yozuvi bo'ladi.\nNega bunday?\n\nAfzalliklar\n• Siz faqat <b> aktiv </b> uchun to'laysiz\n• sezilarli darajada <b> pochta jo'natishdan ko'ra arzon </b>\n• Inline rejimi shartlarga kiritilgan\n• Agar foydalanuvchi guruhda inline rejimidan foydalansa, sizning reklamangizni chatning barcha ishtirokchilari ko'radi, ya'ni <b> o'n minglab </b>.\n\nXabar matnini kiriting,\n- bo'shliqlarni o'z ichiga olgan 130 ta belgi\n- fotosuratlar va sovg'alarsiz\n- so'zlarni ishlatmang: obuna bo'ling, kiring, kiring va hokazo.",
+            },
+            {
+                LanguageCode: "en",
+                Text:         "Advertising in @TransloBot\n\nUnder <b> each </b> translated message there will be an inscription \"Supported by {your hyperlink}\"\nWhy this way?\n\nAdvantages\n• You pay only for <b> asset </b>\n• Significantly <b> cheaper than mailing </b>\n• Inline mode is included in the conditions\n• If a user uses inline mode in a group, then your ad is seen by all chat participants, that is, <b> tens of thousands </b>\n\nEnter your message text,\n- 130 characters including spaces\n- without photos and gifs\n- do not use words: subscribe, come in, go, etc.",
+            },
+        },
+        "sponsorship_set_days": {
+            {
+                LanguageCode: "de",
+                Text:         "Senden Sie nun die Anzahl der Tage, die Sie inserieren möchten (die Tage beginnen mit dem Zahlungsdatum). 1-30, ganze Zahl.",
+            },
+            {
+                LanguageCode: "es",
+                Text:         "Ahora envíe la cantidad de días que desea anunciar (los días comenzarán a partir de la fecha de pago). 1-30, número entero.",
+            },
+            {
+                LanguageCode: "id",
+                Text:         "Sekarang kirim jumlah hari Anda ingin beriklan (hari akan dimulai dari tanggal pembayaran). 1-30, bilangan bulat.",
+            },
+            {
+                LanguageCode: "it",
+                Text:         "Ora invia il numero di giorni che vuoi pubblicizzare (i giorni inizieranno dalla data di pagamento). 1-30, intero.",
+            },
+            {
+                LanguageCode: "pt",
+                Text:         "Envie agora a quantidade de dias que deseja anunciar (os dias contarão a partir da data do pagamento). 1-30, número inteiro.",
+            },
+            {
+                LanguageCode: "ru",
+                Text:         "Теперь отправьте количество дней, которые хотите рекламироваться (отсчёт дней начнётся со дня оплаты). 1-30, целое число.",
+            },
+            {
+                LanguageCode: "uk",
+                Text:         "Тепер відправте кількість днів, які хочете рекламуватися (відлік днів почнеться з дня оплати). 1-30, ціле число.",
+            },
+            {
+                LanguageCode: "uz",
+                Text:         "Endi reklama qilmoqchi bo'lgan kunlar sonini yuboring (kunlar to'lov sanasidan boshlanadi). 1-30, butun son.",
+            },
+            {
+                LanguageCode: "en",
+                Text:         "Now send the number of days you want to advertise (the days will start from the date of payment). 1-30, integer.",
+            },
+        },
+        "Введите целое число без лишних символов": {
+            {
+                LanguageCode: "de",
+                Text:         "Geben Sie eine ganze Zahl ohne zusätzliche Zeichen ein",
+            },
+            {
+                LanguageCode: "es",
+                Text:         "Ingrese un número entero sin caracteres adicionales",
+            },
+            {
+                LanguageCode: "id",
+                Text:         "Masukkan bilangan bulat tanpa karakter tambahan",
+            },
+            {
+                LanguageCode: "it",
+                Text:         "Inserisci un numero intero senza caratteri extra",
+            },
+            {
+                LanguageCode: "pt",
+                Text:         "Insira um número inteiro sem caracteres extras",
+            },
+            {
+                LanguageCode: "ru",
+                Text:         "Введите целое число без лишних символов",
+            },
+            {
+                LanguageCode: "uk",
+                Text:         "Введіть ціле число без зайвих символів",
+            },
+            {
+                LanguageCode: "uz",
+                Text:         "Qo'shimcha belgilarsiz butun sonni kiriting",
+            },
+            {
+                LanguageCode: "en",
+                Text:         "Enter an integer without extra characters",
+            },
+        },
+        "Количество дней должно быть от 1 до 30 включительно": {
+            {
+                LanguageCode: "de",
+                Text:         "Die Anzahl der Tage muss zwischen 1 und 30 liegen",
+            },
+            {
+                LanguageCode: "es",
+                Text:         "El número de días debe ser de 1 a 30 inclusive.",
+            },
+            {
+                LanguageCode: "id",
+                Text:         "Jumlah hari harus dari 1 hingga 30 inklusif",
+            },
+            {
+                LanguageCode: "it",
+                Text:         "Il numero di giorni deve essere compreso tra 1 e 30 inclusi",
+            },
+            {
+                LanguageCode: "pt",
+                Text:         "O número de dias deve ser de 1 a 30, inclusive",
+            },
+            {
+                LanguageCode: "ru",
+                Text:         "Количество дней должно быть от 1 до 30 включительно",
+            },
+            {
+                LanguageCode: "uk",
+                Text:         "Кількість днів має бути від 1 до 30 включно",
+            },
+            {
+                LanguageCode: "uz",
+                Text:         "Kunlar soni 1 dan 30 gacha bo'lishi kerak",
+            },
+            {
+                LanguageCode: "en",
+                Text:         "The number of days must be from 1 to 30 inclusive",
+            },
+        },
+        "Выберите страны пользователей, которые получат вашу рассылку.": {
+            {
+                LanguageCode: "de",
+                Text:         "Wählen Sie die Länder der Benutzer aus, die Ihren Newsletter erhalten.",
+            },
+            {
+                LanguageCode: "es",
+                Text:         "Seleccione los países de los usuarios que recibirán su newsletter.",
+            },
+            {
+                LanguageCode: "id",
+                Text:         "Pilih negara pengguna yang akan menerima buletin Anda.",
+            },
+            {
+                LanguageCode: "it",
+                Text:         "Seleziona i paesi degli utenti che riceveranno la tua newsletter.",
+            },
+            {
+                LanguageCode: "pt",
+                Text:         "Selecione os países dos usuários que receberão sua newsletter.",
+            },
+            {
+                LanguageCode: "ru",
+                Text:         "Выберите страны пользователей, которые получат вашу рассылку.",
+            },
+            {
+                LanguageCode: "uk",
+                Text:         "Виберіть країни користувачів, які отримають вашу розсилку.",
+            },
+            {
+                LanguageCode: "uz",
+                Text:         "Sizning axborot byulleteningizni oladigan foydalanuvchilarning mamlakatlarini tanlang.",
+            },
+            {
+                LanguageCode: "en",
+                Text:         "Select the countries of the users who will receive your newsletter.",
+            },
+        },
 }
     
     if df, ok := languages[text]; ok { // Текст подходит под варианты

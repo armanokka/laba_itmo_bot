@@ -3,6 +3,7 @@ package main
 import (
     "errors"
     "github.com/armanokka/translobot/translate"
+    iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "os"
     "strings"
@@ -26,7 +27,7 @@ func handleCallback(update *tgbotapi.Update) {
     //     bot.Send()
     }
     arr := strings.Split(update.CallbackQuery.Data, ":")
-    if len(arr) == 0 {
+    if len(arr) < 2 {
         return
     }
     switch arr[0] {
@@ -103,5 +104,70 @@ func handleCallback(update *tgbotapi.Update) {
         msg.ReplyMarkup = kb
         bot.Send(msg)
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
+    case "set_my_lang_by_callback": // arr[1] - lang
+        var UserLang string
+        err := db.Model(&Users{}).Select("lang").Where("id = ?", update.CallbackQuery.From.ID).Limit(1).Find(&UserLang).Error
+        if err != nil {
+            warn(err)
+            return
+        }
+        
+        msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, Localize("Now your language is %s\n\nPress \"⬅Back\" to exit to menu", UserLang, iso6391.Name(arr[1])))
+        keyboard := tgbotapi.NewReplyKeyboard(
+            tgbotapi.NewKeyboardButtonRow(
+                tgbotapi.NewKeyboardButton(Localize("⬅Back", UserLang))))
+        msg.ReplyMarkup = keyboard
+        bot.Send(msg)
+    
+        err = db.Model(&Users{}).Where("id", update.CallbackQuery.From.ID).Update("my_lang", arr[1]).Error
+        if err != nil {
+            warn(err)
+            return
+        }
+        bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
+    
+        analytics.Bot(update.Message.Chat.ID, msg.Text, "My language detected by callback")
+    case "set_translate_lang_by_callback": // arr[1] - lang
+        var UserLang string
+        err := db.Model(&Users{}).Select("lang").Where("id = ?", update.CallbackQuery.From.ID).Limit(1).Find(&UserLang).Error
+        if err != nil {
+            warn(err)
+            return
+        }
+    
+        msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, Localize("Now translate language is %s\n\nPress \"⬅Back\" to exit to menu", UserLang, iso6391.Name(arr[1])))
+        keyboard := tgbotapi.NewReplyKeyboard(
+            tgbotapi.NewKeyboardButtonRow(
+                tgbotapi.NewKeyboardButton(Localize("⬅Back", UserLang))))
+        msg.ReplyMarkup = keyboard
+        bot.Send(msg)
+    
+        err = db.Model(&Users{}).Where("id", update.CallbackQuery.From.ID).Update("my_lang", arr[1]).Error
+        if err != nil {
+            warn(err)
+            return
+        }
+        bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
+    
+        analytics.Bot(update.Message.Chat.ID, msg.Text, "My language detected by callback")
+    case "country": // when user that want to buy sponsorship clicks on a button, arr[1] - lang code
+        if IsTicked(update.CallbackQuery.Data, update.CallbackQuery.Message.ReplyMarkup) {
+            UnTickByCallback(update.CallbackQuery.Data, update.CallbackQuery.Message.ReplyMarkup)
+        } else {
+            TickByCallback(update.CallbackQuery.Data, update.CallbackQuery.Message.ReplyMarkup)
+        }
+        callbacks := GetTickedCallbacks(update.CallbackQuery.Message.ReplyMarkup)
+        langs := make([]string, 0)
+        for _, callback := range callbacks {
+            langs = append(langs, strings.Split(callback, ":")[1])
+        }
+        err := db.Model(&SponsorshipsOffers{}).Where("id = ?", update.CallbackQuery.From.ID).Update("to_langs", strings.Join(langs, ",")).Error
+        if err != nil {
+            warn(err)
+            return
+        }
+        bot.Send(tgbotapi.NewEditMessageReplyMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, *update.CallbackQuery.Message.ReplyMarkup))
+        bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
+    
     }
 }

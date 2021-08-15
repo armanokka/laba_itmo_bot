@@ -30,13 +30,21 @@ type Users struct {
     Lang string `gorm:"default:en"`
 }
 
-// Offers is table in DB
+// Sponsorships is table in DB
 type Sponsorships struct {
     ID int64 // ID of user that bought offer
     Text string // Advertise
     ToLangs string // String of languages separated by "," of users that must to receive advertise
     Start time.Time // When offer starts
     Finish time.Time // When offer finish
+}
+
+// SponsorshipsOffers is table in DB
+type SponsorshipsOffers struct {
+    ID int64 // ID of user that bought offer
+    Text string // Advertise
+    ToLangs string // String of languages separated by "," of users that must to receive advertise
+    Days int // Days of sponsorship
 }
 
 type Localization struct {

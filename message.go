@@ -6,6 +6,7 @@ import (
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "github.com/k0kubun/pp"
+    "strconv"
     "strings"
 )
 
@@ -184,16 +185,20 @@ func handleMessage(update *tgbotapi.Update) {
         msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("Please, select bot language", UserLang))
         msg.ReplyMarkup = keyboard
         bot.Send(msg)
+    
+        analytics.Bot(update.Message.Chat.ID, msg.Text, "Choose bot lang")
     case "/sponsorship":
-        photo1 := tgbotapi.NewInputMediaPhoto("images/pic1.jpg")
-        photo1.Caption = "Реклама в @TransloBot\n\nКак это работает?\n▫️ Под <b>каждым</b> переведенным сообщением будет надпись \"При поддержке {ваша гиперссылка}\"\nПочему такой способ?\n▫️ Согласитесь, рассылка спама пользователям - дело неблагодарное. Этот способ лучше, ведь реклама только при использовании.\nКаковы преимущества?\n• Вы платите только за <b>актив</b>\n• Значительно <b>дешевле рассылки</b>\n• Инлайн-режим включен в условия\n• Если пользователь пользуется инлайн-режимом в группе, то вашу рекламу видят все участники чата, то есть <b>десятки тысяч</b>\n• Можно купить от 1 до 30 дней спонсорства всего за <b>9р/день</b>\n\nПримеры использования приклеплены в сообщении"
-        photo1.ParseMode = tgbotapi.ModeHTML
+        msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("sponsorship", UserLang))
+        keyboard := tgbotapi.NewReplyKeyboard(
+            tgbotapi.NewKeyboardButtonRow(
+                tgbotapi.NewKeyboardButton(Localize("⬅Back", UserLang))))
+        msg.ReplyMarkup = keyboard
+        bot.Send(msg)
         
-        photo2 := tgbotapi.NewInputMediaPhoto("images/pic2.jpg")
-        media := tgbotapi.NewMediaGroup(update.Message.Chat.ID, []interface{}{photo1, photo2})
-        if _, err = bot.Send(media); err != nil {
-            pp.Println(err)
+        if err = setUserStep(update.Message.Chat.ID, "sponsorship_set_text"); err != nil {
+            warn(err)
         }
+        analytics.Bot(update.Message.Chat.ID, msg.Text, "Look at sponsorship")
     default: // Сообщение не является командой.
     
         userStep, err := getUserStep(update.Message.Chat.ID)
@@ -202,6 +207,51 @@ func handleMessage(update *tgbotapi.Update) {
             return
         }
         switch userStep {
+        case "sponsorship_set_text":
+            if len(update.Message.Text) > 130 {
+                bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, Localize("Too big text", UserLang)))
+                return
+            }
+            if err = db.Create(&SponsorshipsOffers{
+                ID:      update.Message.Chat.ID,
+                Text:    update.Message.Text,
+            }).Error; err != nil {
+                warn(err)
+                return
+            }
+            bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, Localize("sponsorship_set_days", UserLang)))
+            
+            if err = setUserStep(update.Message.Chat.ID, "sponsorship_set_days"); err != nil {
+                warn(err)
+            }
+        case "sponsorship_set_days":
+            days, err := strconv.Atoi(update.Message.Text)
+            if err != nil {
+                bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, Localize("Введите целое число без лишних символов", UserLang)))
+                return
+            }
+            if days < 1 || days > 30 {
+                bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, Localize("Количество дней должно быть от 1 до 30 включительно", UserLang)))
+                return
+            }
+            if err = db.Model(&SponsorshipsOffers{}).Where("id = ?", update.Message.Chat.ID).Updates(&SponsorshipsOffers{
+                Days:    days,
+            }).Error; err != nil {
+                warn(err)
+                return
+            }
+            msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("Выберите страны пользователей, которые получат вашу рассылку.", UserLang))
+            bot.Send(msg)
+            langs := map[string]string{"en": "🇬🇧 English", "it": "🇮🇹 Italiano", "uz":"🇺🇿 O'zbek tili", "de":"🇩🇪 Deutsch", "ru":"🇷🇺 Русский", "es":"🇪🇸 Español", "uk":"🇺🇦 Український", "pt":"🇵🇹 Português", "id":"🇮🇩 Indonesia"}
+            keyboard := tgbotapi.NewInlineKeyboardMarkup()
+            for code, name := range langs {
+                keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(name, "country:"+code)))
+            }
+            msg.ReplyMarkup = keyboard
+            bot.Send(msg)
+            if err = setUserStep(update.Message.Chat.ID, "sponsorship_set_langs"); err != nil {
+                warn(err)
+            }
         case "set_my_lang":
             name, code, err := DetectLang(update.Message.Text)
             if err != nil {
