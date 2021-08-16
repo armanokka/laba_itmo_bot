@@ -5,6 +5,7 @@ import (
     "github.com/armanokka/translobot/translate"
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+    emojiflag "github.com/jayco/go-emoji-flag"
     "github.com/k0kubun/pp"
     "strconv"
     "strings"
@@ -214,7 +215,7 @@ func handleMessage(update *tgbotapi.Update) {
             if i >= 10 {
                 break
             }
-            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(iso6391.Name(lang),  "set_translate_lang_by_callback:"  + lang)))
+            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(emojiflag.GetFlag(lang) + " " + iso6391.Name(lang),  "set_translate_lang_by_callback:"  + lang)))
         }
         keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
             tgbotapi.NewInlineKeyboardButtonData("10/"+strconv.Itoa(len(langs)), "none"),

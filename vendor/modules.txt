@@ -15,6 +15,9 @@ github.com/go-sql-driver/mysql
 # github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.0.0-rc1.0.20210608165722-fb1de2fb48dd
 ## explicit
 github.com/go-telegram-bot-api/telegram-bot-api/v5
+# github.com/jayco/go-emoji-flag v0.0.0-20190810054606-01604da018da
+## explicit
+github.com/jayco/go-emoji-flag
 # github.com/jinzhu/inflection v1.0.0
 github.com/jinzhu/inflection
 # github.com/jinzhu/now v1.1.2
