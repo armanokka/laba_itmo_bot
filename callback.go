@@ -16,8 +16,8 @@ func handleCallback(update *tgbotapi.Update) {
     }
 
     arr := strings.Split(update.CallbackQuery.Data, ":")
-    if len(arr) == 1 {
-        switch arr[0] {
+    if len(arr) == 0 { // no ":"
+        switch update.CallbackQuery.Data {
         case "delete":
             bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
             bot.Send(tgbotapi.DeleteMessageConfig{
