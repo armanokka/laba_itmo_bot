@@ -134,7 +134,7 @@ func handleCallback(update *tgbotapi.Update) {
         }
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
     
-        analytics.Bot(update.Message.Chat.ID, msg.Text, "My language detected by callback")
+        analytics.Bot(update.CallbackQuery.From.ID, msg.Text, "My language detected by callback")
     case "set_translate_lang_by_callback": // arr[1] - lang
         var UserLang string
         err := db.Model(&Users{}).Select("lang").Where("id = ?", update.CallbackQuery.From.ID).Limit(1).Find(&UserLang).Error
@@ -157,7 +157,7 @@ func handleCallback(update *tgbotapi.Update) {
         }
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
     
-        analytics.Bot(update.Message.Chat.ID, msg.Text, "My language detected by callback")
+        analytics.Bot(update.CallbackQuery.From.ID, msg.Text, "My language detected by callback")
     case "country": // when user that want to buy sponsorship clicks on a button, arr[1] - lang code
         if IsTicked(update.CallbackQuery.Data, update.CallbackQuery.Message.ReplyMarkup) {
             UnTickByCallback(update.CallbackQuery.Data, update.CallbackQuery.Message.ReplyMarkup)
