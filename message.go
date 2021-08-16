@@ -200,6 +200,14 @@ func handleMessage(update *tgbotapi.Update) {
             warn(err)
         }
         analytics.Bot(update.Message.Chat.ID, msg.Text, "Look at sponsorship")
+    case "/stats":
+        var users int
+        err = db.Model(&Users{}).Raw("SELECT COUNT(*) FROM users").Find(&users).Error
+        if err != nil {
+            warn(err)
+            return
+        }
+        bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Всего " + strconv.Itoa(users) + " юзеров"))
     default: // Сообщение не является командой.
     
         userStep, err := getUserStep(update.Message.Chat.ID)
