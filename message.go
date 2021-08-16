@@ -208,6 +208,20 @@ func handleMessage(update *tgbotapi.Update) {
             return
         }
         bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Всего " + strconv.Itoa(users) + " юзеров"))
+    case "/test":
+        keyboard := tgbotapi.NewInlineKeyboardMarkup()
+        for i, lang := range langs {
+            if i >= 10 {
+                break
+            }
+            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(iso6391.Name(lang),  "set_translate_lang_pagination:"  + strconv.Itoa(i))))
+        }
+        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData("10/"+strconv.Itoa(len(langs)), "none"),
+            tgbotapi.NewInlineKeyboardButtonData("▶", "set_translate_lang_pagination:10")))
+        msg := tgbotapi.NewMessage(update.Message.Chat.ID, "ᅠ")
+        msg.ReplyMarkup = keyboard
+        bot.Send(msg)
     default: // Сообщение не является командой.
     
         userStep, err := getUserStep(update.Message.Chat.ID)

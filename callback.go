@@ -6,6 +6,7 @@ import (
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "os"
+    "strconv"
     "strings"
 )
 
@@ -16,6 +17,8 @@ func handleCallback(update *tgbotapi.Update) {
     }
     
     switch update.CallbackQuery.Data {
+    case "none":
+        bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
     case "delete":
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
         bot.Send(tgbotapi.DeleteMessageConfig{
@@ -172,6 +175,30 @@ func handleCallback(update *tgbotapi.Update) {
         }
         bot.Send(tgbotapi.NewEditMessageReplyMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, *update.CallbackQuery.Message.ReplyMarkup))
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
+    case "set_translate_lang_pagination": // arr[1] - offset
+        offset, err := strconv.Atoi(arr[1])
+        if err != nil {
+            warn(err)
+            return
+        }
+        keyboard := tgbotapi.NewInlineKeyboardMarkup()
+        for i, lang := range langs[offset:] {
+            if i >= offset + 10 {
+                break
+            }
+            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(iso6391.Name(lang),  "set_translate_lang_pagination:"  + strconv.Itoa(i))))
+        }
+        if offset > 0 {
+            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+                tgbotapi.NewInlineKeyboardButtonData(arr[1] + "/"+strconv.Itoa(len(langs)), "none"),
+                tgbotapi.NewInlineKeyboardButtonData("◀", "set_translate_lang_pagination:"+strconv.Itoa(offset-10)),
+                tgbotapi.NewInlineKeyboardButtonData("▶", "set_translate_lang_pagination:10")))
+        } else {
+            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+                tgbotapi.NewInlineKeyboardButtonData("10/"+strconv.Itoa(len(langs)), "none"),
+                tgbotapi.NewInlineKeyboardButtonData("▶", "set_translate_lang_pagination:10")))
+        }
 
+        bot.Send(tgbotapi.NewEditMessageReplyMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, keyboard))
     }
 }
