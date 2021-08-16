@@ -96,11 +96,19 @@ func handleInline(update *tgbotapi.Update) {
             "parse_mode": tgbotapi.ModeHTML,
             "disable_web_page_preview":true,
         }
+        query := "text"
+        keyboard := tgbotapi.NewInlineKeyboardMarkup(
+            tgbotapi.NewInlineKeyboardRow(
+                tgbotapi.InlineKeyboardButton{
+                    Text:                         "translate",
+                    SwitchInlineQueryCurrentChat: &query,
+                }))
         results = append(results, tgbotapi.InlineQueryResultArticle{
             Type:                "article",
             ID:                  strconv.Itoa(offset),
             Title:               iso6391.Name(to),
             InputMessageContent: inputMessageContent,
+            ReplyMarkup: &keyboard,
             URL:                 "https://t.me/TransloBot?start=from_inline",
             HideURL:             true,
             Description:         tr.Text,
