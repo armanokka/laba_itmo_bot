@@ -215,7 +215,7 @@ func handleMessage(update *tgbotapi.Update) {
             if i >= 10 {
                 break
             }
-            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(emojiflag.GetFlag(lang) + " " + iso6391.Name(lang),  "set_translate_lang_by_callback:"  + lang)))
+            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(emojiflag.GetFlag(lang.Code) + " " + iso6391.Name(lang.Code),  "set_translate_lang_by_callback:"  + lang.Code)))
         }
         keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
             tgbotapi.NewInlineKeyboardButtonData("10/"+strconv.Itoa(len(langs)), "none"),
