@@ -16,15 +16,24 @@ func handleCallback(update *tgbotapi.Update) {
     }
 
     arr := strings.Split(update.CallbackQuery.Data, ":")
-
+    if len(arr) == 1 {
+        switch arr[0] {
+        case "delete":
+            bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
+            bot.Send(tgbotapi.DeleteMessageConfig{
+                ChatID:          update.CallbackQuery.From.ID,
+                MessageID:       update.CallbackQuery.Message.MessageID,
+            })
+            return
+        case "sponsorship_pay":
+            bot.Send(tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Скоро будет дальше, а пока тут пусто", tgbotapi.InlineKeyboardMarkup{}))
+            if err := setUserStep(update.CallbackQuery.From.ID, ""); err != nil {
+                warn(err)
+            }
+        }
+    }
     switch arr[0] {
-    case "delete":
-        bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
-        bot.Send(tgbotapi.DeleteMessageConfig{
-            ChatID:          update.CallbackQuery.From.ID,
-            MessageID:       update.CallbackQuery.Message.MessageID,
-        })
-        return
+
     case "set_bot_lang": // arr[1] - lang code
         err := db.Model(&Users{}).Where("id = ?", update.CallbackQuery.From.ID).Limit(1).Update("lang", arr[1]).Error
         if err != nil {
@@ -162,10 +171,6 @@ func handleCallback(update *tgbotapi.Update) {
         }
         bot.Send(tgbotapi.NewEditMessageReplyMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, *update.CallbackQuery.Message.ReplyMarkup))
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
-    case "sponsorship_pay":
-        bot.Send(tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Скоро будет дальше, а пока тут пусто", tgbotapi.InlineKeyboardMarkup{}))
-        if err := setUserStep(update.CallbackQuery.From.ID, ""); err != nil {
-            warn(err)
-        }
+
     }
 }
