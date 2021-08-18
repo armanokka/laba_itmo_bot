@@ -169,10 +169,10 @@ func handleCallback(update *tgbotapi.Update) {
         keyboard := tgbotapi.NewInlineKeyboardMarkup()
         var i int
         for code, lang := range langs {
-            if offset > i {
+            if i <= offset {
                 continue
             }
-            if offset + 10 >= i {
+            if i >= offset + 10 {
                 break
             }
             keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_translate_lang_by_callback:"  + code)))
@@ -201,10 +201,10 @@ func handleCallback(update *tgbotapi.Update) {
         keyboard := tgbotapi.NewInlineKeyboardMarkup()
         var i int
         for code, lang := range langs {
-            if offset > i {
+            if i <= offset {
                 continue
             }
-            if offset + 10 >= i {
+            if i >= offset + 10 {
                 break
             }
             keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_my_lang_by_callback:"  + code)))
