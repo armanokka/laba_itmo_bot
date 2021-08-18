@@ -2,6 +2,7 @@ package main
 
 import (
     "database/sql"
+    "errors"
     "github.com/armanokka/translobot/translate"
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -142,13 +143,16 @@ func handleMessage(update *tgbotapi.Update) {
         analytics.Bot(update.Message.Chat.ID, msg.Text, "Profile")
     case "My Language", "/my_lang", "Мой Язык","Mi Idioma","Моя Мова","A Minha Língua","Bahasa Saya","La mia lingua","Tilimni","Meine Sprache":
         keyboard := tgbotapi.NewInlineKeyboardMarkup()
-        var i int
-        for code, lang := range langs {
+        for i, code := range codes {
             if i >= 10 {
                 break
             }
+            lang, ok := langs[code]
+            if !ok {
+                warn(errors.New("no such code "+ code + " in langs"))
+                return
+            }
             keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_my_lang_by_callback:"  + code)))
-            i++
         }
         keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
             tgbotapi.NewInlineKeyboardButtonData("10/"+strconv.Itoa(len(langs)), "none"),
@@ -160,13 +164,16 @@ func handleMessage(update *tgbotapi.Update) {
         analytics.Bot(update.Message.Chat.ID, msg.Text, "Set my lang")
     case "Translate Language", "/to_lang", "Sprache zum Übersetzen","Idioma para traducir","Bahasa untuk menerjemahkan","Lingua per tradurre","Língua para tradução","Язык перевода","Мова перекладу","Tarjima qilish uchun til":
         keyboard := tgbotapi.NewInlineKeyboardMarkup()
-        var i int
-        for code, lang := range langs {
+        for i, code := range codes {
             if i >= 10 {
                 break
             }
+            lang, ok := langs[code]
+            if !ok {
+                warn(errors.New("no such code "+ code + " in langs"))
+                return
+            }
             keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_translate_lang_by_callback:"  + code)))
-            i++
         }
         keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
             tgbotapi.NewInlineKeyboardButtonData("10/"+strconv.Itoa(len(langs)), "none"),
