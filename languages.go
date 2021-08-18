@@ -1006,39 +1006,39 @@ func Localize(text, lang string, placeholders ...interface{}) string {
         "sponsorship_set_days": {
             {
                 LanguageCode: "de",
-                Text:         "Senden Sie nun die Anzahl der Tage, die Sie inserieren möchten (die Tage beginnen mit dem Zahlungsdatum). 1-30, ganze Zahl.",
+                Text:         "Wählen Sie nun die Anzahl der Tage aus, die Sie inserieren möchten (die Tage beginnen mit dem Zahlungsdatum + Verrechnung mit den bereits belegten Tagen).",
             },
             {
                 LanguageCode: "es",
-                Text:         "Ahora envíe la cantidad de días que desea anunciar (los días comenzarán a partir de la fecha de pago). 1-30, número entero.",
+                Text:         "Ahora seleccione la cantidad de días que desea anunciar (los días comenzarán a partir de la fecha de pago + compensación de los días ya ocupados).",
             },
             {
                 LanguageCode: "id",
-                Text:         "Sekarang kirim jumlah hari Anda ingin beriklan (hari akan dimulai dari tanggal pembayaran). 1-30, bilangan bulat.",
+                Text:         "Sekarang pilih jumlah hari yang ingin Anda iklankan (hari akan dimulai dari tanggal pembayaran + offset dari hari yang sudah ditempati).",
             },
             {
                 LanguageCode: "it",
-                Text:         "Ora invia il numero di giorni che vuoi pubblicizzare (i giorni inizieranno dalla data di pagamento). 1-30, intero.",
+                Text:         "Ora seleziona il numero di giorni che vuoi pubblicizzare (i giorni inizieranno dalla data di pagamento + offset dai giorni già occupati).",
             },
             {
                 LanguageCode: "pt",
-                Text:         "Envie agora a quantidade de dias que deseja anunciar (os dias contarão a partir da data do pagamento). 1-30, número inteiro.",
+                Text:         "Agora selecione o número de dias que deseja anunciar (os dias começarão a partir da data do pagamento + compensação dos dias já ocupados).",
             },
             {
                 LanguageCode: "ru",
-                Text:         "Теперь отправьте количество дней, которые хотите рекламироваться (отсчёт дней начнётся со дня оплаты). 1-30, целое число.",
+                Text:         "Теперь выберите количество дней, которые хотите рекламироваться (отсчёт дней начнётся со дня оплаты + смещение от уже занятых дней).",
             },
             {
                 LanguageCode: "uk",
-                Text:         "Тепер відправте кількість днів, які хочете рекламуватися (відлік днів почнеться з дня оплати). 1-30, ціле число.",
+                Text:         "Тепер виберіть кількість днів, які хочете рекламуватися (відлік днів почнеться з дня оплати + зміщення від уже зайнятих днів).",
             },
             {
                 LanguageCode: "uz",
-                Text:         "Endi reklama qilmoqchi bo'lgan kunlar sonini yuboring (kunlar to'lov sanasidan boshlanadi). 1-30, butun son.",
+                Text:         "Endi siz reklama qilmoqchi bo'lgan kunlar sonini tanlang (kunlar to'langan kundan boshlanadi + ishg'ol qilingan kunlardan ofset).",
             },
             {
                 LanguageCode: "en",
-                Text:         "Now send the number of days you want to advertise (the days will start from the date of payment). 1-30, integer.",
+                Text:         "Now select the number of days you want to advertise (the days will start from the date of payment + offset from the days already occupied).",
             },
         },
         "Введите целое число без лишних символов": {
