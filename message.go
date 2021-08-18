@@ -273,6 +273,7 @@ func handleMessage(update *tgbotapi.Update) {
             if err = setUserStep(update.Message.Chat.ID, ""); err != nil {
                 warn(err)
             }
+
         case "sponsorship_set_days":
             days, err := strconv.Atoi(update.Message.Text)
             if err != nil {

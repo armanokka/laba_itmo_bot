@@ -163,7 +163,7 @@ var langs = map[string]Lang{
     },
     "en": {
         Name:  "English",
-        Emoji: "",
+        Emoji: "🇬🇧",
     },
     "tr": {
         Name:  "Turkish",
@@ -723,7 +723,7 @@ var langs = map[string]Lang{
     },
     "ml": {
         Name:  "Malayalam",
-        Emoji: "🇲🇱",
+        Emoji: "",
     },
     "yi": {
         Name:  "Yiddish",
