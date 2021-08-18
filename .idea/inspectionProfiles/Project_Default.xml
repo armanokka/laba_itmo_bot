@@ -25,6 +25,7 @@
         <method importPath="github.com/go-telegram-bot-api/telegram-bot-api/v5" receiver="*BotAPI" name="Send" />
         <method importPath="github.com/go-telegram-bot-api/telegram-bot-api/v5" receiver="*BotAPI" name="AnswerInlineQuery" />
         <method importPath="github.com/armanokka/translobot" receiver="*BotAPI" name="Send" />
+        <method importPath="github.com/armanokka/translobot" receiver="*BotAPI" name="AnswerCallbackQuery" />
       </methods>
     </inspection_tool>
     <inspection_tool class="SpellCheckingInspection" enabled="false" level="TYPO" enabled_by_default="false">

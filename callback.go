@@ -5,7 +5,6 @@ import (
     "github.com/armanokka/translobot/translate"
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-    emojiflag "github.com/jayco/go-emoji-flag"
     "os"
     "strconv"
     "strings"
@@ -15,6 +14,13 @@ func handleCallback(update *tgbotapi.Update) {
     warn := func(err error) {
         bot.Send(tgbotapi.NewCallback(update.CallbackQuery.ID, "Error, sorry"))
         WarnAdmin(err)
+    }
+    
+    var UserLang string
+    err := db.Model(&Users{}).Select("lang").Where("id = ?", update.CallbackQuery.From.ID).Limit(1).Find(&UserLang).Error
+    if err != nil {
+        warn(err)
+        return
     }
     
     switch update.CallbackQuery.Data {
@@ -113,12 +119,6 @@ func handleCallback(update *tgbotapi.Update) {
         bot.Send(msg)
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
     case "set_my_lang_by_callback": // arr[1] - lang
-        var UserLang string
-        err := db.Model(&Users{}).Select("lang").Where("id = ?", update.CallbackQuery.From.ID).Limit(1).Find(&UserLang).Error
-        if err != nil {
-            warn(err)
-            return
-        }
         callback := tgbotapi.NewCallback(update.CallbackQuery.ID, Localize("Now your language is %s", UserLang, iso6391.Name(arr[1])))
         callback.ShowAlert = true
         bot.AnswerCallbackQuery(callback)
@@ -131,13 +131,6 @@ func handleCallback(update *tgbotapi.Update) {
     
         analytics.Bot(update.CallbackQuery.From.ID, "callback answered", "My language detected by callback")
     case "set_translate_lang_by_callback": // arr[1] - lang
-        var UserLang string
-        err := db.Model(&Users{}).Select("lang").Where("id = ?", update.CallbackQuery.From.ID).Limit(1).Find(&UserLang).Error
-        if err != nil {
-            warn(err)
-            return
-        }
-    
         callback := tgbotapi.NewCallback(update.CallbackQuery.ID, Localize("Now translate language is %s", UserLang, iso6391.Name(arr[1])))
         callback.ShowAlert = true
         bot.AnswerCallbackQuery(callback)
@@ -174,11 +167,16 @@ func handleCallback(update *tgbotapi.Update) {
             return
         }
         keyboard := tgbotapi.NewInlineKeyboardMarkup()
-        for i, lang := range langs[offset:] {
-            if i >= 10 {
+        var i int
+        for code, lang := range langs {
+            if i < offset {
+                continue
+            }
+            if i >= offset + 10 {
                 break
             }
-            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(emojiflag.GetFlag(lang.Code) + " " + iso6391.Name(lang.Code),  "set_translate_lang_by_callback:"  + lang.Code)))
+            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_translate_lang_by_callback:"  + code)))
+            i++
         }
         if offset > 0 {
             if offset + 10 < len(langs) {
@@ -206,11 +204,16 @@ func handleCallback(update *tgbotapi.Update) {
             return
         }
         keyboard := tgbotapi.NewInlineKeyboardMarkup()
-        for i, lang := range langs[offset:] {
-            if i >= 10 {
+        var i int
+        for code, lang := range langs {
+            if i < offset {
+                continue
+            }
+            if i >= offset + 10 {
                 break
             }
-            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(emojiflag.GetFlag(lang.Code) + " " + iso6391.Name(lang.Code),  "set_my_lang_by_callback:"  + lang.Code)))
+            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_my_lang_by_callback:"  + code)))
+            i++
         }
         if offset > 0 {
             if offset + 10 < len(langs) {
@@ -231,5 +234,26 @@ func handleCallback(update *tgbotapi.Update) {
         }
     
         bot.Send(tgbotapi.NewEditMessageReplyMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, keyboard))
+    case "sponsorship_set_days": // arr[1] - days, 1-30
+        days, err := strconv.Atoi(arr[1])
+        if err != nil {
+            warn(err)
+            return
+        }
+        if err := db.Model(&SponsorshipsOffers{}).Where("id = ?", update.CallbackQuery.From.ID).Updates(&SponsorshipsOffers{
+            Days:    days,
+        }).Error; err != nil {
+            warn(err)
+            return
+        }
+        msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("Выберите языки пользователей, которые получат вашу рассылку.", UserLang))
+        langs := map[string]string{"en": "🇬🇧 English", "it": "🇮🇹 Italiano", "uz":"🇺🇿 O'zbek tili", "de":"🇩🇪 Deutsch", "ru":"🇷🇺 Русский", "es":"🇪🇸 Español", "uk":"🇺🇦 Український", "pt":"🇵🇹 Português", "id":"🇮🇩 Indonesia"}
+        keyboard := tgbotapi.NewInlineKeyboardMarkup()
+        for code, name := range langs {
+            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(name, "country:"+code)))
+        }
+        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(Localize("Далее", UserLang), "sponsorship_pay")))
+        msg.ReplyMarkup = keyboard
+        bot.Send(msg)
     }
 }

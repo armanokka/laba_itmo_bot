@@ -53,7 +53,6 @@ type Localization struct {
 }
 
 type Lang struct {
-    Code string
     Name string
     Emoji string
 }

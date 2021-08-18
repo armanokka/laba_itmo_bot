@@ -5,7 +5,6 @@ import (
     "github.com/armanokka/translobot/translate"
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-    emojiflag "github.com/jayco/go-emoji-flag"
     "github.com/k0kubun/pp"
     "strconv"
     "strings"
@@ -143,11 +142,13 @@ func handleMessage(update *tgbotapi.Update) {
         analytics.Bot(update.Message.Chat.ID, msg.Text, "Profile")
     case "My Language", "/my_lang", "Мой Язык","Mi Idioma","Моя Мова","A Minha Língua","Bahasa Saya","La mia lingua","Tilimni","Meine Sprache":
         keyboard := tgbotapi.NewInlineKeyboardMarkup()
-        for i, lang := range langs {
+        var i int
+        for code, lang := range langs {
             if i >= 10 {
                 break
             }
-            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(emojiflag.GetFlag(lang.Code) + " " + iso6391.Name(lang.Code),  "set_my_lang_by_callback:"  + lang.Code)))
+            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_my_lang_by_callback:"  + code)))
+            i++
         }
         keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
             tgbotapi.NewInlineKeyboardButtonData("10/"+strconv.Itoa(len(langs)), "none"),
@@ -159,11 +160,13 @@ func handleMessage(update *tgbotapi.Update) {
         analytics.Bot(update.Message.Chat.ID, msg.Text, "Set my lang")
     case "Translate Language", "/to_lang", "Sprache zum Übersetzen","Idioma para traducir","Bahasa untuk menerjemahkan","Lingua per tradurre","Língua para tradução","Язык перевода","Мова перекладу","Tarjima qilish uchun til":
         keyboard := tgbotapi.NewInlineKeyboardMarkup()
-        for i, lang := range langs {
+        var i int
+        for code, lang := range langs {
             if i >= 10 {
                 break
             }
-            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(emojiflag.GetFlag(lang.Code) + " " + iso6391.Name(lang.Code),  "set_translate_lang_by_callback:"  + lang.Code)))
+            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_translate_lang_by_callback:"  + code)))
+            i++
         }
         keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
             tgbotapi.NewInlineKeyboardButtonData("10/"+strconv.Itoa(len(langs)), "none"),
@@ -246,10 +249,21 @@ func handleMessage(update *tgbotapi.Update) {
                     return
                 }
             }
-
-            bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, Localize("sponsorship_set_days", UserLang)))
+            msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("sponsorship_set_days", UserLang))
+            keyboard := tgbotapi.NewInlineKeyboardMarkup(
+                tgbotapi.NewInlineKeyboardRow(
+                    tgbotapi.NewInlineKeyboardButtonData("1д - 9р", "sponsorship_set_days:1"),
+                    tgbotapi.NewInlineKeyboardButtonData("2д - 20р", "sponsorship_set_days:2"),
+                    tgbotapi.NewInlineKeyboardButtonData("7д - 60р", "sponsorship_set_days:7")),
+                tgbotapi.NewInlineKeyboardRow(
+                    tgbotapi.NewInlineKeyboardButtonData("10д - 90р", "sponsorship_set_days:10"),
+                    tgbotapi.NewInlineKeyboardButtonData("15д -130р", "sponsorship_set_days:15"),
+                    tgbotapi.NewInlineKeyboardButtonData("🔥 30д - 270р", "sponsorship_set_days:30"),
+                ))
+            msg.ReplyMarkup = keyboard
+            bot.Send(msg)
             
-            if err = setUserStep(update.Message.Chat.ID, "sponsorship_set_days"); err != nil {
+            if err = setUserStep(update.Message.Chat.ID, ""); err != nil {
                 warn(err)
             }
         case "sponsorship_set_days":
