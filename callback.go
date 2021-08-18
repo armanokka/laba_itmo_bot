@@ -119,22 +119,17 @@ func handleCallback(update *tgbotapi.Update) {
             warn(err)
             return
         }
-        
-        msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, Localize("Now your language is %s\n\nPress \"⬅Back\" to exit to menu", UserLang, iso6391.Name(arr[1])))
-        keyboard := tgbotapi.NewReplyKeyboard(
-            tgbotapi.NewKeyboardButtonRow(
-                tgbotapi.NewKeyboardButton(Localize("⬅Back", UserLang))))
-        msg.ReplyMarkup = keyboard
-        bot.Send(msg)
+        callback := tgbotapi.NewCallback(update.CallbackQuery.ID, Localize("Now your language is %s", UserLang, iso6391.Name(arr[1])))
+        callback.ShowAlert = true
+        bot.AnswerCallbackQuery(callback)
     
         err = db.Model(&Users{}).Where("id", update.CallbackQuery.From.ID).Update("my_lang", arr[1]).Error
         if err != nil {
             warn(err)
             return
         }
-        bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
     
-        analytics.Bot(update.CallbackQuery.From.ID, msg.Text, "My language detected by callback")
+        analytics.Bot(update.CallbackQuery.From.ID, "callback answered", "My language detected by callback")
     case "set_translate_lang_by_callback": // arr[1] - lang
         var UserLang string
         err := db.Model(&Users{}).Select("lang").Where("id = ?", update.CallbackQuery.From.ID).Limit(1).Find(&UserLang).Error
@@ -143,21 +138,17 @@ func handleCallback(update *tgbotapi.Update) {
             return
         }
     
-        msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, Localize("Now translate language is %s\n\nPress \"⬅Back\" to exit to menu", UserLang, iso6391.Name(arr[1])))
-        keyboard := tgbotapi.NewReplyKeyboard(
-            tgbotapi.NewKeyboardButtonRow(
-                tgbotapi.NewKeyboardButton(Localize("⬅Back", UserLang))))
-        msg.ReplyMarkup = keyboard
-        bot.Send(msg)
+        callback := tgbotapi.NewCallback(update.CallbackQuery.ID, Localize("Now translate language is %s", UserLang, iso6391.Name(arr[1])))
+        callback.ShowAlert = true
+        bot.AnswerCallbackQuery(callback)
     
-        err = db.Model(&Users{}).Where("id", update.CallbackQuery.From.ID).Update("my_lang", arr[1]).Error
+        err = db.Model(&Users{}).Where("id", update.CallbackQuery.From.ID).Update("to_lang", arr[1]).Error
         if err != nil {
             warn(err)
             return
         }
-        bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
     
-        analytics.Bot(update.CallbackQuery.From.ID, msg.Text, "My language detected by callback")
+        analytics.Bot(update.CallbackQuery.From.ID, "callback answered", "Translate language detected by callback")
     case "country": // when user that want to buy sponsorship clicks on a button, arr[1] - lang code
         if IsTicked(update.CallbackQuery.Data, update.CallbackQuery.Message.ReplyMarkup) {
             UnTickByCallback(update.CallbackQuery.Data, update.CallbackQuery.Message.ReplyMarkup)
@@ -207,6 +198,38 @@ func handleCallback(update *tgbotapi.Update) {
                 tgbotapi.NewInlineKeyboardButtonData("▶", "set_translate_lang_pagination:10")))
         }
 
+        bot.Send(tgbotapi.NewEditMessageReplyMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, keyboard))
+    case "set_my_lang_pagination":
+        offset, err := strconv.Atoi(arr[1])
+        if err != nil {
+            warn(err)
+            return
+        }
+        keyboard := tgbotapi.NewInlineKeyboardMarkup()
+        for i, lang := range langs[offset:] {
+            if i >= 10 {
+                break
+            }
+            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(emojiflag.GetFlag(lang.Code) + " " + iso6391.Name(lang.Code),  "set_my_lang_by_callback:"  + lang.Code)))
+        }
+        if offset > 0 {
+            if offset + 10 < len(langs) {
+                keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+                    tgbotapi.NewInlineKeyboardButtonData("◀", "set_my_lang_pagination:"+strconv.Itoa(offset-10)),
+                    tgbotapi.NewInlineKeyboardButtonData(arr[1] + "/"+strconv.Itoa(len(langs)), "none"),
+                    tgbotapi.NewInlineKeyboardButtonData("▶", "set_my_lang_pagination:"+strconv.Itoa(offset+10))))
+            } else {
+                langsLen := strconv.Itoa(len(langs))
+                keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+                    tgbotapi.NewInlineKeyboardButtonData("◀", "set_my_lang_pagination:"+strconv.Itoa(offset-10)),
+                    tgbotapi.NewInlineKeyboardButtonData(langsLen+"/"+langsLen, "none")))
+            }
+        } else {
+            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+                tgbotapi.NewInlineKeyboardButtonData("10/"+strconv.Itoa(len(langs)), "none"),
+                tgbotapi.NewInlineKeyboardButtonData("▶", "set_my_lang_pagination:10")))
+        }
+    
         bot.Send(tgbotapi.NewEditMessageReplyMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, keyboard))
     }
 }

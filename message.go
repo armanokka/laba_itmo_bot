@@ -142,34 +142,37 @@ func handleMessage(update *tgbotapi.Update) {
     
         analytics.Bot(update.Message.Chat.ID, msg.Text, "Profile")
     case "My Language", "/my_lang", "Мой Язык","Mi Idioma","Моя Мова","A Minha Língua","Bahasa Saya","La mia lingua","Tilimni","Meine Sprache":
-        msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("/my_lang", UserLang))
-        msg.ParseMode = tgbotapi.ModeHTML
-        keyboard:= tgbotapi.NewReplyKeyboard(tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton(Localize("⬅Back", UserLang))))
-        msg.ReplyMarkup = &keyboard
-        bot.Send(msg)
-        
-        err := setUserStep(update.Message.Chat.ID, "set_my_lang")
-        if err != nil {
-            warn(err)
-            return
+        keyboard := tgbotapi.NewInlineKeyboardMarkup()
+        for i, lang := range langs {
+            if i >= 10 {
+                break
+            }
+            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(emojiflag.GetFlag(lang.Code) + " " + iso6391.Name(lang.Code),  "set_my_lang_by_callback:"  + lang.Code)))
         }
+        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData("10/"+strconv.Itoa(len(langs)), "none"),
+            tgbotapi.NewInlineKeyboardButtonData("▶", "set_my_lang_pagination:10")))
+        msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("Выберите язык, на котором хотите переводить текст", UserLang))
+        msg.ReplyMarkup = keyboard
+        bot.Send(msg)
     
         analytics.Bot(update.Message.Chat.ID, msg.Text, "Set my lang")
     case "Translate Language", "/to_lang", "Sprache zum Übersetzen","Idioma para traducir","Bahasa untuk menerjemahkan","Lingua per tradurre","Língua para tradução","Язык перевода","Мова перекладу","Tarjima qilish uchun til":
-        msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("/to_lang", UserLang))
-        msg.ParseMode = tgbotapi.ModeHTML
-        keyboard := tgbotapi.NewReplyKeyboard(tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton(Localize("⬅Back", UserLang))))
-        msg.ReplyMarkup = &keyboard
-        bot.Send(msg)
-        
-        err := setUserStep(update.Message.Chat.ID, "set_translate_lang")
-        if err != nil {
-            warn(err)
-            return
+        keyboard := tgbotapi.NewInlineKeyboardMarkup()
+        for i, lang := range langs {
+            if i >= 10 {
+                break
+            }
+            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(emojiflag.GetFlag(lang.Code) + " " + iso6391.Name(lang.Code),  "set_translate_lang_by_callback:"  + lang.Code)))
         }
+        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData("10/"+strconv.Itoa(len(langs)), "none"),
+            tgbotapi.NewInlineKeyboardButtonData("▶", "set_translate_lang_pagination:10")))
+        msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("Выберите ваш родной язык", UserLang))
+        msg.ReplyMarkup = keyboard
+        bot.Send(msg)
     
         analytics.Bot(update.Message.Chat.ID, msg.Text, "Set translate lang")
-        
     case "💡 Instruction", "/help", "💡 Инструкция", "💡 Instrucción","💡 Інструкція","💡 Instrucao","💡 Instruksi","💡 Istruzione","💡 Yo'riqnoma","💡 Anweisung":
         msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("/help", UserLang))
         msg.ParseMode = tgbotapi.ModeHTML
@@ -209,20 +212,7 @@ func handleMessage(update *tgbotapi.Update) {
             return
         }
         bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Всего " + strconv.Itoa(users) + " юзеров"))
-    case "/test":
-        keyboard := tgbotapi.NewInlineKeyboardMarkup()
-        for i, lang := range langs {
-            if i >= 10 {
-                break
-            }
-            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(emojiflag.GetFlag(lang.Code) + " " + iso6391.Name(lang.Code),  "set_translate_lang_by_callback:"  + lang.Code)))
-        }
-        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-            tgbotapi.NewInlineKeyboardButtonData("10/"+strconv.Itoa(len(langs)), "none"),
-            tgbotapi.NewInlineKeyboardButtonData("▶", "set_translate_lang_pagination:10")))
-        msg := tgbotapi.NewMessage(update.Message.Chat.ID, "ᅠ")
-        msg.ReplyMarkup = keyboard
-        bot.Send(msg)
+
     default: // Сообщение не является командой.
     
         userStep, err := getUserStep(update.Message.Chat.ID)

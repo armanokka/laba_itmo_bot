@@ -119,6 +119,10 @@ func handleInline(update *tgbotapi.Update) {
     if end < len(languages) {
         nextOffset = end
     }
+    pmtext := "Translo"
+    if update.InlineQuery.Query == "" {
+        pmtext = "Enter text"
+    }
     
     bot.AnswerInlineQuery(tgbotapi.InlineConfig{
         InlineQueryID:     update.InlineQuery.ID,
@@ -126,7 +130,7 @@ func handleInline(update *tgbotapi.Update) {
         CacheTime:         300,
         NextOffset: 	   strconv.Itoa(nextOffset),
         IsPersonal:        false,
-        SwitchPMText:      "Translo",
+        SwitchPMText:      pmtext,
         SwitchPMParameter: "from_inline",
     })
     

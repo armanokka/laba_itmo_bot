@@ -113,38 +113,42 @@ func Localize(text, lang string, placeholders ...interface{}) string {
                 Text:         " Bu bot nima qila oladi? \n▫️ Translo sizga xabarlarni 182+ tilga tarjima qilishga imkon beradi.\n Xabarni qanday tarjima qilish kerak? \n▫️ Birinchidan, siz o'z tilingizni o'rnatishingiz kerak, so'ngra tarjima tilini sozlashingiz kerak, keyin matnli xabarlarni yuboring va bot ularni tezda tarjima qiladi.\n Mening tilimni qanday o'rnatish kerak? \n▫️ Quyidagi \"Mening tilim\" deb nomlangan tugmani bosing.\n Men tarjima qilishni xohlagan tilni qanday o'rnataman? \n▫️ \"Tilni tarjima qilish\" deb nomlangan tugmani bosing.\n Boshqa qiziqarli narsalar bormi? \n▫️ Ha, botni inline rejimida qo'llab-quvvatlash. Xabarlarni kiritish maydoniga @translobot taxallusini yozishni boshlang va keyin tarjima qilmoqchi bo'lgan matni yozing.\n Menda taklif bor yoki men xato topdim! \n▫️ 👉 Men bilan bog'laning pls - @armanokka",
             },
         },
-        "Now your language is %s\n\nPress \"⬅Back\" to exit to menu": {
+        "Now your language is %s": {
             {
-            LanguageCode: "ru",
-                Text:         "Теперь ваш язык %s\n\nНажмите «⬅Back» для выхода в меню.",
+                LanguageCode: "de",
+                Text:         "Ihre Sprache ist jetzt %s",
             },
             {
-            LanguageCode: "es",
-                Text:         "Ahora tu idioma es %s\n\nPresione \"⬅Back\" para salir al menú",
+                LanguageCode: "es",
+                Text:         "Ahora tu idioma es %s",
             },
             {
-            LanguageCode: "uk",
-                Text:         "Зараз ваша мова% %s\n\nНатисніть \"⬅Back\", щоб вийти в меню",
+                LanguageCode: "id",
+                Text:         "Sekarang bahasa Anda adalah %s",
             },
             {
-            LanguageCode: "pt",
-                Text:         "Agora seu idioma é %s\n\nPressione \"⬅Back\" para sair para o menu",
+                LanguageCode: "it",
+                Text:         "Ora la tua lingua è %s",
             },
             {
-            LanguageCode: "id",
-                Text:         "Sekarang bahasa Anda adalah %s\n\nTekan \"⬅Back\" untuk keluar ke menu",
+                LanguageCode: "pt",
+                Text:         "Agora seu idioma é %s",
             },
             {
-            LanguageCode: "it",
-                Text:         "Ora la tua lingua è %s\n\nPremere \"⬅Back\" per uscire dal menu",
+                LanguageCode: "ru",
+                Text:         "Теперь ваш язык %s",
             },
             {
-            LanguageCode: "uz",
-                Text:         "Endi sizning tilingiz %s\n\nMenyuga chiqish uchun \"⬅Back\" tugmasini bosing",
+                LanguageCode: "uk",
+                Text:         "Тепер ваша мова - %s",
             },
             {
-            LanguageCode: "de",
-                Text:         "Ihre Sprache ist jetzt %s\n\nDrücken Sie \"⬅Back\", um das Menü zu verlassen",
+                LanguageCode: "uz",
+                Text:         "Endi sizning tilingiz - %s",
+            },
+            {
+                LanguageCode: "en",
+                Text:         "Now your language is %s",
             },
         },
         "Translate Language": {
@@ -247,44 +251,6 @@ func Localize(text, lang string, placeholders ...interface{}) string {
             {
             LanguageCode: "uz",
                 Text:         "Juda katta matn",
-            },
-        },
-        "/my_lang": {
-            {
-            LanguageCode: "it",
-                Text:         "Per impostare la tua lingua, esegui una delle seguenti operazioni: .\n\nℹ️ Invia poche parole nella tua lingua, ad esempio: \"Hi, how are you today?\" - la lingua sarà l'inglese, o \"L'amour ne fait pas d'erreurs\" - la lingua sarà francese, e così via.\nℹ️ Oppure invia il nome della tua lingua, ad es. \"Russo\", o \"Giapponese\", o \"Arabo\", ecc.",
-            },
-            {
-            LanguageCode: "ru",
-                Text:         "Чтобы настроить  свой язык , выполните  одно  из следующих действий: 👇\n\nℹ️ Отправьте  несколько слов  на своем языке, например: \"Hi, how are you today?\" - язык будет английский, или «« L'amour ne fait pas d'erreurs »- язык будет французским и так далее.\nℹ️ Или отправьте название своего языка, например «Русский», «Японский», «Арабский» и т. Д.",
-            },
-            {
-            LanguageCode: "es",
-                Text:         "Para configurar  su idioma , haga  una  de las siguientes opciones: 👇\n\nℹ️ Envía  algunas palabras  en tu idioma, por ejemplo: \"Hi, how are you today?\" - el idioma será el inglés, o \"L'amour ne fait pas d'erreurs\" - idioma será francés, etc.\nℹ️ O envíe el nombre de su idioma, p. ej. \"Ruso ''\", o \"Japonés\", o \"Árabe\", e.t.c.",
-            },
-            {
-            LanguageCode: "uk",
-                Text:         "Щоб налаштувати  свою мову , виконайте  одне  з наступного: 👇\n\nℹ️ Надішліть  кілька слів  своєю мовою, наприклад: \"Hi, how are you today?\" - мова буде англійською, або \"L'amour ne fait pas d'erreurs\" - мова буде французькою тощо.\nℹ️ Або надішліть назву вашої мови, напр. \"Російська\", або\"японська\", або  арабська, тощо",
-            },
-            {
-            LanguageCode: "id",
-                Text:         "Untuk mengatur Bahasa anda, melakukan satu hal:\n\nℹ️ contoh: \"hai, bagaimana kabarmu hari ini?\"- bahasa akan bahasa Inggris, atau \"l'amour ne fait pas d'erreurs\" - bahasa akan Perancis, dan seterusnya.\nℹ️ atau kirim Nama bahasa Anda dalam bahasa Inggris, misal \"rusia\", atau \"jepang\", atau \"arab\", e.t.c.",
-            },
-            {
-            LanguageCode: "pt",
-                Text:         "Para configurar  seu idioma , faça  uma  das seguintes opções: 👇\n\nℹ️ Envie  algumas palavras  em seu idioma, por exemplo: \"Hi, how are you today?\" - o idioma será o inglês, ou \"L'amour ne fait pas d'erreurs\" - o idioma será francês e assim por diante.\nℹ️ Ou envie o nome do seu idioma, por ex. \"Russian\", ou \"Japanese\", ou \"Arabic\", e.t.c.",
-            },
-            {
-            LanguageCode: "en",
-                Text:         "To setup your language, do one of the following: 👇\n\nℹ️ Send few words in your language, for example: \"Hi, how are you today?\" - language will be English, or \"L'amour ne fait pas d'erreurs\" - language will be French, and so on.\nℹ️ Or send the name of your language, e.g. \"Russian\", or \"Japanese\", or  \"Arabic\", e.t.c.",
-            },
-            {
-            LanguageCode: "de",
-                Text:         "Führen Sie eine der folgenden Schritte aus, um Ihre Sprache einzurichten: 👇\n\nℹ️ Sende einige Wörter in deiner Sprache, zum Beispiel: \"Hi, how are you today?\" - Sprache wird Englisch sein, oder \"L'amour ne fait pas d'erreurs\" - Sprache wird französisch sein und so weiter.\nℹ️ Oder schicke den Namen deiner Sprache, z.B. \"Russisch\", oder \"Japanisch\", oder \"Arabisch\", usw.",
-            },
-            {
-            LanguageCode: "uz",
-                Text:         " Tilingizni  sozlash uchun quyidagilardan  birini bajaring: 👇\n\nℹ️ O'zingizning tilingizda  bir nechta so'zlarni  yuboring, masalan: \"Hi, how are you today? \"\" \"- til ingliz tilida bo'ladi yoki\" \"L'amour ne fait pas d'erreurs`\" - til frantsuzcha bo'ladi va hokazo.\nℹ️ Yoki o'z tilingiz nomini yuboring, masalan. \"\" \"Ruscha\" yoki \"\" Yaponcha \"yoki\" \"Arabcha\", e.t.c.",
             },
         },
         "⏳ Translating...": {
@@ -609,38 +575,42 @@ func Localize(text, lang string, placeholders ...interface{}) string {
                 Text:         "💡 Instruksi",
             },
         },
-        "Now translate language is %s\n\nPress \"⬅Back\" to exit to menu": {
+        "Now translate language is %s": {
             {
-            LanguageCode: "uk",
-                Text:         "Тепер мова перекладу - %s\n\nНатисніть \"⬅Back\", щоб вийти в меню",
+                LanguageCode: "de",
+                Text:         "Die Übersetzungssprache ist jetzt %s",
             },
             {
-            LanguageCode: "pt",
-                Text:         "Agora o idioma de tradução é %s\n\nPressione \"⬅Back\" para sair para o menu",
+                LanguageCode: "es",
+                Text:         "Ahora el idioma de traducción es %s",
             },
             {
-            LanguageCode: "id",
-                Text:         "Sekarang bahasa terjemahan adalah %s\n\nTekan \"⬅Back\" untuk keluar ke menu",
+                LanguageCode: "id",
+                Text:         "Sekarang bahasa terjemahan adalah %s",
             },
             {
-            LanguageCode: "it",
-                Text:         "Ora la lingua di traduzione è %s\n\nPremere \"⬅Back\" per uscire dal menu",
+                LanguageCode: "it",
+                Text:         "Ora la lingua di traduzione è %s",
             },
             {
-            LanguageCode: "uz",
-                Text:         "Endi tarjima qilish tili %s\n\nMenyuga chiqish uchun \"⬅Back\" tugmasini bosing",
+                LanguageCode: "pt",
+                Text:         "Agora o idioma de tradução é %s",
             },
             {
-            LanguageCode: "de",
-                Text:         "Die Übersetzungssprache ist jetzt %s\n\nDrücken Sie \"⬅Back\", um das Menü zu verlassen",
+                LanguageCode: "ru",
+                Text:         "Теперь язык перевода %s",
             },
             {
-            LanguageCode: "ru",
-                Text:         "Теперь язык перевода %s\n\nНажмите «⬅Back» для выхода в меню.",
+                LanguageCode: "uk",
+                Text:         "Тепер мовою перекладу є %s",
             },
             {
-            LanguageCode: "es",
-                Text:         "Ahora el idioma de traducción es %s\n\nPresione \"⬅Back\" para salir al menú",
+                LanguageCode: "uz",
+                Text:         "Endi tarjima tili - %s",
+            },
+            {
+                LanguageCode: "en",
+                Text:         "Now translate language is %s",
             },
         },
         "Now press /start 👈": {
@@ -679,44 +649,6 @@ func Localize(text, lang string, placeholders ...interface{}) string {
             {
             LanguageCode: "uk",
                 Text:         "Тепер натисніть /start 👈",
-            },
-        },
-        "/to_lang": {
-            {
-            LanguageCode: "uz",
-                Text:         "Tarjima tilini sozlash uchun quyidagilardan birini bajaring: 👇\n\nℹ️ O'zingizning tilingizga tarjima qilishni xohlagan bir nechta so'zlarni yuboring, masalan: \"Hi, how are you?\" - til inglizcha bo'ladi yoki \"L'amour ne fait pas d'erreurs\" - frantsuzcha bo'ladi va hokazo.\nℹ️ Yoki til nomini yuboring, masalan. \"Ruscha\", yoki \"Yaponcha\" yoki \"Arabcha\", e.t.c.",
-            },
-            {
-            LanguageCode: "de",
-                Text:         "Um die Übersetzungssprache einzurichten, führen Sie einen der folgenden Schritte aus:\n\nℹ️ Schicke ein paar Wörter in die Sprache, die du übersetzen möchtest, zum Beispiel: \"Hi, how are you?\" - Sprache ist Englisch oder \"L'amour ne fait pas d'erreurs\" - Sprache ist Französisch und so weiter.\nℹ️ Oder sende den Namen der Sprache, z.B. \"Russisch\" oder \"Japanisch\" oder \"Arabisch\", usw.",
-            },
-            {
-            LanguageCode: "ru",
-                Text:         "Чтобы настроить язык перевода, выполните одно из следующих действий: 👇\n\nℹ️ Отправьте несколько слов на языке, который вы хотите перевести, например: «Hi, how are you?» - язык будет английский, или \"L'amour ne fait pas d'erreurs\" - язык будет французским, и так далее.\nℹ️ Или отправьте название языка, например «русский», или «японский», или «арабский» и т. Д.",
-            },
-            {
-            LanguageCode: "es",
-                Text:         "Para configurar el idioma de traducción, realice una de las siguientes acciones: 👇\n\nℹ️ Envíe algunas palabras en el idioma que desea traducir, por ejemplo: \"Hi, how are you?\" - el idioma será el inglés, o \"L'amour ne fait pas d'erreurs\" - el idioma será el francés, etc.\nℹ️ O envíe el nombre del idioma, p. ej. \"Ruso\", \"Japonés\" o \"Árabe\", etc.",
-            },
-            {
-            LanguageCode: "pt",
-                Text:         "Para configurar o idioma de tradução, siga um destes procedimentos: 👇\n\nℹ️ Envie algumas palavras no idioma que deseja traduzir, por exemplo: \"Hi, how are you?\" - o idioma será inglês ou \"L'amour ne fait pas d'erreurs\" - o idioma será o francês e assim por diante.\nℹ️ Ou envie o nome do idioma, por ex. \"Russo\" ou \"Japonês\" ou \"Árabe\", e.t.c.",
-            },
-            {
-            LanguageCode: "en",
-                Text:         "To setup translate language, do one of the following: 👇\n\nℹ Send few words in language into you want to translate, for example: \"Hi, how are you?\" - language will be English, or \"L'amour ne fait pas d'erreurs\" - language will be French, and so on.\nℹ️ Or send the name of language, e.g. \"Russian\", or \"Japanese\", or  \"Arabic\", e.t.c.",
-            },
-            {
-            LanguageCode: "it",
-                Text:         "Per impostare la lingua di traduzione, esegui una delle seguenti operazioni: 👇\n\nℹ️ Invia poche parole nella lingua che vuoi tradurre, ad esempio: \"Hi, how are you?\" - la lingua sarà l'inglese, o \"L'amour ne fait pas d'erreurs\" - la lingua sarà il francese, e così via.\nℹ️ Oppure inviare il nome della lingua, ad es. \"Russo\" o \"Giapponese\" o \"Arabo\", ecc.",
-            },
-            {
-            LanguageCode: "uk",
-                Text:         "Щоб налаштувати мову перекладу, виконайте одну з таких дій: 👇\n\nℹ️ Надішліть кілька слів мовою на мову, яку потрібно перекласти, наприклад: \"Hi, how are you?\" - мовою буде англійська, або \"L'amour ne fait pas d'erreurs\" - мовою буде французька тощо.\nℹ️ Або надішліть назву мови, напр. \"російська\", або \"японська\", або \"арабська\", напр.",
-            },
-            {
-            LanguageCode: "id",
-                Text:         "Untuk menerjemahkan bahasa, lakukan satu bahasa berikut:\n\nℹ mengirim beberapa kata dalam bahasa ke dalam Anda ingin menerjemahkan, misalnya: \"hai, apa kabar?\"- bahasa akan bahasa Inggris, atau \"l'amour ne fait pas d'erreurs\" - bahasa akan Perancis, dan seterusnya.\nℹ️atau kirim Nama bahasa, misalnya \"Rusia\", atau \"Jepang\", atau \"Arab\", misalnya. t.c.",
             },
         },
         "Sorry, error caused.\n\nPlease, don't block the bot, I'll fix the bug in near future, the administrator has already been warned about this error ;)": {
@@ -1259,6 +1191,82 @@ func Localize(text, lang string, placeholders ...interface{}) string {
             {
                 LanguageCode: "en",
                 Text:         "Next ▶",
+            },
+        },
+        "Выберите язык, на котором хотите переводить текст": {
+            {
+                LanguageCode: "de",
+                Text:         "Wählen Sie die Sprache aus, in die Sie den Text übersetzen möchten",
+            },
+            {
+                LanguageCode: "es",
+                Text:         "Seleccione el idioma en el que desea traducir el texto.",
+            },
+            {
+                LanguageCode: "id",
+                Text:         "Pilih bahasa di mana Anda ingin menerjemahkan teks",
+            },
+            {
+                LanguageCode: "it",
+                Text:         "Seleziona la lingua in cui vuoi tradurre il testo",
+            },
+            {
+                LanguageCode: "pt",
+                Text:         "Selecione o idioma no qual deseja traduzir o texto",
+            },
+            {
+                LanguageCode: "ru",
+                Text:         "Выберите язык, на котором хотите переводить текст",
+            },
+            {
+                LanguageCode: "uk",
+                Text:         "Виберіть мову, на якому хочете перекладати текст",
+            },
+            {
+                LanguageCode: "uz",
+                Text:         "Matnni tarjima qilmoqchi bo'lgan tilni tanlang",
+            },
+            {
+                LanguageCode: "en",
+                Text:         "Select the language in which you want to translate the text",
+            },
+        },
+        "Выберите ваш родной язык": {
+           {
+                LanguageCode: "de",
+                Text:         "Wählen Sie Ihre Muttersprache",
+            },
+           {
+                LanguageCode: "es",
+                Text:         "Elija su lengua materna",
+            },
+           {
+                LanguageCode: "id",
+                Text:         "Pilih bahasa ibu Anda",
+            },
+           {
+                LanguageCode: "it",
+                Text:         "Scegli la tua lingua madre",
+            },
+           {
+                LanguageCode: "pt",
+                Text:         "Escolha sua língua nativa",
+            },
+           {
+                LanguageCode: "ru",
+                Text:         "Выберите ваш родной язык",
+            },
+           {
+                LanguageCode: "uk",
+                Text:         "Виберіть ваш рідну мову",
+            },
+           {
+                LanguageCode: "uz",
+                Text:         "Ona tilingizni tanlang",
+            },
+           {
+                LanguageCode: "en",
+                Text:         "Choose your native language",
             },
         },
 }
