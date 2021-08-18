@@ -301,55 +301,6 @@ func handleMessage(update *tgbotapi.Update) {
             if err = setUserStep(update.Message.Chat.ID, "sponsorship_set_langs"); err != nil {
                 warn(err)
             }
-        case "set_my_lang":
-            name, code, err := DetectLang(update.Message.Text)
-            if err != nil {
-                msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("Failed to detect the language. Please enter something else", UserLang))
-                bot.Send(msg)
-        
-                analytics.Bot(update.Message.Chat.ID, msg.Text, "My language not detected")
-                return
-            }
-    
-            keyboard := tgbotapi.NewReplyKeyboard(
-                tgbotapi.NewKeyboardButtonRow(
-                    tgbotapi.NewKeyboardButton(Localize("⬅Back", UserLang))))
-            msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("Now your language is %s\n\nPress \"⬅Back\" to exit to menu", UserLang, name))
-            msg.ReplyMarkup = keyboard
-            bot.Send(msg)
-    
-            err = db.Model(&Users{}).Where("id", update.Message.Chat.ID).Update("my_lang", code).Error
-            if err != nil {
-                warn(err)
-                return
-            }
-            
-            analytics.Bot(update.Message.Chat.ID, msg.Text, "My language detected default")
-        case "set_translate_lang":
-            name, code, err := DetectLang(update.Message.Text)
-            if err != nil {
-                msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("Failed to detect the language. Please enter something else", UserLang))
-                bot.Send(msg)
-    
-                analytics.Bot(update.Message.Chat.ID, msg.Text, "Translate language not detected")
-                return
-            }
-            err = db.Model(&Users{}).Where("id", update.Message.Chat.ID).Update("to_lang", code).Error
-            if err != nil {
-                warn(err)
-                return
-            }
-
-            
-            keyboard := tgbotapi.NewReplyKeyboard(
-                tgbotapi.NewKeyboardButtonRow(
-                    tgbotapi.NewKeyboardButton("⬅Back")))
-            msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("Now translate language is %s\n\nPress \"⬅Back\" to exit to menu", UserLang, name))
-            msg.ReplyMarkup = keyboard
-            bot.Send(msg)
-            
-            analytics.Bot(update.Message.Chat.ID, msg.Text, "Translate language detected default")
-
         default: // У пользователя нет шага и сообщение не команда
             var user Users // Contains only MyLang and ToLang
             err = db.Model(&Users{}).Select("my_lang", "to_lang", "usings").Where("id = ?", update.Message.Chat.ID).Limit(1).Find(&user).Error

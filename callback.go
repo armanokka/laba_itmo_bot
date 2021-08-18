@@ -34,10 +34,8 @@ func handleCallback(update *tgbotapi.Update) {
         })
         return
     case "sponsorship_pay":
+        bot.Send(tgbotapi.NewEditMessageReplyMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, tgbotapi.InlineKeyboardMarkup{}))
         bot.Send(tgbotapi.NewEditMessageText(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Скоро будет дальше, а пока тут пусто"))
-        if err := setUserStep(update.CallbackQuery.From.ID, ""); err != nil {
-            warn(err)
-        }
     }
 
     arr := strings.Split(update.CallbackQuery.Data, ":")
@@ -236,6 +234,8 @@ func handleCallback(update *tgbotapi.Update) {
             warn(err)
             return
         }
+        bot.Send(tgbotapi.NewEditMessageReplyMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, tgbotapi.InlineKeyboardMarkup{}))
+
         msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, Localize("Выберите языки пользователей, которые получат вашу рассылку.", UserLang))
         langs := map[string]string{"en": "🇬🇧 English", "it": "🇮🇹 Italiano", "uz":"🇺🇿 O'zbek tili", "de":"🇩🇪 Deutsch", "ru":"🇷🇺 Русский", "es":"🇪🇸 Español", "uk":"🇺🇦 Український", "pt":"🇵🇹 Português", "id":"🇮🇩 Indonesia"}
         keyboard := tgbotapi.NewInlineKeyboardMarkup()
