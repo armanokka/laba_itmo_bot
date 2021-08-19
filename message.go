@@ -309,6 +309,13 @@ func handleMessage(update *tgbotapi.Update) {
                 warn(err)
                 return
             }
+            if user.Usings == 10 || user.Usings % 20 == 0 {
+                photo := tgbotapi.NewPhoto(update.Message.Chat.ID, "ad.jpg")
+                photo.Caption = Localize("bot_advertise", UserLang)
+                bot.Send(photo)
+            }
+            
+            
             x := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("⏳ Translating...", UserLang))
             x.ReplyToMessageID = update.Message.MessageID
             msg, err := bot.Send(x)

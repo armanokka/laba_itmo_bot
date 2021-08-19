@@ -55,13 +55,13 @@ func handleCallback(update *tgbotapi.Update) {
         bot.Send(tgbotapi.NewMessage(update.CallbackQuery.From.ID, Localize("Now press /start 👈", arr[1])))
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
     case "speech": // arr[1] - lang code
-        parts := strings.Split(update.CallbackQuery.Message.Text, "\n")
-        update.CallbackQuery.Message.Text = strings.Join(parts[:len(parts)-1], "")
         sdec, err := translate.TTS(arr[1], update.CallbackQuery.Message.Text)
         if err != nil {
             if e, ok := err.(translate.TTSError); ok {
                 if e.Code == 500 || e.Code == 414 {
-                    bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, "Too big text"))
+                    callback := tgbotapi.NewCallback(update.CallbackQuery.ID, "Too big text")
+                    callback.ShowAlert = true
+                    bot.AnswerCallbackQuery(callback)
                     return
                 }
             }
@@ -74,17 +74,17 @@ func handleCallback(update *tgbotapi.Update) {
             warn(err)
             return
         }
+        defer func() {
+            if err = f.Close(); err != nil {
+                warn(err)
+            }
+        }()
         _, err = f.Write(sdec)
         if err != nil {
             warn(err)
             return
         }
         audio := tgbotapi.NewAudio(update.CallbackQuery.From.ID, f.Name())
-        err = f.Close()
-        if err != nil {
-            warn(err)
-            return
-        }
         audio.Title = update.CallbackQuery.Message.Text
         audio.Performer = "@TransloBot"
         audio.ReplyToMessageID = update.CallbackQuery.Message.MessageID
@@ -244,6 +244,27 @@ func handleCallback(update *tgbotapi.Update) {
         }
         keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(Localize("Далее", UserLang), "sponsorship_pay")))
         msg.ReplyMarkup = keyboard
+        bot.Send(msg)
+    case "other_languages": // arr[1] - source lang
+        var out string
+        for i, code := range codes {
+            if i >= 10 {
+                break
+            }
+            lang, ok := langs[code]
+            if !ok {
+                warn(errors.New("no such code "+ code + " in langs"))
+                return
+            }
+            tr, err := translate.GoogleTranslate(arr[1], code, update.CallbackQuery.Message.Text)
+            if err != nil {
+                warn(err)
+                return
+            }
+            out += lang.Emoji + " <b>" + lang.Name + "</b> - " + tr.Text + "\n"
+        }
+        msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, out)
+        msg.ParseMode = tgbotapi.ModeHTML
         bot.Send(msg)
     }
 }

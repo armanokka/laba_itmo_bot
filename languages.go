@@ -1269,6 +1269,44 @@ func Localize(text, lang string, placeholders ...interface{}) string {
                 Text:         "Choose your native language",
             },
         },
+        "bot_advertise": {
+            {
+                LanguageCode: "de",
+                Text:         "Wir sind Ihnen dankbar, wenn Sie Ihren Freunden von uns erzählen. Leiten Sie diese Nachricht einfach an sie weiter.\n\n😎 Übersetzen Sie Nachrichten schnell und einfach, ohne Telegram zu verlassen.\n@translobot",
+            },
+            {
+                LanguageCode: "es",
+                Text:         "Estaremos agradecidos si les cuenta a sus amigos sobre nosotros. Simplemente reenvíeles este mensaje.\n\n😎 Traduce mensajes de forma rápida y sencilla sin salir de Telegram.\n@translobot",
+            },
+            {
+                LanguageCode: "id",
+                Text:         "Kami akan berterima kasih jika Anda memberi tahu teman Anda tentang kami. Teruskan saja pesan ini kepada mereka.\n\n😎 Terjemahkan pesan dengan cepat dan mudah tanpa meninggalkan Telegram.\n@translobot",
+            },
+            {
+                LanguageCode: "it",
+                Text:         "Ti saremo grati se parlerai di noi ai tuoi amici. Basta inoltrare loro questo messaggio.\n\n😎 Traduci i messaggi in modo rapido e semplice senza uscire da Telegram.\n@translobot",
+            },
+            {
+                LanguageCode: "pt",
+                Text:         "Ficaremos gratos se você contar a seus amigos sobre nós. Apenas encaminhe esta mensagem para eles.\n\n😎 Traduza mensagens de forma rápida e fácil sem sair do Telegram.\n@translobot",
+            },
+            {
+                LanguageCode: "ru",
+                Text:         "Мы будем благодарны, если вы расскажете о нас друзьям. Просто перешлите им это сообщение.\n\n😎 Переводите сообщения быстро и легко, не выходя из Telegram.\n@translobot",
+            },
+            {
+                LanguageCode: "uk",
+                Text:         "Ми будемо вдячні, якщо ви розповісте про нас друзям. Просто перешліть їм це повідомлення.\n\n😎 Переводите повідомлення швидко і легко, не виходячи з Telegram.\n@translobot",
+            },
+            {
+                LanguageCode: "uz",
+                Text:         "Agar do'stlaringizga biz haqimizda aytib bersangiz, minnatdor bo'lamiz. Bu xabarni ularga yuboring.\n\n😎 Telegramdan chiqmasdan xabarlarni tez va oson tarjima qiling.\n@translobot",
+            },
+            {
+                LanguageCode: "en",
+                Text:         "We will be grateful if you tell your friends about us. Just forward this message to them.\n\n😎 Translate messages quickly and easily without leaving Telegram.\n@translobot",
+            },
+        },
 }
     
     if df, ok := languages[text]; ok { // Текст подходит под варианты

@@ -57,6 +57,10 @@ func main() {
 		port = "80"
 	}
 	
+	if _, err = os.Stat("ad.jpg"); err != nil {
+		panic(err)
+	}
+	
 	// bot.Buffer = 0
 	// updates := bot.GetUpdatesChan(tgbotapi.UpdateConfig{})
 	// for update := range updates {

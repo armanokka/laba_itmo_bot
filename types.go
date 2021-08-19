@@ -26,7 +26,7 @@ type Users struct {
     ToLang string `gorm:"default:fr"`
     Act sql.NullString `gorm:"default:null"`
     Mailing bool `gorm:"default:true"`
-    Usings int64 `gorm:"default:0"`
+    Usings int `gorm:"default:0"`
     Lang string `gorm:"default:en"`
 }
 
