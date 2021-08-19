@@ -190,6 +190,7 @@ func handleCallback(update *tgbotapi.Update) {
         }
 
         bot.Send(tgbotapi.NewEditMessageReplyMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, keyboard))
+        bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
     case "set_my_lang_pagination":
         offset, err := strconv.Atoi(arr[1])
         if err != nil {
@@ -222,6 +223,7 @@ func handleCallback(update *tgbotapi.Update) {
         }
         
         bot.Send(tgbotapi.NewEditMessageReplyMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, keyboard))
+        bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
     case "sponsorship_set_days": // arr[1] - days, 1-30
         days, err := strconv.Atoi(arr[1])
         if err != nil {
