@@ -312,7 +312,9 @@ func handleMessage(update *tgbotapi.Update) {
             if user.Usings == 10 || user.Usings % 20 == 0 {
                 photo := tgbotapi.NewPhoto(update.Message.Chat.ID, "ad.jpg")
                 photo.Caption = Localize("bot_advertise", UserLang)
-                bot.Send(photo)
+                if _, err = bot.Send(photo); err != nil {
+                    pp.Println(err)
+                }
             }
             
             
