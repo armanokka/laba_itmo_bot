@@ -306,10 +306,21 @@ func handleCallback(update *tgbotapi.Update) {
             return
         }
         if tr.Text == "" {
-            bot.Send(tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, Localize("Empty result", UserLang), *update.CallbackQuery.Message.ReplyMarkup))
+            bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, Localize("Empty result", UserLang)))
             return
         }
-        bot.Send(tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, tr.Text, *update.CallbackQuery.Message.ReplyMarkup))
+        
+        keyboard := update.CallbackQuery.Message.ReplyMarkup
+        for i1, row := range keyboard.InlineKeyboard {
+            for i2, button := range row { // короче заменяем исходный язык в коллбэках на новый
+                replacement := strings.Replace(*button.CallbackData, ":"+arr[1]+":", ":"+arr[2]+":", 1)
+                keyboard.InlineKeyboard[i1][i2].CallbackData = &replacement
+            }
+        }
+
+
+        bot.Send(tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, tr.Text, *keyboard))
+        bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
     case "translate_to_other_languages_pagination": // arr[1] - source lang, arr[2] - pagination offset
         offset, err := strconv.Atoi(arr[2])
         if err != nil {
@@ -342,7 +353,7 @@ func handleCallback(update *tgbotapi.Update) {
         } else if offset + 10 < len(langs) {
             keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
                 tgbotapi.NewInlineKeyboardButtonData("◀", "translate_to_other_languages_pagination:" + arr[1] + ":"+strconv.Itoa(offset-10)),
-                tgbotapi.NewInlineKeyboardButtonData(arr[1] + "/"+strconv.Itoa(len(langs)), "none"),
+                tgbotapi.NewInlineKeyboardButtonData(arr[2] + "/"+strconv.Itoa(len(langs)), "none"),
                 tgbotapi.NewInlineKeyboardButtonData("▶", "translate_to_other_languages_pagination:" + arr[1] + ":"+strconv.Itoa(offset+10))))
         } else {
             langsLen := strconv.Itoa(len(langs))

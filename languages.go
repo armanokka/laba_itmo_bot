@@ -1347,9 +1347,11 @@ func Localize(text, lang string, placeholders ...interface{}) string {
         },
 }
     
-    if df, ok := languages[text]; ok { // Текст подходит под варианты
-        if v, ok := CorrespLang(&df, lang); ok {
-            return fmt.Sprintf(v, placeholders...)
+    if trs, ok := languages[text]; ok { // Текст подходит под варианты
+        for _, tr := range trs {
+            if tr.LanguageCode == lang {
+                return fmt.Sprintf(tr.Text, placeholders...)
+            }
         }
     }
    return fmt.Sprintf(text, placeholders...)

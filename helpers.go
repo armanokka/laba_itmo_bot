@@ -106,15 +106,6 @@ func inArray(k string, arr []string,) bool {
     return false
 }
 
-// CorrespLang looks for language in array of Localizations and return text
-func CorrespLang(arr *[]Localization, lang string)  (string, bool) {
-    for _, v := range *arr {
-        if v.LanguageCode == lang {
-            return v.Text, true
-        }
-    }
-    return "", false
-}
 
 func GetTickedCallbacks(keyboard *tgbotapi.InlineKeyboardMarkup) []string {
     callbacks := make([]string, 0)
