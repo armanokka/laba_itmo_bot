@@ -1307,6 +1307,44 @@ func Localize(text, lang string, placeholders ...interface{}) string {
                 Text:         "We will be grateful if you tell your friends about us. Just forward this message to them.\n\n😎 Translate messages quickly and easily without leaving Telegram.\n@translobot",
             },
         },
+        "Другие языки": {
+            {
+                LanguageCode: "de",
+                Text:         "Andere Sprachen",
+            },
+            {
+                LanguageCode: "es",
+                Text:         "Otros idiomas",
+            },
+            {
+                LanguageCode: "id",
+                Text:         "Bahasa lainnya",
+            },
+            {
+                LanguageCode: "it",
+                Text:         "Altre lingue",
+            },
+            {
+                LanguageCode: "pt",
+                Text:         "Outras línguas",
+            },
+            {
+                LanguageCode: "ru",
+                Text:         "Другие языки",
+            },
+            {
+                LanguageCode: "uk",
+                Text:         "Інші мови",
+            },
+            {
+                LanguageCode: "uz",
+                Text:         "Boshqa tillar",
+            },
+            {
+                LanguageCode: "en",
+                Text:         "Other languages",
+            },
+        },
 }
     
     if df, ok := languages[text]; ok { // Текст подходит под варианты

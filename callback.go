@@ -36,6 +36,36 @@ func handleCallback(update *tgbotapi.Update) {
     case "sponsorship_pay":
         bot.Send(tgbotapi.NewEditMessageReplyMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, tgbotapi.InlineKeyboardMarkup{}))
         bot.Send(tgbotapi.NewEditMessageText(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, "Скоро будет дальше, а пока тут пусто"))
+    // case "swap_languages":
+    //     var user Users
+    //     err = db.Model(&Users{}).Select("my_lang", "to_lang").Where("id = ?", update.CallbackQuery.From.ID).Find(&user).Error
+    //     if err != nil {
+    //         warn(err)
+    //         return
+    //     }
+    //     err = db.Model(&Users{}).Where("id = ?", update.CallbackQuery.From.ID).Updates(Users{MyLang: user.ToLang, ToLang: user.MyLang}).Error
+    //     if err != nil {
+    //         warn(err)
+    //         return
+    //     }
+    //     keyboard := tgbotapi.NewReplyKeyboard(
+    //         tgbotapi.NewKeyboardButtonRow(
+    //             tgbotapi.NewKeyboardButton(Localize("🙎‍♂️Profile", user.Lang)),
+    //         ),
+    //         tgbotapi.NewKeyboardButtonRow(
+    //             tgbotapi.NewKeyboardButton(Localize("💬 Bot language", user.Lang)),
+    //             tgbotapi.NewKeyboardButton(Localize("💡 Instruction", user.Lang)),
+    //         ),
+    //         tgbotapi.NewKeyboardButtonRow(
+    //             tgbotapi.NewKeyboardButton(Localize("My Language", user.Lang)),
+    //             tgbotapi.NewKeyboardButton(Localize("Translate Language", user.Lang)),
+    //         ),
+    //     )
+    //     msg := tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, Localize("/start", user.Lang, user.MyLang, user.ToLang), keyboard)
+    //
+    //     msg.ReplyMarkup = keyboard
+    //     msg.ParseMode = tgbotapi.ModeHTML
+    //     bot.Send(msg)
     }
 
     arr := strings.Split(update.CallbackQuery.Data, ":")
@@ -174,7 +204,12 @@ func handleCallback(update *tgbotapi.Update) {
                 warn(errors.New("no such code "+ code + " in langs"))
                 return
             }
-            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_translate_lang_by_callback:"  + code)))
+            if i % 2 == 0 {
+                keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_translate_lang_by_callback:"  + code)))
+            } else {
+                l := len(keyboard.InlineKeyboard)-1
+                keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_translate_lang_by_callback:"  + code))
+            }
         }
         
         if offset + 10 < len(langs) {
@@ -207,7 +242,12 @@ func handleCallback(update *tgbotapi.Update) {
                 warn(errors.New("no such code "+ code + " in langs"))
                 return
             }
-            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_my_lang_by_callback:"  + code)))
+            if i % 2 == 0 {
+                keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_my_lang_by_callback:"  + code)))
+            } else {
+                l := len(keyboard.InlineKeyboard)-1
+                keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_my_lang_by_callback:"  + code))
+            }
         }
         
         if offset + 10 < len(langs) {
@@ -247,9 +287,46 @@ func handleCallback(update *tgbotapi.Update) {
         keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(Localize("Далее", UserLang), "sponsorship_pay")))
         msg.ReplyMarkup = keyboard
         bot.Send(msg)
-    case "other_languages": // arr[1] - source lang
-        var out string
-        for i, code := range codes {
+    // case "other_languages": // arr[1] - source lang
+    //     var out string
+    //     for i, code := range codes {
+    //         if i >= 10 {
+    //             break
+    //         }
+    //         lang, ok := langs[code]
+    //         if !ok {
+    //             warn(errors.New("no such code "+ code + " in langs"))
+    //             return
+    //         }
+    //         tr, err := translate.GoogleTranslate(arr[1], code, update.CallbackQuery.Message.Text)
+    //         if err != nil {
+    //             warn(err)
+    //             return
+    //         }
+    //         out += lang.Emoji + " <b>" + lang.Name + "</b> - " + tr.Text + "\n"
+    //     }
+    //     msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, out)
+    //     msg.ParseMode = tgbotapi.ModeHTML
+    //     bot.Send(msg)
+    case "translate_by_callback": // arr[1] - source lang, arr[2] - to lang
+        tr, err := translate.GoogleTranslate(arr[1], arr[2], update.CallbackQuery.Message.Text)
+        if err != nil {
+            warn(err)
+            return
+        }
+        if tr.Text == "" {
+            bot.Send(tgbotapi.NewEditMessageText(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, Localize("Empty result", UserLang)))
+            return
+        }
+        bot.Send(tgbotapi.NewEditMessageText(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, tr.Text))
+    case "translate_to_other_languages_pagination": // arr[1] - source lang, arr[2] - pagination offset
+        offset, err := strconv.Atoi(arr[1])
+        if err != nil {
+            warn(err)
+            return
+        }
+        keyboard := tgbotapi.NewInlineKeyboardMarkup()
+        for i, code := range codes[offset:] {
             if i >= 10 {
                 break
             }
@@ -258,15 +335,31 @@ func handleCallback(update *tgbotapi.Update) {
                 warn(errors.New("no such code "+ code + " in langs"))
                 return
             }
-            tr, err := translate.GoogleTranslate(arr[1], code, update.CallbackQuery.Message.Text)
-            if err != nil {
-                warn(err)
-                return
+            if i % 2 == 0 {
+                keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "translate_by_callback:"  + arr[1] + ":" + code)))
+            } else {
+                l := len(keyboard.InlineKeyboard)-1
+                keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "translate_by_callback:"  + arr[1] + ":" + code))
             }
-            out += lang.Emoji + " <b>" + lang.Name + "</b> - " + tr.Text + "\n"
         }
-        msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, out)
-        msg.ParseMode = tgbotapi.ModeHTML
-        bot.Send(msg)
+        
+        if offset == 0 {
+            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+                tgbotapi.NewInlineKeyboardButtonData("0/"+strconv.Itoa(len(langs)), "none"),
+                tgbotapi.NewInlineKeyboardButtonData("▶", "translate_to_other_languages_pagination:" + arr[1] + ":"+strconv.Itoa(offset+10))))
+        } else if offset + 10 < len(langs) {
+            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+                tgbotapi.NewInlineKeyboardButtonData("◀", "translate_to_other_languages_pagination:" + arr[1] + ":"+strconv.Itoa(offset-10)),
+                tgbotapi.NewInlineKeyboardButtonData(arr[1] + "/"+strconv.Itoa(len(langs)), "none"),
+                tgbotapi.NewInlineKeyboardButtonData("▶", "translate_to_other_languages_pagination:" + arr[1] + ":"+strconv.Itoa(offset+10))))
+        } else {
+            langsLen := strconv.Itoa(len(langs))
+            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+                tgbotapi.NewInlineKeyboardButtonData("◀", "translate_to_other_languages_pagination:" + arr[1] + ":" +strconv.Itoa(offset-10)),
+                tgbotapi.NewInlineKeyboardButtonData(langsLen+"/"+langsLen, "none")))
+        }
+    
+        bot.Send(tgbotapi.NewEditMessageReplyMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, keyboard))
+        bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
     }
 }

@@ -152,7 +152,12 @@ func handleMessage(update *tgbotapi.Update) {
                 warn(errors.New("no such code "+ code + " in langs"))
                 return
             }
-            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_my_lang_by_callback:"  + code)))
+            if i % 2 == 0 {
+                keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_my_lang_by_callback:"  + code)))
+            } else {
+                l := len(keyboard.InlineKeyboard)-1
+                keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_my_lang_by_callback:"  + code))
+            }
         }
         keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
             tgbotapi.NewInlineKeyboardButtonData("0/"+strconv.Itoa(len(langs)), "none"),
@@ -173,7 +178,13 @@ func handleMessage(update *tgbotapi.Update) {
                 warn(errors.New("no such code "+ code + " in langs"))
                 return
             }
-            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_translate_lang_by_callback:"  + code)))
+    
+            if i % 2 == 0 {
+                keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_translate_lang_by_callback:"  + code)))
+            } else {
+                l := len(keyboard.InlineKeyboard)-1
+                keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_translate_lang_by_callback:"  + code))
+            }
         }
         keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
             tgbotapi.NewInlineKeyboardButtonData("0/"+strconv.Itoa(len(langs)), "none"),
@@ -337,26 +348,26 @@ func handleMessage(update *tgbotapi.Update) {
             }
             
             cutText := cutString(text, 500)
-            lang, err := translate.DetectLanguageGoogle(cutText)
+            source, err := translate.DetectLanguageGoogle(cutText)
             if err != nil {
                 return
             }
             
-            if lang == "" {
+            if source == "" {
                 bot.Send(tgbotapi.NewEditMessageText(update.Message.Chat.ID, msg.MessageID, text))
                 return
             }
             
             var to string // language into need to translate
-            if lang == user.ToLang {
+            if source == user.ToLang {
                 to = user.MyLang
-            } else if lang == user.MyLang {
+            } else if source == user.MyLang {
                 to = user.ToLang
             } else { // никакой из
                 to = user.MyLang
             }
             
-            tr, err := translate.GoogleTranslate(lang, to, text)
+            tr, err := translate.GoogleTranslate(source, to, text)
             if err != nil {
                 if e, ok := err.(translate.HTTPError); ok {
                     if e.Code == 413 {
@@ -382,9 +393,13 @@ func handleMessage(update *tgbotapi.Update) {
                 tgbotapi.NewInlineKeyboardRow(
                     tgbotapi.NewInlineKeyboardButtonData(Localize("To voice", UserLang), "speech:"+to),
                     ),
-                )
+                tgbotapi.NewInlineKeyboardRow(
+                    tgbotapi.NewInlineKeyboardButtonData(Localize("Другие языки", UserLang), "translate_to_other_languages_pagination:"+source+":0"),
+                    ),
+            )
             if len(tr.Variants) > 0 {
-                keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(Localize("Variants", UserLang), "variants:"+lang+":"+to)))
+                l := len(keyboard.InlineKeyboard)
+                keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(Localize("Variants", UserLang), "variants:"+source+":"+to))
             }
     
             edit := tgbotapi.NewEditMessageTextAndMarkup(update.Message.Chat.ID, msg.MessageID, tr.Text, keyboard)
@@ -402,45 +417,13 @@ func handleMessage(update *tgbotapi.Update) {
                 }
             }
 
-            _, err = bot.Send(edit)
-            if err != nil {
-                pp.Println(err)
-            }
-            
-            // if len(tr.Images) > 0 {
-            //     msg = tgbotapi.NEwph
-            //     bot.Send()
-            // }
+            bot.Send(edit)
             
             analytics.Bot(update.Message.Chat.ID, tr.Text, "Translated")
-
-            // if user.Usings == 10 || user.Usings % 20 == 0 && user.Usings != 20 {
-            //     msg := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("Rate", UserLang))
-            //     kb := tgbotapi.NewInlineKeyboardMarkup(
-            //         tgbotapi.NewInlineKeyboardRow(
-            //             tgbotapi.NewInlineKeyboardButtonData("👍", "rate")),
-            //         tgbotapi.NewInlineKeyboardRow(
-            //             tgbotapi.NewInlineKeyboardButtonData("👎", "delete")))
-            //     msg.ReplyMarkup = kb
-            //     bot.Send(msg)
-            // }
             
-            
-            err = db.Exec("UPDATE users SET usings=usings+1 WHERE id=?", update.Message.Chat.ID).Error
-            if err != nil {
+            if err = db.Exec("UPDATE users SET usings=usings+1 WHERE id=?", update.Message.Chat.ID).Error; err != nil {
                 WarnAdmin(err)
             }
-            // var usings int
-            // err = db.Model(&Users{}).Select("usings").Where("id = ?", update.Message.Chat.ID).Find(&usings).Error
-            // if err != nil {
-            //     WarnAdmin(err)
-            //     return
-            // }
-            // if usings == 5 {
-            //     msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please rate the bot 👇")
-            //     keyboard := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(
-            //         ))
-            // }
         }
         
     }
