@@ -398,7 +398,7 @@ func handleMessage(update *tgbotapi.Update) {
                     ),
             )
             if len(tr.Variants) > 0 {
-                l := len(keyboard.InlineKeyboard)
+                l := len(keyboard.InlineKeyboard)-1
                 keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(Localize("Variants", UserLang), "variants:"+source+":"+to))
             }
     
