@@ -306,7 +306,9 @@ func handleCallback(update *tgbotapi.Update) {
             return
         }
         if tr.Text == "" {
-            bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, Localize("Empty result", UserLang)))
+            callback := tgbotapi.NewCallback(update.CallbackQuery.ID, Localize("Empty result", UserLang))
+            callback.ShowAlert = true
+            bot.AnswerCallbackQuery(callback)
             return
         }
         
