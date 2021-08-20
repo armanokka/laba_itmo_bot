@@ -320,7 +320,7 @@ func handleCallback(update *tgbotapi.Update) {
         }
         bot.Send(tgbotapi.NewEditMessageText(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, tr.Text))
     case "translate_to_other_languages_pagination": // arr[1] - source lang, arr[2] - pagination offset
-        offset, err := strconv.Atoi(arr[1])
+        offset, err := strconv.Atoi(arr[2])
         if err != nil {
             warn(err)
             return
