@@ -83,7 +83,7 @@ var langs = map[string]Lang{
     },
     "ko": {
         Name:  "Korean",
-        Emoji: "🇰🇵",
+        Emoji: "🇰🇵🇰🇷",
     },
     "mg": {
         Name:  "Malagasy",
@@ -439,7 +439,7 @@ var langs = map[string]Lang{
     },
     "la": {
         Name:  "Latin",
-        Emoji: "🇱🇦",
+        Emoji: "",
     },
     "pt": {
         Name:  "Portuguese",
@@ -463,7 +463,7 @@ var langs = map[string]Lang{
     },
     "af": {
         Name:  "Afrikaans",
-        Emoji: "🇦🇫",
+        Emoji: "",
     },
     "ba": {
         Name:  "Bashkir",
@@ -703,7 +703,7 @@ var langs = map[string]Lang{
     },
     "ar": {
         Name:  "Arabic",
-        Emoji: "🇦🇷",
+        Emoji: "🇪🇬",
     },
     "eo": {
         Name:  "Esperanto",

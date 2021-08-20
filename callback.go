@@ -306,6 +306,16 @@ func handleCallback(update *tgbotapi.Update) {
             return
         }
         if tr.Text == "" {
+            lang, err := translate.DetectLanguageGoogle(update.CallbackQuery.Message.Text)
+            if err != nil {
+                warn(err)
+                return
+            }
+            tr, err = translate.GoogleTranslate(lang, arr[2], update.CallbackQuery.Message.Text)
+            if err != nil {
+                warn(err)
+                return
+            }
             callback := tgbotapi.NewCallback(update.CallbackQuery.ID, Localize("Empty result", UserLang))
             callback.ShowAlert = true
             bot.AnswerCallbackQuery(callback)
