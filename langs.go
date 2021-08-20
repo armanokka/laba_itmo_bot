@@ -3,7 +3,7 @@ package main
 var langs = map[string]Lang{
     "zh": {
         Name:  "Chinese",
-        Emoji: "",
+        Emoji: "🇨🇳",
     },
     "hi": {
         Name:  "Hindi",
@@ -83,7 +83,7 @@ var langs = map[string]Lang{
     },
     "ko": {
         Name:  "Korean",
-        Emoji: "",
+        Emoji: "🇰🇵",
     },
     "mg": {
         Name:  "Malagasy",
@@ -387,7 +387,7 @@ var langs = map[string]Lang{
     },
     "ja": {
         Name:  "Japanese",
-        Emoji: "",
+        Emoji: "🇯🇵",
     },
     "es": {
         Name:  "Spanish",
@@ -411,7 +411,7 @@ var langs = map[string]Lang{
     },
     "uk": {
         Name:  "Ukrainian",
-        Emoji: "",
+        Emoji: "🇺🇦",
     },
     "fo": {
         Name:  "Faroese",
