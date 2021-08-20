@@ -318,7 +318,7 @@ func handleCallback(update *tgbotapi.Update) {
             bot.Send(tgbotapi.NewEditMessageText(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, Localize("Empty result", UserLang)))
             return
         }
-        bot.Send(tgbotapi.NewEditMessageText(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, tr.Text))
+        bot.Send(tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, tr.Text, *update.CallbackQuery.Message.ReplyMarkup))
     case "translate_to_other_languages_pagination": // arr[1] - source lang, arr[2] - pagination offset
         offset, err := strconv.Atoi(arr[2])
         if err != nil {
