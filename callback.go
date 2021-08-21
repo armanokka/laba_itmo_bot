@@ -327,7 +327,7 @@ func handleCallback(update *tgbotapi.Update) {
             ),
         )
         if len(tr.Variants) > 0 {
-            l := len(tr.Variants)-1
+            l := len(keyboard.InlineKeyboard)-1
             keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(Localize("Variants", UserLang), "variants:"+arr[1]+":"+arr[2]))
         }
         keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, update.CallbackQuery.Message.ReplyMarkup.InlineKeyboard...)
