@@ -332,7 +332,7 @@ func handleMessage(update *tgbotapi.Update) {
             
             
             x := tgbotapi.NewMessage(update.Message.Chat.ID, Localize("⏳ Translating...", UserLang))
-            x.ReplyToMessageID = update.Message.MessageID
+            x.ReplyToMessageID = update.Message.MessageID // very important to translate_by_callback
             msg, err := bot.Send(x)
             if err != nil {
                 return

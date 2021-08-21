@@ -299,39 +299,26 @@ func handleCallback(update *tgbotapi.Update) {
         keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(Localize("Далее", UserLang), "sponsorship_pay")))
         msg.ReplyMarkup = keyboard
         bot.Send(msg)
-    case "translate_by_callback": // arr[1] - source lang, arr[2] - to lang
-        tr, err := translate.GoogleTranslate(arr[1], arr[2], update.CallbackQuery.Message.Text)
+    case "translate_by_callback": // arr[1] - source lang of a text in replied message, arr[2] - to lang
+        var text = update.CallbackQuery.Message.ReplyToMessage.Text
+        if update.CallbackQuery.Message.ReplyToMessage.Caption != "" {
+            text = update.CallbackQuery.Message.ReplyToMessage.Caption
+        }
+        
+        tr, err := translate.GoogleTranslate(arr[1], arr[2], text)
         if err != nil {
             warn(err)
             return
         }
         if tr.Text == "" {
-            lang, err := translate.DetectLanguageGoogle(update.CallbackQuery.Message.Text)
-            if err != nil {
-                warn(err)
-                return
-            }
-            tr, err = translate.GoogleTranslate(lang, arr[2], update.CallbackQuery.Message.Text)
-            if err != nil {
-                warn(err)
-                return
-            }
+            bot.Send(tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, Localize("Empty result", UserLang), *update.CallbackQuery.Message.ReplyMarkup))
             callback := tgbotapi.NewCallback(update.CallbackQuery.ID, Localize("Empty result", UserLang))
             callback.ShowAlert = true
             bot.AnswerCallbackQuery(callback)
             return
         }
         
-        keyboard := update.CallbackQuery.Message.ReplyMarkup
-        for i1, row := range keyboard.InlineKeyboard {
-            for i2, button := range row { // короче заменяем исходный язык в коллбэках на новый
-                replacement := strings.Replace(*button.CallbackData, ":"+arr[1]+":", ":"+arr[2]+":", 1)
-                keyboard.InlineKeyboard[i1][i2].CallbackData = &replacement
-            }
-        }
-
-
-        bot.Send(tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, tr.Text, *keyboard))
+        bot.Send(tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, tr.Text, *update.CallbackQuery.Message.ReplyMarkup))
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
     case "translate_to_other_languages_pagination": // arr[1] - source lang, arr[2] - pagination offset
         offset, err := strconv.Atoi(arr[2])
