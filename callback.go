@@ -85,7 +85,11 @@ func handleCallback(update *tgbotapi.Update) {
         bot.Send(tgbotapi.NewMessage(update.CallbackQuery.From.ID, Localize("Now press /start 👈", arr[1])))
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
     case "speech": // arr[1] - lang code
-        sdec, err := translate.TTS(arr[1], update.CallbackQuery.Message.Text)
+        text := update.CallbackQuery.Message.Text
+        if update.CallbackQuery.Message.Caption != "" {
+            text = update.CallbackQuery.Message.Caption
+        }
+        sdec, err := translate.TTS(arr[1], text)
         if err != nil {
             if e, ok := err.(translate.TTSError); ok {
                 if e.Code == 500 || e.Code == 414 {
@@ -317,7 +321,14 @@ func handleCallback(update *tgbotapi.Update) {
             bot.AnswerCallbackQuery(callback)
             return
         }
-        
+        keyboard := tgbotapi.NewInlineKeyboardMarkup(
+            tgbotapi.NewInlineKeyboardRow(
+                tgbotapi.NewInlineKeyboardButtonData(Localize("To voice", UserLang), "speech:"+arr[2]),
+            ),
+        )
+        if l := len(tr.Variants)-1; l > 0 {
+            keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(Localize("Variants", UserLang), "variants:"+arr[1]+":"+arr[2]))
+        }
         bot.Send(tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, tr.Text, *update.CallbackQuery.Message.ReplyMarkup))
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
     case "translate_to_other_languages_pagination": // arr[1] - source lang, arr[2] - pagination offset
