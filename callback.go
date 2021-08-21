@@ -329,6 +329,7 @@ func handleCallback(update *tgbotapi.Update) {
         if l := len(tr.Variants)-1; l > 0 {
             keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(Localize("Variants", UserLang), "variants:"+arr[1]+":"+arr[2]))
         }
+        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, update.CallbackQuery.Message.ReplyMarkup.InlineKeyboard...)
         bot.Send(tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, tr.Text, *update.CallbackQuery.Message.ReplyMarkup))
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
     case "translate_to_other_languages_pagination": // arr[1] - source lang, arr[2] - pagination offset
