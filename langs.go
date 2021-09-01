@@ -687,7 +687,7 @@ var langs = map[string]Lang{
     },
     "ky": {
         Name:  "Kyrgyz",
-        Emoji: "🇰🇾",
+        Emoji: "🇰🇬",
     },
     "kj": {
         Name:  "Kwanyama",
