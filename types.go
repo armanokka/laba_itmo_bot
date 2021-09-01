@@ -28,6 +28,7 @@ type Users struct {
     Mailing bool `gorm:"default:true"`
     Usings int `gorm:"default:0"`
     Lang string `gorm:"default:en"`
+    ReferrerID int64 `gorm:"default:null"`
 }
 
 // Sponsorships is table in DB

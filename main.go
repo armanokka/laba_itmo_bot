@@ -17,11 +17,11 @@ import (
 // botRun is main handler of bot
 func botRun(update *tgbotapi.Update) {
 	if update.Message != nil {
-		handleMessage(update)
+		handleMessage(update.Message)
 	} else if update.CallbackQuery != nil {
-		handleCallback(update)
+		handleCallback(update.CallbackQuery)
 	} else if update.InlineQuery != nil {
-		handleInline(update)
+		handleInline(update.InlineQuery)
 	}
 	// f, err := os.Create("mem.out")
 	// if err != nil {
@@ -61,11 +61,10 @@ func main() {
 		panic(err)
 	}
 	
-	// bot.Buffer = 0
-	// updates := bot.GetUpdatesChan(tgbotapi.UpdateConfig{})
-	// for update := range updates {
-	// 	go botRun(&update)
-	// }
+	//updates := bot.GetUpdatesChan(tgbotapi.UpdateConfig{})
+	//for update := range updates {
+	//	go botRun(&update)
+	//}
 	
 	
 	bot.Send(tgbotapi.NewMessage(579515224, "Bot started."))

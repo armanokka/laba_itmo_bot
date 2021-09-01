@@ -13,6 +13,38 @@ import (
     "strings"
 )
 
+func SendMenu(user User) {
+    msg := tgbotapi.NewMessage(user.ID, user.Localize("/start", iso6391.Name(user.MyLang), iso6391.Name(user.ToLang)))
+    keyboard := tgbotapi.NewReplyKeyboard(
+        tgbotapi.NewKeyboardButtonRow(
+            tgbotapi.NewKeyboardButton(user.Localize("My Language")),
+            tgbotapi.NewKeyboardButton(user.Localize("Translate Language")),
+        ),
+    )
+
+    msg.ReplyMarkup = keyboard
+    msg.ParseMode = tgbotapi.ModeHTML
+    bot.Send(msg)
+
+    analytics.Bot(user.ID, msg.Text, "Start")
+}
+
+func SendHelp(user User) {
+    msg := tgbotapi.NewMessage(user.ID, user.Localize("/help"))
+    msg.ParseMode = tgbotapi.ModeHTML
+    query := user.Localize("пишите сюда")
+    btn := tgbotapi.InlineKeyboardButton{
+        Text:                         "inline",
+        SwitchInlineQuery:            &query,
+    }
+    keyboard := tgbotapi.NewInlineKeyboardMarkup(
+        tgbotapi.NewInlineKeyboardRow(btn))
+    msg.ReplyMarkup = keyboard
+    bot.Send(msg)
+
+    analytics.Bot(user.ID, msg.Text, "Help")
+}
+
 // WarnAdmin send error message to the admin (by AdminID const)
 func WarnAdmin(args ...interface{}) {
     var text = "Error caused:\n"

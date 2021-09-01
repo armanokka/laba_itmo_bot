@@ -8,12 +8,12 @@ import (
     "strings"
 )
 
-func handleInline(update *tgbotapi.Update) {
-    analytics.User(update.InlineQuery.Query, update.InlineQuery.From)
+func handleInline(update *tgbotapi.InlineQuery) {
+    analytics.User(update.Query, update.From)
     
     warn := func(err error) {
         bot.AnswerInlineQuery(tgbotapi.InlineConfig{
-            InlineQueryID:     update.InlineQuery.ID,
+            InlineQueryID:     update.ID,
             SwitchPMText:      "Error, sorry.",
             SwitchPMParameter: "from_inline",
         })
@@ -21,7 +21,7 @@ func handleInline(update *tgbotapi.Update) {
     }
     
     var registered bool
-    err := db.Model(&Users{}).Raw("SELECT EXISTS(SELECT usings FROM users WHERE id=?)", update.InlineQuery.From.ID).Find(&registered).Error
+    err := db.Model(&Users{}).Raw("SELECT EXISTS(SELECT usings FROM users WHERE id=?)", update.From.ID).Find(&registered).Error
     if err != nil {
         warn(err)
         return
@@ -29,7 +29,7 @@ func handleInline(update *tgbotapi.Update) {
     languages := make([]string, 0)
     if registered {
         var user Users
-        err := db.Model(&Users{}).Select("my_lang", "to_lang").Where("id = ?", update.InlineQuery.From.ID).Find(&user).Error
+        err := db.Model(&Users{}).Select("my_lang", "to_lang").Where("id = ?", update.From.ID).Find(&user).Error
         if err != nil {
             warn(err)
             return
@@ -39,7 +39,7 @@ func handleInline(update *tgbotapi.Update) {
     
     languages = append(languages, []string{"en","ru","la","ja","ar","fr","de","af","uk","uz","es","ko","zh","hi","bn","pt","mr","te","ms","tr","vi","ta","ur","jv","it","fa","gu","ab","aa","ak","sq","am","an","hy","as","av","ae","ay","az","bm","ba","eu","be","bh","bi","bs","br","bg","my","ca","ch","ce","ny","cv","kw","co","cr","hr","cs","da","dv","nl","eo","et","ee","fo","fj","fi","ff","gl","ka","el","gn","ht","ha","he","hz","ho","hu","ia","id","ie","ga","ig","ik","io","is","iu","kl","kn","kr","ks","kk","km","ki","rw","ky","kv","kg","ku","kj","la","lb","lg","li","ln","lo","lt","lu","lv","gv","mk","mg","ml","mt","mi","mh","mn","na","nv","nb","nd","ne","ng","nn","no","ii","nr","oc","oj","cu","om","or","os","pa","pi","pl","ps","qu","rm","rn","ro","sa","sc","sd","se","sm","sg","sr","gd","sn","si","sk","sl","so","st","su","sw","ss","sv","tg","th","ti","bo","tk","tl","tn","to","ts","tt","tw","ty","ug","ve","vo","wa","cy","wo","fy","xh","yi","yo","za"}...)
     
-    from, err := translate.DetectLanguageGoogle(update.InlineQuery.Query)
+    from, err := translate.DetectLanguageGoogle(update.Query)
     if err != nil {
         warn(err)
         return
@@ -47,8 +47,8 @@ func handleInline(update *tgbotapi.Update) {
     
     var offset int
     
-    if update.InlineQuery.Offset != "" { // Ищем смещение
-        offset, err = strconv.Atoi(update.InlineQuery.Offset)
+    if update.Offset != "" { // Ищем смещение
+        offset, err = strconv.Atoi(update.Offset)
         if err != nil {
             warn(err)
             return
@@ -74,7 +74,7 @@ func handleInline(update *tgbotapi.Update) {
         WarnAdmin(err)
     } else { // no error
         langs := strings.Split(sponsorship.ToLangs, ",")
-        if inArray(update.InlineQuery.From.LanguageCode, langs) {
+        if inArray(update.From.LanguageCode, langs) {
             sponsorText = "\n⚡️" + sponsorship.Text
         }
     }
@@ -82,7 +82,7 @@ func handleInline(update *tgbotapi.Update) {
     
     for ;offset < end; offset++ {
         to := languages[offset] // language code to translate
-        tr, err := translate.GoogleTranslate(from, to, update.InlineQuery.Query)
+        tr, err := translate.GoogleTranslate(from, to, update.Query)
         if err != nil {
             warn(err)
             return
@@ -120,12 +120,12 @@ func handleInline(update *tgbotapi.Update) {
         nextOffset = end
     }
     pmtext := "Translo"
-    if update.InlineQuery.Query == "" {
+    if update.Query == "" {
         pmtext = "Enter text"
     }
     
     bot.AnswerInlineQuery(tgbotapi.InlineConfig{
-        InlineQueryID:     update.InlineQuery.ID,
+        InlineQueryID:     update.ID,
         Results:           results,
         CacheTime:         300,
         NextOffset: 	   strconv.Itoa(nextOffset),
@@ -134,5 +134,5 @@ func handleInline(update *tgbotapi.Update) {
         SwitchPMParameter: "from_inline",
     })
     
-    analytics.Bot(update.InlineQuery.From.ID, "Inline succeeded", "Inline succeeded")
+    analytics.Bot(update.From.ID, "Inline succeeded", "Inline succeeded")
 }
