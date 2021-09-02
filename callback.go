@@ -121,7 +121,7 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
     case "set_my_lang_by_callback": // arr[1] - lang
         user.Update(Users{MyLang: arr[1]})
 
-        bot.Send(tgbotapi.NewEditMessageText(callback.From.ID, callback.Message.MessageID, user.Localize("Ваш язык %s. Выберите Ваш язык.", iso6391.Name(user.MyLang))))
+        bot.Send(tgbotapi.NewEditMessageTextAndMarkup(callback.From.ID, callback.Message.MessageID, user.Localize("Ваш язык %s. Выберите Ваш язык.", iso6391.Name(user.MyLang)), *callback.Message.ReplyMarkup))
 
         call := tgbotapi.NewCallback(callback.ID, "")
         bot.AnswerCallbackQuery(call)
@@ -130,7 +130,7 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
     case "set_translate_lang_by_callback": // arr[1] - lang
         user.Update(Users{ToLang: arr[1]})
 
-        bot.Send(tgbotapi.NewEditMessageText(callback.From.ID, callback.Message.MessageID, user.Localize("Сейчас бот переводит на %s. Выберите язык для перевода", iso6391.Name(user.ToLang))))
+        bot.Send(tgbotapi.NewEditMessageTextAndMarkup(callback.From.ID, callback.Message.MessageID, user.Localize("Сейчас бот переводит на %s. Выберите язык для перевода", iso6391.Name(user.ToLang)), *callback.Message.ReplyMarkup))
 
         call := tgbotapi.NewCallback(callback.ID, "")
         bot.AnswerCallbackQuery(call)
