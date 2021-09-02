@@ -317,13 +317,16 @@ func handleMessage(message *tgbotapi.Message) {
                 return
             }
             pp.Println(tr)
+
+            otherLanguagesButton := tgbotapi.InlineKeyboardButton{
+                Text:                         user.Localize("Другие языки"),
+                SwitchInlineQueryCurrentChat: &message.Text,
+            }
             keyboard := tgbotapi.NewInlineKeyboardMarkup(
                 tgbotapi.NewInlineKeyboardRow(
                     tgbotapi.NewInlineKeyboardButtonData(user.Localize("To voice"), "speech:"+to),
                     ),
-                tgbotapi.NewInlineKeyboardRow(
-                    tgbotapi.NewInlineKeyboardButtonData(user.Localize("Другие языки"), "translate_to_other_languages_pagination:"+source+":0"),
-                    ),
+                tgbotapi.NewInlineKeyboardRow(otherLanguagesButton),
             )
             if len(tr.Variants) > 0 {
                 keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(user.Localize("Variants"), "variants:"+source+":"+to)))
