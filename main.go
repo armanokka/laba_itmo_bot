@@ -56,8 +56,8 @@ func main() {
 	if port == "" {
 		port = "80"
 	}
-	
-	if _, err = os.Stat("ad.jpg"); err != nil {
+
+	if _, err := os.Stat("ad.jpg"); err != nil {
 		panic(err)
 	}
 	
