@@ -127,7 +127,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
     bot.AnswerInlineQuery(tgbotapi.InlineConfig{
         InlineQueryID:     update.ID,
         Results:           results,
-        CacheTime:         300,
+        CacheTime:         InlineCacheTime,
         NextOffset: 	   strconv.Itoa(nextOffset),
         IsPersonal:        false,
         SwitchPMText:      pmtext,

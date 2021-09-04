@@ -247,6 +247,18 @@ func handleMessage(message *tgbotapi.Message) {
                 warn(err)
             }
         default: // У пользователя нет шага и сообщение не команда
+            if strings.HasPrefix(message.Text, "/set") && message.From.ID == AdminID {
+                parts := strings.Fields(message.Text)
+                if len(parts) != 2 {
+                    return
+                }
+                n, err := strconv.Atoi(parts[1])
+                if err != nil {
+                    return
+                }
+                InlineCacheTime = n
+                return
+            }
 
             if user.Usings == 10 || user.Usings % 20 == 0 {
                 photo := tgbotapi.NewPhoto(message.Chat.ID, "ad.jpg")
