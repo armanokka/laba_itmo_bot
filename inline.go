@@ -96,7 +96,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
             "parse_mode": tgbotapi.ModeHTML,
             "disable_web_page_preview":true,
         }
-        query := "text"
+        query := cutString(tr.Text, 256)
         keyboard := tgbotapi.NewInlineKeyboardMarkup(
             tgbotapi.NewInlineKeyboardRow(
                 tgbotapi.InlineKeyboardButton{
