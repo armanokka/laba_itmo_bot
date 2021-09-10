@@ -17,7 +17,7 @@ var (
     db  *gorm.DB
     bot *BotAPI
     analytics *dashbot.DashBot
-    InlineCacheTime int = 300
+    InlineCacheTime int = 864000
 )
 
 // Users is table in DB

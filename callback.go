@@ -5,6 +5,7 @@ import (
     "github.com/armanokka/translobot/translate"
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+    "github.com/k0kubun/pp"
     "os"
     "strconv"
     "strings"
@@ -44,15 +45,13 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
         fallthrough
     case "set_bot_lang": // arr[1] - lang code
         user.Update(Users{Lang: arr[1]})
-        bot.Send(tgbotapi.DeleteMessageConfig{
-            ChatID:          callback.From.ID,
-            MessageID:       callback.Message.MessageID,
-        })
 
         SendMenu(user)
 
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
     case "speech": // arr[1] - lang code
+        bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, "⏳"))
+
         text := callback.Message.Text
         if callback.Message.Caption != "" {
             text = callback.Message.Caption
@@ -69,6 +68,7 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
             }
             bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, "Iternal error"))
             warn(err)
+            pp.Println(err)
             return
         }
         f, err := os.CreateTemp("", "")
@@ -93,7 +93,6 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
         kb := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
         audio.ReplyMarkup = kb
         bot.Send(audio)
-        bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
     case "variants": // arr[1] - from, arr[2] - to
         tr, err := translate.GoogleTranslate(arr[1], arr[2], callback.Message.ReplyToMessage.Text)
         if err != nil {
@@ -265,35 +264,5 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
         keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(user.Localize("Далее"), "sponsorship_pay")))
         msg.ReplyMarkup = keyboard
         bot.Send(msg)
-    case "translate_by_callback": // arr[1] - source lang of a text in replied message, arr[2] - to lang
-        var text = callback.Message.ReplyToMessage.Text
-        if callback.Message.ReplyToMessage.Caption != "" {
-            text = callback.Message.ReplyToMessage.Caption
-        }
-        
-        tr, err := translate.GoogleTranslate(arr[1], arr[2], text)
-        if err != nil {
-            warn(err)
-            return
-        }
-        if tr.Text == "" {
-            bot.Send(tgbotapi.NewEditMessageTextAndMarkup(callback.From.ID, callback.Message.MessageID, user.Localize("Empty result"), *callback.Message.ReplyMarkup))
-            callback := tgbotapi.NewCallback(callback.ID, user.Localize("Empty result"))
-            callback.ShowAlert = true
-            bot.AnswerCallbackQuery(callback)
-            return
-        }
-        // keyboard := tgbotapi.NewInlineKeyboardMarkup(
-        //     tgbotapi.NewInlineKeyboardRow(
-        //         tgbotapi.NewInlineKeyboardButtonData(user.Localize("To voice"), "speech:"+arr[2]),
-        //     ),
-        // )
-        // if len(tr.Variants) > 0 {
-        //     l := len(keyboard.InlineKeyboard)-1
-        //     keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(user.Localize("Variants"), "variants:"+arr[1]+":"+arr[2]))
-        // }
-        // keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, callback.Message.ReplyMarkup.InlineKeyboard...)
-        bot.Send(tgbotapi.NewEditMessageTextAndMarkup(callback.From.ID, callback.Message.MessageID, tr.Text, *callback.Message.ReplyMarkup))
-        bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
     }
 }
