@@ -4,6 +4,7 @@ import (
     "github.com/armanokka/translobot/translate"
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+    "github.com/k0kubun/pp"
     "strconv"
     "strings"
 )
@@ -39,11 +40,11 @@ func handleInline(update *tgbotapi.InlineQuery) {
     
     languages = append(languages, []string{"en","ru","la","ja","ar","fr","de","af","uk","uz","es","ko","zh","hi","bn","pt","mr","te","ms","tr","vi","ta","ur","jv","it","fa","gu","ab","aa","ak","sq","am","an","hy","as","av","ae","ay","az","bm","ba","eu","be","bh","bi","bs","br","bg","my","ca","ch","ce","ny","cv","kw","co","cr","hr","cs","da","dv","nl","eo","et","ee","fo","fj","fi","ff","gl","ka","el","gn","ht","ha","he","hz","ho","hu","ia","id","ie","ga","ig","ik","io","is","iu","kl","kn","kr","ks","kk","km","ki","rw","ky","kv","kg","ku","kj","la","lb","lg","li","ln","lo","lt","lu","lv","gv","mk","mg","ml","mt","mi","mh","mn","na","nv","nb","nd","ne","ng","nn","no","ii","nr","oc","oj","cu","om","or","os","pa","pi","pl","ps","qu","rm","rn","ro","sa","sc","sd","se","sm","sg","sr","gd","sn","si","sk","sl","so","st","su","sw","ss","sv","tg","th","ti","bo","tk","tl","tn","to","ts","tt","tw","ty","ug","ve","vo","wa","cy","wo","fy","xh","yi","yo","za"}...)
     
-    from, err := translate.DetectLanguageGoogle(update.Query)
-    if err != nil {
-        warn(err)
-        return
-    }
+    //from, err := translate.DetectLanguageGoogle(update.Query)
+    //if err != nil {
+    //    warn(err)
+    //    return
+    //}
     
     var offset int
     
@@ -82,7 +83,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
     
     for ;offset < end; offset++ {
         to := languages[offset] // language code to translate
-        tr, err := translate.GoogleTranslate(from, to, update.Query)
+        tr, err := translate.GoogleHTMLTranslate("auto", to, update.Query)
         if err != nil {
             warn(err)
             return
@@ -124,7 +125,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
         pmtext = "Enter text"
     }
     
-    bot.AnswerInlineQuery(tgbotapi.InlineConfig{
+    if _, err = bot.AnswerInlineQuery(tgbotapi.InlineConfig{
         InlineQueryID:     update.ID,
         Results:           results,
         CacheTime:         InlineCacheTime,
@@ -132,7 +133,10 @@ func handleInline(update *tgbotapi.InlineQuery) {
         IsPersonal:        false,
         SwitchPMText:      pmtext,
         SwitchPMParameter: "from_inline",
-    })
+    }); err != nil {
+        pp.Println(err)
+        warn(err)
+    }
     
     analytics.Bot(update.From.ID, "Inline succeeded", "Inline succeeded")
 }
