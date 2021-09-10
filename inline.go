@@ -92,16 +92,16 @@ func handleInline(update *tgbotapi.InlineQuery) {
         }
         
         inputMessageContent := map[string]interface{}{
-            "message_text":cutString(tr.Text + "\n\n» @translobot", 4096),
+            "message_text": tr.Text + "\n\n» @translobot",
             "parse_mode": tgbotapi.ModeHTML,
-            "disable_web_page_preview":true,
+            "disable_web_page_preview":false,
         }
-        query := cutString(tr.Text, 255)
+
         keyboard := tgbotapi.NewInlineKeyboardMarkup(
             tgbotapi.NewInlineKeyboardRow(
                 tgbotapi.InlineKeyboardButton{
                     Text:                         "translate",
-                    SwitchInlineQueryCurrentChat: &query,
+                    SwitchInlineQueryCurrentChat: &tr.Text,
                 }))
         results = append(results, tgbotapi.InlineQueryResultArticle{
             Type:                "article",
