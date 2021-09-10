@@ -6,6 +6,7 @@ import (
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "github.com/k0kubun/pp"
+    "os"
     "strconv"
     "strings"
 )
@@ -176,7 +177,31 @@ func handleMessage(message *tgbotapi.Message) {
             return
         }
         bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Всего " + strconv.Itoa(users) + " юзеров"))
-
+    case "/users":
+        if message.From.ID != AdminID {
+            return
+        }
+        f, err := os.Create("users.txt")
+        if err != nil {
+            warn(err)
+            return
+        }
+        var users []Users
+        if err = db.Model(&Users{}).Find(&users).Error; err != nil {
+            warn(err)
+            return
+        }
+        for _, user := range users {
+            if _, err = f.WriteString(strconv.FormatInt(user.ID, 10) + "\r\n"); err != nil {
+                warn(err)
+                return
+            }
+        }
+        doc := tgbotapi.NewInputMediaDocument("users.txt")
+        group := tgbotapi.NewMediaGroup(message.From.ID, []interface{}{doc})
+        if _, err = bot.Send(group); err != nil {
+            warn(err)
+        }
     default: // Сообщение не является командой.
     
         userStep, err := getUserStep(message.Chat.ID)
