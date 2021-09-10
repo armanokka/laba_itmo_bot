@@ -199,9 +199,7 @@ func handleMessage(message *tgbotapi.Message) {
         }
         doc := tgbotapi.NewInputMediaDocument("users.txt")
         group := tgbotapi.NewMediaGroup(message.From.ID, []interface{}{doc})
-        if _, err = bot.Send(group); err != nil {
-            warn(err)
-        }
+        bot.Send(group)
     default: // Сообщение не является командой.
     
         userStep, err := getUserStep(message.Chat.ID)
