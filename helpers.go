@@ -4,6 +4,8 @@ Helper functions
 package main
 
 import (
+    "encoding/json"
+    "github.com/armanokka/translobot/translate"
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "html"
@@ -224,4 +226,35 @@ func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
     }
     ret = strings.Replace(ret, "\n", "<br>", -1)
     return ret
+}
+
+func setMyCommands(langs []string, commands []tgbotapi.BotCommand) error {
+    newCommands := make(map[string][]tgbotapi.BotCommand)
+    for _, lang := range langs {
+        newCommands[lang] = []tgbotapi.BotCommand{}
+        for _, command := range commands {
+            tr, err := translate.GoogleHTMLTranslate("en", lang, command.Description)
+            if err != nil {
+                return err
+            }
+            newCommands[lang]= append(newCommands[lang], tgbotapi.BotCommand{
+                Command:     command.Command,
+                Description: tr.Text,
+            })
+        }
+    }
+
+    for lang, command := range newCommands {
+        data, err := json.Marshal(command)
+        if err != nil {
+            return err
+        }
+        params := tgbotapi.Params{}
+        params.AddNonEmpty("commands", string(data))
+        params.AddNonEmpty("language_code", lang)
+        if _, err = bot.MakeRequest("setMyCommands", params); err != nil {
+            return err
+        }
+    }
+    return nil
 }
