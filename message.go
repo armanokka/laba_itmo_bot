@@ -297,7 +297,7 @@ func handleMessage(message *tgbotapi.Message) {
                 warn(err)
                 return
             }
-            
+
             if from == "" {
                 bot.Send(tgbotapi.NewEditMessageText(message.Chat.ID, msg.MessageID, text))
                 return
@@ -327,6 +327,8 @@ func handleMessage(message *tgbotapi.Message) {
 
             tr.Text = strings.Replace(tr.Text, `<label class="notranslate">`, "", -1)
             tr.Text = strings.Replace(tr.Text, `</label>`, "", -1)
+            tr.Text = strings.Replace(tr.Text, `<br>`, "\n", -1)
+
 
             otherLanguagesButton := tgbotapi.InlineKeyboardButton{
                 Text:                         user.Localize("Другие языки"),
