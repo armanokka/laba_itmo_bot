@@ -6,7 +6,6 @@ import (
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "github.com/k0kubun/pp"
     "strconv"
-    "strings"
 )
 
 func handleInline(update *tgbotapi.InlineQuery) {
@@ -68,17 +67,17 @@ func handleInline(update *tgbotapi.InlineQuery) {
     }
     results := make([]interface{}, 0, 10)
     
-    var sponsorship Sponsorships
-    var sponsorText string
-    err = db.Model(&Sponsorships{}).Select("text", "to_langs").Where("start <= current_timestamp AND finish >= current_timestamp").Limit(1).Find(&sponsorship).Error
-    if err != nil {
-        WarnAdmin(err)
-    } else { // no error
-        langs := strings.Split(sponsorship.ToLangs, ",")
-        if inArray(update.From.LanguageCode, langs) {
-            sponsorText = "\n⚡️" + sponsorship.Text
-        }
-    }
+    //var sponsorship Sponsorships
+    //var sponsorText string
+    //err = db.Model(&Sponsorships{}).Select("text", "to_langs").Where("start <= current_timestamp AND finish >= current_timestamp").Limit(1).Find(&sponsorship).Error
+    //if err != nil {
+    //    WarnAdmin(err)
+    //} else { // no error
+    //    langs := strings.Split(sponsorship.ToLangs, ",")
+    //    if inArray(update.From.LanguageCode, langs) {
+    //        sponsorText = "\n⚡️" + sponsorship.Text
+    //    }
+    //}
     
     
     for ;offset < end; offset++ {
@@ -93,11 +92,11 @@ func handleInline(update *tgbotapi.InlineQuery) {
         }
         
         inputMessageContent := map[string]interface{}{
-            "message_text":tr.Text + sponsorText,
+            "message_text":tr.Text + "\n\n» @translobot",
             "parse_mode": tgbotapi.ModeHTML,
             "disable_web_page_preview":true,
         }
-        query := cutString(tr.Text, 256)
+        query := cutString(tr.Text, 255)
         keyboard := tgbotapi.NewInlineKeyboardMarkup(
             tgbotapi.NewInlineKeyboardRow(
                 tgbotapi.InlineKeyboardButton{
