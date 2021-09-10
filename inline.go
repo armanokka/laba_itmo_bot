@@ -92,7 +92,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
         }
         
         inputMessageContent := map[string]interface{}{
-            "message_text":tr.Text + "\n\n» @translobot",
+            "message_text":cutString(tr.Text + "\n\n» @translobot", 4096),
             "parse_mode": tgbotapi.ModeHTML,
             "disable_web_page_preview":true,
         }
