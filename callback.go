@@ -122,7 +122,7 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
 
         bot.Send(tgbotapi.NewEditMessageTextAndMarkup(callback.From.ID, callback.Message.MessageID, user.Localize("Ваш язык %s. Выберите Ваш язык.", iso6391.Name(user.MyLang)), *callback.Message.ReplyMarkup))
 
-        call := tgbotapi.NewCallback(callback.ID, user.Localize("Now your language is %s", arr[1]))
+        call := tgbotapi.NewCallback(callback.ID, user.Localize("Now your language is %s", iso6391.Name(arr[1])))
         call.ShowAlert = true
         bot.AnswerCallbackQuery(call)
 
@@ -132,7 +132,7 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
 
         bot.Send(tgbotapi.NewEditMessageTextAndMarkup(callback.From.ID, callback.Message.MessageID, user.Localize("Сейчас бот переводит на %s. Выберите язык для перевода", iso6391.Name(user.ToLang)), *callback.Message.ReplyMarkup))
 
-        call := tgbotapi.NewCallback(callback.ID, user.Localize("Now translate language is %s", arr[1]))
+        call := tgbotapi.NewCallback(callback.ID, user.Localize("Now translate language is %s", iso6391.Name(arr[1])))
         call.ShowAlert = true
         bot.AnswerCallbackQuery(call)
     
