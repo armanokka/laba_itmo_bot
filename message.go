@@ -231,7 +231,7 @@ func handleMessage(message *tgbotapi.Message) {
             msg.ReplyMarkup = keyboard
             bot.Send(msg)
         case "ad:pass_start_date":
-            t, err := time.Parse(layout, message.Text)
+            t, err := time.ParseInLocation(layout, message.Text, Location)
             if err != nil {
                 bot.Send(tgbotapi.NewMessage(message.From.ID, "Неверный ввод"))
                 return
@@ -248,7 +248,7 @@ func handleMessage(message *tgbotapi.Message) {
             bot.Send(tgbotapi.NewMessage(message.From.ID, "Теперь введите дату окончания в таком же формате"))
             user.SetStep("ad:pass_finish_date")
         case "ad:pass_finish_date":
-            t, err := time.Parse(layout, message.Text)
+            t, err := time.ParseInLocation(layout, message.Text, Location)
             if err != nil {
                 bot.Send(tgbotapi.NewMessage(message.From.ID, "Неверный ввод"))
                 return

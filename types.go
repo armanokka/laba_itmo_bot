@@ -17,6 +17,7 @@ const (
 
 var (
     now = time.Now().In(LoadLocation())
+    Location *time.Location
 )
 
 func LoadLocation() *time.Location {
@@ -24,6 +25,7 @@ func LoadLocation() *time.Location {
     if err != nil {
         panic(err) // проверяем на валидность константы TimeLocation
     }
+    Location = loc
     return loc
 }
 
