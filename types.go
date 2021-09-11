@@ -11,6 +11,7 @@ const (
     DashBotAPIKey = "cjVjdWDRijXDk5kl9yGi5TTS9XImME7HbZMOg09F"
     AdminID       = 579515224
     botToken string = "1737819626:AAEoc8WyCq_8rFQcY4q0vtkhqCKro8AudfI"
+    layout string = "2006-01-02 04:05" // для парсинга времени в /ad
 )
 
 var (
