@@ -236,6 +236,10 @@ func handleMessage(message *tgbotapi.Message) {
                 bot.Send(tgbotapi.NewMessage(message.From.ID, "Неверный ввод"))
                 return
             }
+            if !time.Now().Before(t) {
+                bot.Send(tgbotapi.NewMessage(message.From.ID, "Время должно быть позже, чем сейчас"))
+                return
+            }
             if err = db.Model(&AdsOffers{}).Where("id = ?", message.From.ID).Update("start_date", t).Error; err != nil {
                 warn(err)
                 return
@@ -247,6 +251,19 @@ func handleMessage(message *tgbotapi.Message) {
             t, err := time.Parse(layout, message.Text)
             if err != nil {
                 bot.Send(tgbotapi.NewMessage(message.From.ID, "Неверный ввод"))
+                return
+            }
+            if !time.Now().Before(t) {
+                bot.Send(tgbotapi.NewMessage(message.From.ID, "Время должно быть позже, чем сейчас"))
+                return
+            }
+            var offer AdsOffers
+            if err = db.Model(&AdsOffers{}).Where("id = ?", message.From.ID).Find(&offer).Error; err != nil {
+                warn(err)
+                return
+            }
+            if !offer.StartDate.After(t) { // время начала позже времени окончания
+                bot.Send(tgbotapi.NewMessage(message.From.ID, "Время начала должно быть позже времени окончания"))
                 return
             }
             if err = db.Model(&AdsOffers{}).Where("id = ?", message.From.ID).Update("finish_date", t).Error; err != nil {
