@@ -22,15 +22,6 @@ func handleInline(update *tgbotapi.InlineQuery) {
 
     user := NewUser(update.From.ID, warn)
     user.Fill()
-    languages := make([]string, 0, len(codes)+2)
-
-    if user.Exists() {
-        myLang := user.MyLang + " (your)"
-        toLang := user.ToLang + " (your)"
-        languages = []string{myLang, toLang}
-    }
-
-    languages = append(languages, codes...)
     
     var offset int
     var err error
@@ -41,7 +32,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
             return
         }
     }
-    languagesLen := len(languages)
+    languagesLen := len(codes)
     
     if offset >= languagesLen { // Слишком большое смещение
         warn(err)
@@ -81,7 +72,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
     
     
     for ;offset < end; offset++ {
-        to := languages[offset] // language code to translate
+        to := codes[offset] // language code to translate
         tr, err := translate.GoogleHTMLTranslate("auto", to, update.Query)
         if err != nil {
             warn(err)
@@ -116,7 +107,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
     }
     
     var nextOffset int
-    if end < len(languages) {
+    if end < len(codes) {
         nextOffset = end
     }
     pmtext := "Translo"
