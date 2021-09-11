@@ -63,7 +63,6 @@ func handleInline(update *tgbotapi.InlineQuery) {
             HideURL:             true,
             Description:         offer.Content,
         })
-        results = append(results, results)
     }
 
     
