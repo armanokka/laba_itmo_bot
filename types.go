@@ -32,22 +32,25 @@ type Users struct {
     ReferrerID int64 `gorm:"default:null"`
 }
 
-// Sponsorships is table in DB
-type Sponsorships struct {
-    ID int64 // ID of user that bought offer
-    Text string // Advertise
-    ToLangs string // String of languages separated by "," of users that must to receive advertise
-    Start time.Time // When offer starts
-    Finish time.Time // When offer finish
+type Ads struct {
+    ID int64 // user id of admin that made it
+    Content string // text content of an ad
+    StartDate time.Time
+    FinishDate time.Time
+    IDWhoseAd int64 // user id who's this ad
+    Views int `gorm:"default:0"`
+    ToLangs string // en,ru,ja,es - languages of users that must see an ad
 }
 
-// SponsorshipsOffers is table in DB
-type SponsorshipsOffers struct {
-    ID int64 // ID of user that bought offer
-    Text string // Advertise
-    ToLangs string // String of languages separated by "," of users that must to receive advertise
-    Days int // Days of sponsorship
+type AdsOffers struct {
+    ID int64 // user id of admin that made it
+    Content string // text content of an ad
+    StartDate time.Time
+    FinishDate time.Time
+    IDWhoseAd int64 // user id who's this ad
+    ToLangs string // en,ru,ja,es - languages of users that must see an ad
 }
+
 
 type Localization struct {
     LanguageCode string

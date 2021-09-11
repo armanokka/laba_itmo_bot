@@ -9,6 +9,7 @@ import (
     "os"
     "strconv"
     "strings"
+    "unicode/utf16"
 )
 
 func handleMessage(message *tgbotapi.Message) {
@@ -156,19 +157,6 @@ func handleMessage(message *tgbotapi.Message) {
         analytics.Bot(message.Chat.ID, msg.Text, "Set translate lang")
     case "/help":
         SendHelp(user)
-    case "/sponsorship":
-        msg := tgbotapi.NewMessage(message.Chat.ID, user.Localize("sponsorship"))
-        keyboard := tgbotapi.NewReplyKeyboard(
-            tgbotapi.NewKeyboardButtonRow(
-                tgbotapi.NewKeyboardButton(user.Localize("⬅Back"))))
-        msg.ReplyMarkup = keyboard
-        msg.ParseMode = tgbotapi.ModeHTML
-        bot.Send(msg)
-        
-        if err := setUserStep(message.Chat.ID, "sponsorship_set_text"); err != nil {
-            warn(err)
-        }
-        analytics.Bot(message.Chat.ID, msg.Text, "Look at sponsorship")
     case "/stats":
         var users int
         err := db.Model(&Users{}).Raw("SELECT COUNT(*) FROM users").Find(&users).Error
@@ -200,6 +188,22 @@ func handleMessage(message *tgbotapi.Message) {
         doc := tgbotapi.NewInputMediaDocument("users.txt")
         group := tgbotapi.NewMediaGroup(message.From.ID, []interface{}{doc})
         bot.Send(group)
+    case "/ad":
+        if message.From.ID != AdminID {
+            return
+        }
+        bot.Send(tgbotapi.NewMessage(message.From.ID, "Введите текст сообщения: (до 100 символов)\n\n/cancel для отмены"))
+        user.SetStep("ad:accept_text")
+    case "/cancel":
+        if message.From.ID != AdminID {
+            return
+        }
+        if err := db.Model(&AdsOffers{}).Where("id = ?", message.From.ID).Delete(&AdsOffers{}).Error; err != nil {
+            warn(err)
+            return
+        }
+        bot.Send(tgbotapi.NewMessage(message.From.ID, "Создание рекламы отменено."))
+        SendMenu(user)
     default: // Сообщение не является командой.
     
         userStep, err := getUserStep(message.Chat.ID)
@@ -208,77 +212,89 @@ func handleMessage(message *tgbotapi.Message) {
             return
         }
         switch userStep {
-        case "sponsorship_set_text":
-            if len(message.Text) > 130 {
-                bot.Send(tgbotapi.NewMessage(message.Chat.ID, user.Localize("Too big text")))
-                return
+        case "ad:accept_text":
+            if len(utf16.Encode([]rune(message.Text))) > 100 {
+                bot.Send(tgbotapi.NewMessage(message.From.ID, "Слишком длинный текст. Максимум 100 символов."))
             }
-            var sponsorshipExists bool
-            err = db.Model(&SponsorshipsOffers{}).Raw("SELECT EXISTS(SELECT id FROM sponsorships_offers WHERE id=?)", message.From.ID).Find(&sponsorshipExists).Error
-            if err != nil {
-                warn(err)
-                return
-            }
-            if sponsorshipExists {
-                if err = db.Model(&SponsorshipsOffers{}).Where("id = ?", message.From.ID).Update("text", message.Text).Error; err != nil {
-                    warn(err)
-                    return
-                }
-            } else {
-                if err = db.Create(&SponsorshipsOffers{
-                    ID:      message.Chat.ID,
-                    Text:    message.Text,
-                }).Error; err != nil {
-                    warn(err)
-                    return
-                }
-            }
-            msg := tgbotapi.NewMessage(message.Chat.ID, user.Localize("sponsorship_set_days"))
+            message.Text = applyEntitiesHtml(message.Text, message.Entities)
+            msg := tgbotapi.NewMessage(message.From.ID, "Вы собираетесь создать рекламу с текстом:\n\n"+message.Text)
+            msg.ParseMode = tgbotapi.ModeHTML
             keyboard := tgbotapi.NewInlineKeyboardMarkup(
                 tgbotapi.NewInlineKeyboardRow(
-                    tgbotapi.NewInlineKeyboardButtonData("1д - 9р", "sponsorship_set_days:1"),
-                    tgbotapi.NewInlineKeyboardButtonData("2д - 20р", "sponsorship_set_days:2"),
-                    tgbotapi.NewInlineKeyboardButtonData("7д - 60р", "sponsorship_set_days:7")),
-                tgbotapi.NewInlineKeyboardRow(
-                    tgbotapi.NewInlineKeyboardButtonData("10д - 90р", "sponsorship_set_days:10"),
-                    tgbotapi.NewInlineKeyboardButtonData("15д -130р", "sponsorship_set_days:15"),
-                    tgbotapi.NewInlineKeyboardButtonData("🔥 30д - 270р", "sponsorship_set_days:30"),
-                ))
+                    tgbotapi.NewInlineKeyboardButtonData("Да", "ad:confirm_entered_text_for_ad")))
             msg.ReplyMarkup = keyboard
             bot.Send(msg)
-            
-            if err = setUserStep(message.Chat.ID, ""); err != nil {
-                warn(err)
-            }
-
-        case "sponsorship_set_days":
-            days, err := strconv.Atoi(message.Text)
-            if err != nil {
-                bot.Send(tgbotapi.NewMessage(message.Chat.ID, user.Localize("Введите целое число без лишних символов")))
-                return
-            }
-            if days < 1 || days > 30 {
-                bot.Send(tgbotapi.NewMessage(message.Chat.ID, user.Localize("Количество дней должно быть от 1 до 30 включительно")))
-                return
-            }
-            if err = db.Model(&SponsorshipsOffers{}).Where("id = ?", message.Chat.ID).Updates(&SponsorshipsOffers{
-                Days:    days,
-            }).Error; err != nil {
-                warn(err)
-                return
-            }
-            msg := tgbotapi.NewMessage(message.Chat.ID, user.Localize("Выберите языки пользователей, которые получат вашу рассылку."))
-            langs := map[string]string{"en": "🇬🇧 English", "it": "🇮🇹 Italiano", "uz":"🇺🇿 O'zbek tili", "de":"🇩🇪 Deutsch", "ru":"🇷🇺 Русский", "es":"🇪🇸 Español", "uk":"🇺🇦 Український", "pt":"🇵🇹 Português", "id":"🇮🇩 Indonesia"}
-            keyboard := tgbotapi.NewInlineKeyboardMarkup()
-            for code, name := range langs {
-                keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(name, "country:"+code)))
-            }
-            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(user.Localize("Далее"), "sponsorship_pay")))
-            msg.ReplyMarkup = keyboard
-            bot.Send(msg)
-            if err = setUserStep(message.Chat.ID, "sponsorship_set_langs"); err != nil {
-                warn(err)
-            }
+        //case "sponsorship_set_text":
+        //    if len(message.Text) > 130 {
+        //        bot.Send(tgbotapi.NewMessage(message.Chat.ID, user.Localize("Too big text")))
+        //        return
+        //    }
+        //    var sponsorshipExists bool
+        //    err = db.Model(&SponsorshipsOffers{}).Raw("SELECT EXISTS(SELECT id FROM sponsorships_offers WHERE id=?)", message.From.ID).Find(&sponsorshipExists).Error
+        //    if err != nil {
+        //        warn(err)
+        //        return
+        //    }
+        //    if sponsorshipExists {
+        //        if err = db.Model(&SponsorshipsOffers{}).Where("id = ?", message.From.ID).Update("text", message.Text).Error; err != nil {
+        //            warn(err)
+        //            return
+        //        }
+        //    } else {
+        //        if err = db.Create(&SponsorshipsOffers{
+        //            ID:      message.Chat.ID,
+        //            Text:    message.Text,
+        //        }).Error; err != nil {
+        //            warn(err)
+        //            return
+        //        }
+        //    }
+        //    msg := tgbotapi.NewMessage(message.Chat.ID, user.Localize("sponsorship_set_days"))
+        //    keyboard := tgbotapi.NewInlineKeyboardMarkup(
+        //        tgbotapi.NewInlineKeyboardRow(
+        //            tgbotapi.NewInlineKeyboardButtonData("1д - 9р", "sponsorship_set_days:1"),
+        //            tgbotapi.NewInlineKeyboardButtonData("2д - 20р", "sponsorship_set_days:2"),
+        //            tgbotapi.NewInlineKeyboardButtonData("7д - 60р", "sponsorship_set_days:7")),
+        //        tgbotapi.NewInlineKeyboardRow(
+        //            tgbotapi.NewInlineKeyboardButtonData("10д - 90р", "sponsorship_set_days:10"),
+        //            tgbotapi.NewInlineKeyboardButtonData("15д -130р", "sponsorship_set_days:15"),
+        //            tgbotapi.NewInlineKeyboardButtonData("🔥 30д - 270р", "sponsorship_set_days:30"),
+        //        ))
+        //    msg.ReplyMarkup = keyboard
+        //    bot.Send(msg)
+        //
+        //    if err = setUserStep(message.Chat.ID, ""); err != nil {
+        //        warn(err)
+        //    }
+        //
+        //case "sponsorship_set_days":
+        //    days, err := strconv.Atoi(message.Text)
+        //    if err != nil {
+        //        bot.Send(tgbotapi.NewMessage(message.Chat.ID, user.Localize("Введите целое число без лишних символов")))
+        //        return
+        //    }
+        //    if days < 1 || days > 30 {
+        //        bot.Send(tgbotapi.NewMessage(message.Chat.ID, user.Localize("Количество дней должно быть от 1 до 30 включительно")))
+        //        return
+        //    }
+        //    if err = db.Model(&SponsorshipsOffers{}).Where("id = ?", message.Chat.ID).Updates(&SponsorshipsOffers{
+        //        Days:    days,
+        //    }).Error; err != nil {
+        //        warn(err)
+        //        return
+        //    }
+        //    msg := tgbotapi.NewMessage(message.Chat.ID, user.Localize("Выберите языки пользователей, которые получат вашу рассылку."))
+        //    langs := map[string]string{"en": "🇬🇧 English", "it": "🇮🇹 Italiano", "uz":"🇺🇿 O'zbek tili", "de":"🇩🇪 Deutsch", "ru":"🇷🇺 Русский", "es":"🇪🇸 Español", "uk":"🇺🇦 Український", "pt":"🇵🇹 Português", "id":"🇮🇩 Indonesia"}
+        //    keyboard := tgbotapi.NewInlineKeyboardMarkup()
+        //    for code, name := range langs {
+        //        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(name, "country:"+code)))
+        //    }
+        //    keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(user.Localize("Далее"), "sponsorship_pay")))
+        //    msg.ReplyMarkup = keyboard
+        //    bot.Send(msg)
+        //    if err = setUserStep(message.Chat.ID, "sponsorship_set_langs"); err != nil {
+        //        warn(err)
+        //    }
         default: // У пользователя нет шага и сообщение не команда
 
             if user.Usings == 10 || user.Usings % 20 == 0 {
@@ -367,17 +383,6 @@ func handleMessage(message *tgbotapi.Message) {
             edit := tgbotapi.NewEditMessageTextAndMarkup(message.Chat.ID, msg.MessageID, tr.Text, keyboard)
             edit.ParseMode = tgbotapi.ModeHTML
             edit.DisableWebPagePreview = true
-            
-            var sponsorship Sponsorships
-            err = db.Model(&Sponsorships{}).Select("text", "to_langs").Where("start <= current_timestamp AND finish >= current_timestamp").Limit(1).Find(&sponsorship).Error
-            if err != nil {
-                WarnAdmin(err)
-            } else { // no error
-                langs := strings.Split(sponsorship.ToLangs, ",")
-                if inArray(user.Lang, langs) {
-                    edit.Text += "\n⚡️" + sponsorship.Text
-                }
-            }
 
             if _, err = bot.Send(edit); err != nil {
                 pp.Println(err)

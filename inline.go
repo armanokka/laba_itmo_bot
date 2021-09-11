@@ -6,7 +6,6 @@ import (
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "github.com/k0kubun/pp"
     "strconv"
-    "strings"
 )
 
 func handleInline(update *tgbotapi.InlineQuery) {
@@ -25,25 +24,13 @@ func handleInline(update *tgbotapi.InlineQuery) {
     user.Fill()
     languages := make([]string, 0, len(codes)+2)
 
-    if !user.Exists() {
-        var user Users
-        err := db.Model(&Users{}).Select("my_lang", "to_lang").Where("id = ?", update.From.ID).Find(&user).Error
-        if err != nil {
-            warn(err)
-            return
-        }
-        user.MyLang += " (your)"
-        user.ToLang += " (your)"
-        languages = []string{user.MyLang, user.ToLang}
+    if user.Exists() {
+        myLang := user.MyLang + " (your)"
+        toLang := user.ToLang + " (your)"
+        languages = []string{myLang, toLang}
     }
 
     languages = append(languages, codes...)
-    
-    //from, err := translate.DetectLanguageGoogle(update.Query)
-    //if err != nil {
-    //    warn(err)
-    //    return
-    //}
     
     var offset int
     var err error
@@ -67,30 +54,30 @@ func handleInline(update *tgbotapi.InlineQuery) {
     }
     results := make([]interface{}, 0, 10)
     
-    var sponsorship Sponsorships
-    err = db.Model(&Sponsorships{}).Where("start <= current_timestamp AND finish >= current_timestamp").Limit(1).Find(&sponsorship).Error
-    if err != nil {
-       WarnAdmin(err)
-    } else { // no error
-       langs := strings.Split(sponsorship.ToLangs, ",")
-       if inArray(update.From.LanguageCode, langs) {
-           inputMessageContent := map[string]interface{}{
-               "message_text": sponsorship.Text,
-               "parse_mode": tgbotapi.ModeHTML,
-               "disable_web_page_preview":false,
-           }
-
-           results = append(results, tgbotapi.InlineQueryResultArticle{
-               Type:                "article",
-               ID:                  "advertise",
-               Title:               "Ad",
-               InputMessageContent: inputMessageContent,
-               URL:                 "https://t.me/TransloBot?start=from_inline",
-               HideURL:             true,
-               Description:         sponsorship.Text,
-           })
-       }
-    }
+    //var sponsorship Sponsorships
+    //err = db.Model(&Sponsorships{}).Where("start <= current_timestamp AND finish >= current_timestamp").Limit(1).Find(&sponsorship).Error
+    //if err != nil {
+    //   WarnAdmin(err)
+    //} else { // no error
+    //   langs := strings.Split(sponsorship.ToLangs, ",")
+    //   if inArray(update.From.LanguageCode, langs) {
+    //       inputMessageContent := map[string]interface{}{
+    //           "message_text": sponsorship.Text,
+    //           "parse_mode": tgbotapi.ModeHTML,
+    //           "disable_web_page_preview":false,
+    //       }
+    //
+    //       results = append(results, tgbotapi.InlineQueryResultArticle{
+    //           Type:                "article",
+    //           ID:                  "advertise",
+    //           Title:               "Ad",
+    //           InputMessageContent: inputMessageContent,
+    //           URL:                 "https://t.me/TransloBot?start=from_inline",
+    //           HideURL:             true,
+    //           Description:         sponsorship.Text,
+    //       })
+    //   }
+    //}
     
     
     for ;offset < end; offset++ {

@@ -1,5 +1,7 @@
 package main
 
+import "database/sql"
+
 type User struct {
 	Users
 	error func(error)
@@ -44,4 +46,29 @@ func (u *User) Update(user Users) {
 
 func (u User) Localize(text string, placeholders ...interface{}) string {
 	return localize(text, u.Lang, placeholders...)
+}
+
+func (u *User) SetStep(step string) {
+	if step == "" {
+		if err := db.Model(&Users{}).Where("id = ?", u.ID).Updates(map[string]interface{}{"act":nil}).Error; err != nil {
+			u.error(err)
+			return
+		}
+		u.Act = sql.NullString{
+			String: "",
+			Valid:  false,
+		}
+
+	} else {
+		if err := db.Model(&Users{}).Where("id = ?", u.ID).Update("act", step).Error; err != nil {
+			u.error(err)
+			return
+		}
+		u.Act = sql.NullString{
+			String: step,
+			Valid:  true,
+		}
+
+	}
+
 }

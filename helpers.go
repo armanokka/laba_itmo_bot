@@ -107,7 +107,7 @@ func inArray(k string, arr []string,) bool {
 }
 
 
-func GetTickedCallbacks(keyboard *tgbotapi.InlineKeyboardMarkup) []string {
+func GetTickedCallbacks(keyboard tgbotapi.InlineKeyboardMarkup) []string {
     callbacks := make([]string, 0)
     for _, row := range keyboard.InlineKeyboard {
         for _, button := range row {

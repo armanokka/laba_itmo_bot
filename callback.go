@@ -33,6 +33,44 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
     case "sponsorship_pay":
         bot.Send(tgbotapi.NewEditMessageReplyMarkup(callback.From.ID, callback.Message.MessageID, tgbotapi.InlineKeyboardMarkup{}))
         bot.Send(tgbotapi.NewEditMessageText(callback.From.ID, callback.Message.MessageID, "Скоро будет дальше, а пока тут пусто"))
+    case "ad:confirm_entered_text_for_ad":
+        bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
+
+        if err := db.Model(&AdsOffers{}).Where("id = ?", callback.From.ID).Update("content", applyEntitiesHtml(callback.Message.Text, callback.Message.Entities)).Error; err != nil {
+            warn(err)
+            return
+        }
+
+        bot.Send(tgbotapi.NewEditMessageText(callback.From.ID, callback.Message.MessageID, "Текст рекламы принят."))
+
+        langs := map[string]string{"en": "🇬🇧 English", "it": "🇮🇹 Italiano", "uz":"🇺🇿 O'zbek tili", "de":"🇩🇪 Deutsch", "ru":"🇷🇺 Русский", "es":"🇪🇸 Español", "uk":"🇺🇦 Український", "pt":"🇵🇹 Português", "id":"🇮🇩 Indonesia"}
+        keyboard := tgbotapi.NewInlineKeyboardMarkup()
+        var i int
+        for code, name := range langs {
+            if i % 2 == 0 {
+                keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(name, "tick_country:"+code)))
+            } else {
+                l := len(keyboard.InlineKeyboard)-1
+                keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(name, "tick_country:"+code))
+            }
+            i++
+        }
+        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Продолжить", "ad:pass_countries")))
+        msg := tgbotapi.NewMessage(callback.From.ID, "Выберите страны для рекламы")
+        msg.ReplyMarkup = keyboard
+        bot.Send(msg)
+
+        user.SetStep("")
+
+    case "ad:pass_countries":
+        langs := GetTickedCallbacks(*callback.Message.ReplyMarkup)
+        if len(langs) == 0 {
+            call := tgbotapi.NewCallback(callback.ID, "Выберите хотя бы одну страну.")
+            call.ShowAlert = true
+            bot.AnswerCallbackQuery(call)
+            return
+        }
+
     }
 
     arr := strings.Split(callback.Data, ":")
@@ -40,6 +78,24 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
         return
     }
     switch arr[0] {
+    case "tick_country": // when user that want to buy sponsorship clicks on a button, arr[1] - lang code
+        if IsTicked(callback.Data, callback.Message.ReplyMarkup) {
+            UnTickByCallback(callback.Data, callback.Message.ReplyMarkup)
+        } else {
+            TickByCallback(callback.Data, callback.Message.ReplyMarkup)
+        }
+        callbacks := GetTickedCallbacks(*callback.Message.ReplyMarkup)
+        langs := make([]string, 0)
+        for _, callback := range callbacks {
+            langs = append(langs, strings.Split(callback, ":")[1])
+        }
+        err := db.Model(&AdsOffers{}).Where("id = ?", callback.From.ID).Update("to_langs", strings.Join(langs, ",")).Error
+        if err != nil {
+            warn(err)
+            return
+        }
+        bot.Send(tgbotapi.NewEditMessageReplyMarkup(callback.From.ID, callback.Message.MessageID, *callback.Message.ReplyMarkup))
+        bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
     case "register_bot_lang": // arr[1] - lang code
         defer SendHelp(user)
         fallthrough
@@ -137,24 +193,7 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
         bot.AnswerCallbackQuery(call)
     
         analytics.Bot(callback.From.ID, "callback answered", "Translate language detected by callback")
-    case "country": // when user that want to buy sponsorship clicks on a button, arr[1] - lang code
-        if IsTicked(callback.Data, callback.Message.ReplyMarkup) {
-            UnTickByCallback(callback.Data, callback.Message.ReplyMarkup)
-        } else {
-            TickByCallback(callback.Data, callback.Message.ReplyMarkup)
-        }
-        callbacks := GetTickedCallbacks(callback.Message.ReplyMarkup)
-        langs := make([]string, 0)
-        for _, callback := range callbacks {
-            langs = append(langs, strings.Split(callback, ":")[1])
-        }
-        err := db.Model(&SponsorshipsOffers{}).Where("id = ?", callback.From.ID).Update("to_langs", strings.Join(langs, ",")).Error
-        if err != nil {
-            warn(err)
-            return
-        }
-        bot.Send(tgbotapi.NewEditMessageReplyMarkup(callback.From.ID, callback.Message.MessageID, *callback.Message.ReplyMarkup))
-        bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
+
     case "set_translate_lang_pagination": // arr[1] - offset
         offset, err := strconv.Atoi(arr[1])
         if err != nil {
@@ -243,28 +282,5 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
         
         bot.Send(tgbotapi.NewEditMessageReplyMarkup(callback.From.ID, callback.Message.MessageID, keyboard))
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
-    case "sponsorship_set_days": // arr[1] - days, 1-30
-        days, err := strconv.Atoi(arr[1])
-        if err != nil {
-            warn(err)
-            return
-        }
-        if err := db.Model(&SponsorshipsOffers{}).Where("id = ?", callback.From.ID).Updates(&SponsorshipsOffers{
-            Days:    days,
-        }).Error; err != nil {
-            warn(err)
-            return
-        }
-        bot.Send(tgbotapi.NewEditMessageReplyMarkup(callback.From.ID, callback.Message.MessageID, tgbotapi.InlineKeyboardMarkup{}))
-
-        msg := tgbotapi.NewMessage(callback.From.ID, user.Localize("Выберите языки пользователей, которые получат вашу рассылку."))
-        langs := map[string]string{"en": "🇬🇧 English", "it": "🇮🇹 Italiano", "uz":"🇺🇿 O'zbek tili", "de":"🇩🇪 Deutsch", "ru":"🇷🇺 Русский", "es":"🇪🇸 Español", "uk":"🇺🇦 Український", "pt":"🇵🇹 Português", "id":"🇮🇩 Indonesia"}
-        keyboard := tgbotapi.NewInlineKeyboardMarkup()
-        for code, name := range langs {
-            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(name, "country:"+code)))
-        }
-        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(user.Localize("Далее"), "sponsorship_pay")))
-        msg.ReplyMarkup = keyboard
-        bot.Send(msg)
     }
 }
