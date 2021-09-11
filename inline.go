@@ -45,25 +45,34 @@ func handleInline(update *tgbotapi.InlineQuery) {
     }
     results := make([]interface{}, 0, 10)
 
-    var offer Ads
-    if err = db.Model(&Ads{}).Where("start_date <= current_timestamp AND finish_date >= current_timestamp").Limit(1).Find(&offer).Error; err == nil {
-        // here no error
-        inputMessageContent := map[string]interface{}{
-            "message_text": offer.Content,
-            "parse_mode": tgbotapi.ModeHTML,
-            "disable_web_page_preview":false,
+
+    var l int
+    if err = db.Model(&Ads{}).Raw("SELECT COUNT(*) FROM ads LIMIT 1").Find(&l).Error; err == nil {
+        // no error
+
+        if l > 0 {
+            var offer Ads
+            if err = db.Model(&Ads{}).Where("start_date <= current_timestamp AND finish_date >= current_timestamp").Limit(1).Find(&offer).Error; err == nil {
+                // here no error
+                inputMessageContent := map[string]interface{}{
+                    "message_text": offer.Content,
+                    "parse_mode": tgbotapi.ModeHTML,
+                    "disable_web_page_preview":false,
+                }
+                results = append(results, tgbotapi.InlineQueryResultArticle{
+                    Type:                "article",
+                    ID:                  "0",
+                    Title:               "Advertise",
+                    InputMessageContent: inputMessageContent,
+                    ReplyMarkup: nil,
+                    URL:                 "https://t.me/TransloBot?start=from_inline",
+                    HideURL:             true,
+                    Description:         offer.Content,
+                })
+            }
         }
-        results = append(results, tgbotapi.InlineQueryResultArticle{
-            Type:                "article",
-            ID:                  "ad1",
-            Title:               "Advertise",
-            InputMessageContent: inputMessageContent,
-            ReplyMarkup: nil,
-            URL:                 "https://t.me/TransloBot?start=from_inline",
-            HideURL:             true,
-            Description:         offer.Content,
-        })
     }
+
 
     
     
@@ -92,7 +101,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
                 }))
         results = append(results, tgbotapi.InlineQueryResultArticle{
             Type:                "article",
-            ID:                  strconv.Itoa(offset),
+            ID:                  strconv.Itoa(offset+1), // надо для рекламы
             Title:               iso6391.Name(to),
             InputMessageContent: inputMessageContent,
             ReplyMarkup: &keyboard,
