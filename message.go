@@ -302,6 +302,12 @@ func handleMessage(message *tgbotapi.Message) {
                 text = message.Caption
             }
 
+            if text == "" {
+                bot.Send(tgbotapi.NewEditMessageText(message.Chat.ID, msg.MessageID, user.Localize("Please, send text message")))
+                analytics.Bot(message.Chat.ID, msg.Text, "Message is not text message")
+                return
+            }
+
 
             from, err := translate.DetectLanguageGoogle(cutString(text, 100))
             if err != nil {
@@ -310,8 +316,9 @@ func handleMessage(message *tgbotapi.Message) {
             }
 
             if from == "" {
-                bot.Send(tgbotapi.NewEditMessageText(message.Chat.ID, msg.MessageID, text))
-                return
+                from = "auto"
+                //bot.Send(tgbotapi.NewEditMessageText(message.Chat.ID, msg.MessageID, text))
+                //return
             }
 
             var to string // language into need to translate
@@ -328,14 +335,6 @@ func handleMessage(message *tgbotapi.Message) {
             } else if len(message.CaptionEntities) > 0 {
                 text = applyEntitiesHtml(text, message.CaptionEntities)
             }
-
-
-            if text == "" {
-                bot.Send(tgbotapi.NewEditMessageText(message.Chat.ID, msg.MessageID, user.Localize("Please, send text message")))
-                analytics.Bot(message.Chat.ID, msg.Text, "Message is not text message")
-                return
-            }
-
             
             tr, err := translate.GoogleHTMLTranslate(from, to, text)
             if err != nil {
