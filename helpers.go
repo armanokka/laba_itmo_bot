@@ -200,7 +200,11 @@ func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
         case "text_mention":
             startTag = `<a href="tg://user?id=` + strconv.FormatInt(entity.User.ID, 10) + `">`
         }
-        pointers[entity.Offset-diff] += startTag
+        if entity.Offset - diff < 0 {
+            pointers[entity.Offset] += startTag
+        } else {
+            pointers[entity.Offset-diff] += startTag
+        }
 
         startTag = strings.TrimPrefix(startTag, "<")
         var endTag string
@@ -220,7 +224,7 @@ func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
         case "text_link", "text_mention":
             endTag = `</a>`
         }
-        pointers[entity.Offset+entity.Length-diff] += endTag
+        pointers[entity.Offset+entity.Length-diff+1] += endTag
     }
 
 
@@ -242,6 +246,7 @@ func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
     ret = strings.Replace(ret, "\n", "<br>", -1)
     return ret
 }
+
 
 func setMyCommands(langs []string, commands []tgbotapi.BotCommand) error {
     newCommands := make(map[string][]tgbotapi.BotCommand)
