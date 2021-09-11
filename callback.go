@@ -37,9 +37,11 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
     case "ad:confirm_entered_text_for_ad":
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
 
+        text := strings.Join(strings.Split(callback.Message.Text, "\n")[2:], "\n")
+
         if err := db.Create(&AdsOffers{
             ID:         callback.From.ID,
-            Content:    applyEntitiesHtml(callback.Message.Text, callback.Message.Entities),
+            Content:    applyEntitiesHtml(text, callback.Message.Entities),
         }).Error; err != nil {
             warn(err)
             return
