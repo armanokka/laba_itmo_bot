@@ -236,7 +236,7 @@ func handleMessage(message *tgbotapi.Message) {
                 bot.Send(tgbotapi.NewMessage(message.From.ID, "Неверный ввод"))
                 return
             }
-            if !time.Now().Before(t) {
+            if now.Before(t) {
                 bot.Send(tgbotapi.NewMessage(message.From.ID, "Время должно быть позже, чем сейчас"))
                 return
             }
@@ -253,7 +253,7 @@ func handleMessage(message *tgbotapi.Message) {
                 bot.Send(tgbotapi.NewMessage(message.From.ID, "Неверный ввод"))
                 return
             }
-            if !time.Now().Before(t) {
+            if now.Before(t) {
                 bot.Send(tgbotapi.NewMessage(message.From.ID, "Время должно быть позже, чем сейчас"))
                 return
             }

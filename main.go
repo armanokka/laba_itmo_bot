@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 	"log"
 	"os"
+	"time"
 )
 
 
@@ -60,7 +61,14 @@ func main() {
 	if _, err := os.Stat("ad.jpg"); err != nil {
 		panic(err)
 	}
-	
+
+	loc, err := time.LoadLocation(TimeLocation)
+	if err != nil {
+		panic(err) // проверяем на валидность константы TimeLocation
+	}
+
+	now = time.Now().In(loc)
+
 	//updates := bot.GetUpdatesChan(tgbotapi.UpdateConfig{})
 	//for update := range updates {
 	//	go botRun(&update)

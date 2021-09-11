@@ -12,7 +12,21 @@ const (
     AdminID       = 579515224
     botToken string = "1737819626:AAEoc8WyCq_8rFQcY4q0vtkhqCKro8AudfI"
     layout string = "2006-01-02 04:05" // для парсинга времени в /ad, год-месяц-день час:минута
+    TimeLocation string = "Europe/Moscow"
 )
+
+var (
+    now = time.Now().In(LoadLocation())
+)
+
+func LoadLocation() *time.Location {
+    loc, err := time.LoadLocation(TimeLocation)
+    if err != nil {
+        panic(err) // проверяем на валидность константы TimeLocation
+    }
+    return loc
+}
+
 
 var (
     db  *gorm.DB
