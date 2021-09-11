@@ -72,7 +72,7 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
         }
 
 
-        bot.Send(tgbotapi.NewMessage())
+        //bot.Send(tgbotapi.NewMessage())
     }
 
     arr := strings.Split(callback.Data, ":")
