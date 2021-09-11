@@ -82,7 +82,7 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
         bot.Send(tgbotapi.NewEditMessageText(callback.From.ID, callback.Message.MessageID, "Страны успешно выбраны: " + countries))
 
         now := time.Now()
-        bot.Send(tgbotapi.NewMessage(callback.From.ID, "Введите дату НАЧАЛА РЕКЛАМЫ в формате год-месяц-день час:минута, например сейчас будет: " + now.Format(layout)))
+        bot.Send(tgbotapi.NewMessage(callback.From.ID, "Введите дату НАЧАЛА РЕКЛАМЫ в формате год/месяц/день час:минута, например сейчас будет: " + now.Format(layout)))
 
         user.SetStep("ad:pass_start_date")
     case "ad:confirm_pass":
