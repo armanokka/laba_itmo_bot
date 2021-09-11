@@ -13,12 +13,12 @@ import (
 )
 
 
-func GoogleTranslate(from, to, text string) (*TranslateGoogleAPIResponse, error) {
+func GoogleTranslate(from, to, text string) (TranslateGoogleAPIResponse, error) {
 	buf := new(bytes.Buffer)
 	buf.WriteString("async=translate,sl:" + url.QueryEscape(from) + ",tl:" + url.QueryEscape(to) + ",st:" + url.QueryEscape(text) + ",id:1624032860465,qc:true,ac:true,_id:tw-async-translate,_pms:s,_fmt:pc")
 	req, err := http.NewRequest("POST", "https://www.google.com/async/translate?vet=12ahUKEwjFh8rkyaHxAhXqs4sKHYvmAqAQqDgwAHoECAIQJg..i&ei=SMbMYMXDKernrgSLzYuACg&yv=3", buf)
 	if err != nil {
-		return &TranslateGoogleAPIResponse{}, err
+		return TranslateGoogleAPIResponse{}, err
 	}
 	req.Header["content-type"] = []string{"application/x-www-form-urlencoded;charset=UTF-8"}
 	// req.Header["accept"] = []string{"*/*"}
@@ -38,10 +38,10 @@ func GoogleTranslate(from, to, text string) (*TranslateGoogleAPIResponse, error)
 	var client http.Client
 	res, err := client.Do(req)
 	if err != nil {
-		return &TranslateGoogleAPIResponse{}, err
+		return TranslateGoogleAPIResponse{}, err
 	}
 	if res.StatusCode != 200 {
-		return &TranslateGoogleAPIResponse{}, HTTPError{
+		return TranslateGoogleAPIResponse{}, HTTPError{
 			Code:        res.StatusCode,
 			Description: "got non 200 http code",
 		}
@@ -49,9 +49,9 @@ func GoogleTranslate(from, to, text string) (*TranslateGoogleAPIResponse, error)
 	
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
-		return &TranslateGoogleAPIResponse{}, err
+		return TranslateGoogleAPIResponse{}, err
 	}
-	result := &TranslateGoogleAPIResponse{
+	result := TranslateGoogleAPIResponse{
 		Text:     doc.Find("span[id=tw-answ-target-text]").Text(),
 		FromLang: doc.Find("span[id=tw-answ-detected-sl]").Text(),
 		FromLangNativeName: doc.Find("span[id=tw-answ-detected-sl-name]").Text(),
