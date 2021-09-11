@@ -18,7 +18,7 @@ func NewAPI(APIkey string, errFunc func(error)) *DashBot {
     return &DashBot{APIKey: APIkey, Error: errFunc}
 }
 
-func (d *DashBot) User(message string,  user *tgbotapi.User) {
+func (d DashBot) User(message string,  user *tgbotapi.User) {
     params := map[string]interface{}{
         "text":message,
         "userId":user.ID,
@@ -48,7 +48,7 @@ func (d *DashBot) User(message string,  user *tgbotapi.User) {
     }
 }
 
-func (d *DashBot) Bot(id int64, message, intent string) {
+func (d DashBot) Bot(id int64, message, intent string) {
     params := map[string]interface{}{
         "text":message,
         "userId":id,

@@ -73,7 +73,7 @@ func handleMessage(message *tgbotapi.Message) {
         user.Fill()
     }
 
-    if strings.HasPrefix(message.Text, "/start") {
+    if strings.HasPrefix(message.Text, "/start") || message.Text == user.Localize("⬅Back") {
         SendMenu(user)
         if err := setUserStep(message.Chat.ID, ""); err != nil {
             warn(err)
@@ -99,7 +99,7 @@ func handleMessage(message *tgbotapi.Message) {
         msg := tgbotapi.NewMessage(message.Chat.ID, user.Localize("Please, select bot language"))
         msg.ReplyMarkup = keyboard
         bot.Send(msg)
-    case "My Language", "/my_lang", "Мой Язык","Mi Idioma","Моя Мова","A Minha Língua","Bahasa Saya","La mia lingua","Tilimni","Meine Sprache":
+    case "/my_lang", user.Localize("My Language"):
         keyboard := tgbotapi.NewInlineKeyboardMarkup()
         for i, code := range codes {
             if i >= 10 {
@@ -126,7 +126,7 @@ func handleMessage(message *tgbotapi.Message) {
         bot.Send(msg)
     
         analytics.Bot(message.Chat.ID, msg.Text, "Set my lang")
-    case "Translate Language", "/to_lang", "Sprache zum Übersetzen","Idioma para traducir","Bahasa untuk menerjemahkan","Lingua per tradurre","Língua para tradução","Язык перевода","Мова перекладу","Tarjima qilish uchun til":
+    case "/to_lang", user.Localize("Translate Language"):
         keyboard := tgbotapi.NewInlineKeyboardMarkup()
         for i, code := range codes {
             if i >= 10 {
@@ -154,7 +154,7 @@ func handleMessage(message *tgbotapi.Message) {
         bot.Send(msg)
     
         analytics.Bot(message.Chat.ID, msg.Text, "Set translate lang")
-    case "💡 Instruction", "/help", "💡 Инструкция", "💡 Instrucción","💡 Інструкція","💡 Instrucao","💡 Instruksi","💡 Istruzione","💡 Yo'riqnoma","💡 Anweisung":
+    case "/help":
         SendHelp(user)
     case "/sponsorship":
         msg := tgbotapi.NewMessage(message.Chat.ID, user.Localize("sponsorship"))

@@ -15,7 +15,7 @@ func NewUser(id int64, errfunc func(error)) User {
 
 func (u User) Exists() bool {
 	var exists bool
-	if err := db.Raw("SELECT EXISTS(SELECT id FROM users WHERE id=?)", u.ID).Find(&exists).Error; err != nil {
+	if err := db.Raw("SELECT EXISTS(SELECT lang FROM users WHERE id=?)", u.ID).Find(&exists).Error; err != nil {
 		u.error(err)
 	}
 	return exists
