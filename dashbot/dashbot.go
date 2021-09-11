@@ -6,6 +6,7 @@ import (
     "errors"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "net/http"
+    "strconv"
 )
 
 type DashBot struct {
@@ -42,8 +43,8 @@ func (d *DashBot) User(message string,  user *tgbotapi.User) {
         d.Error(err)
         return
     }
-    if res.StatusCode != 200 {
-        d.Error(errors.New("code non 200"))
+    if (res.StatusCode < 200 || res.StatusCode > 200) && res.StatusCode < 500 {
+        d.Error(errors.New("code non 200:" + strconv.Itoa(res.StatusCode)))
     }
 }
 
@@ -66,7 +67,7 @@ func (d *DashBot) Bot(id int64, message, intent string) {
         d.Error(err)
         return
     }
-    if res.StatusCode != 200 {
-        d.Error(errors.New("code non 200"))
+    if (res.StatusCode < 200 || res.StatusCode > 200) && res.StatusCode < 500 {
+        d.Error(errors.New("code non 200:"+strconv.Itoa(res.StatusCode)))
     }
 }

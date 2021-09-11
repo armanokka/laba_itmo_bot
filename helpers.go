@@ -178,6 +178,7 @@ func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
     if utf16len > utf8len {
         diff = utf16len - utf8len
     }
+    pp.Println("diff:", diff)
 
     pointers := make(map[int]string)
     for _, entity := range entities {
@@ -232,7 +233,6 @@ func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
 
     for i, ch := range runes  {
         if m, ok := pointers[i]; ok {
-            pp.Println(i)
             ret += m
         }
         ret += string(ch)
@@ -246,7 +246,6 @@ func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
     ret = strings.Replace(ret, "\n", "<br>", -1)
     return ret
 }
-
 
 func setMyCommands(langs []string, commands []tgbotapi.BotCommand) error {
     newCommands := make(map[string][]tgbotapi.BotCommand)
