@@ -9,6 +9,7 @@ import (
     "os"
     "strconv"
     "strings"
+    "time"
     "unicode/utf16"
 )
 
@@ -192,7 +193,7 @@ func handleMessage(message *tgbotapi.Message) {
         if message.From.ID != AdminID {
             return
         }
-        bot.Send(tgbotapi.NewMessage(message.From.ID, "Введите текст сообщения: (до 100 символов)\n\n/cancel для отмены"))
+        bot.Send(tgbotapi.NewMessage(message.From.ID, "Введите текст сообщения: (до 100 символов)\n\n/cancel для отмены, можно вызвать в любом месте"))
         user.SetStep("ad:accept_text")
     case "/cancel":
         if message.From.ID != AdminID {
@@ -202,8 +203,13 @@ func handleMessage(message *tgbotapi.Message) {
             warn(err)
             return
         }
+
+        user.SetStep("")
+
         bot.Send(tgbotapi.NewMessage(message.From.ID, "Создание рекламы отменено."))
         SendMenu(user)
+    case "/id":
+        bot.Send(tgbotapi.NewMessage(message.From.ID, strconv.FormatInt(message.From.ID, 10)))
     default: // Сообщение не является командой.
     
         userStep, err := getUserStep(message.Chat.ID)
@@ -222,6 +228,67 @@ func handleMessage(message *tgbotapi.Message) {
             keyboard := tgbotapi.NewInlineKeyboardMarkup(
                 tgbotapi.NewInlineKeyboardRow(
                     tgbotapi.NewInlineKeyboardButtonData("Да", "ad:confirm_entered_text_for_ad")))
+            msg.ReplyMarkup = keyboard
+            bot.Send(msg)
+        case "ad:pass_start_date":
+            t, err := time.Parse("2006-01-02 15:01", message.Text)
+            if err != nil {
+                bot.Send(tgbotapi.NewMessage(message.From.ID, "Неверный ввод"))
+                return
+            }
+            if err = db.Model(&AdsOffers{}).Where("id = ?", message.From.ID).Update("start_date", t).Error; err != nil {
+                warn(err)
+                return
+            }
+
+            bot.Send(tgbotapi.NewMessage(message.From.ID, "Теперь введите дату окончания в таком же формате"))
+            user.SetStep("ad:pass_finish_date")
+        case "ad:pass_finish_date":
+            t, err := time.Parse("2006-01-02 15:01", message.Text)
+            if err != nil {
+                bot.Send(tgbotapi.NewMessage(message.From.ID, "Неверный ввод"))
+                return
+            }
+            if err = db.Model(&AdsOffers{}).Where("id = ?", message.From.ID).Update("finish_date", t).Error; err != nil {
+                warn(err)
+                return
+            }
+
+            bot.Send(tgbotapi.NewMessage(message.From.ID, "Отправьте id человека, чья создается реклама. id можно узнать командой /id"))
+            user.SetStep("ad:pass_ad_owner_id")
+        case "ad:pass_ad_owner_id":
+            id, err := strconv.ParseInt(message.Text, 10, 32)
+            if err != nil {
+                bot.Send(tgbotapi.NewMessage(message.From.ID, "Неверный ввод. Отправьте цифры"))
+                return
+            }
+            if id < 0 {
+                bot.Send(tgbotapi.NewMessage(message.From.ID, "id > 0"))
+            }
+            owner := NewUser(id, warn)
+            if !owner.Exists() {
+                bot.Send(tgbotapi.NewMessage(message.From.ID, "Неверный id, человека нет в базе"))
+                return
+            }
+
+            if err = db.Model(&AdsOffers{}).Where("id = ?", message.From.ID).Update("id_whose_ad", id).Error; err != nil {
+                warn(err)
+                return
+            }
+            var offer AdsOffers
+            if err = db.Model(&AdsOffers{}).Where("id = ?", message.From.ID).Find(&offer).Error; err != nil {
+                warn(err)
+            }
+            langs := strings.Split(offer.ToLangs, ",")
+            recipients := make([]string, 0, len(langs))
+            for _, lang := range langs{
+                recipients = append(recipients, iso6391.Name(lang))
+            }
+            msg := tgbotapi.NewMessage(message.From.ID, "Подтвердите данные:\n\n<b>Текст:</b> " + offer.Content + "\n\n<b>Начало:</b> " + offer.StartDate.Format("2006-01-02 15:01") + "\n\n<b>Конец:</b>: "+ offer.FinishDate.Format("2006-01-02 15:01") + "\n\n<b>Языки получателей:</b> " + strings.Join(recipients, ", ") + `\n\n<b>Владелец рекламы:</b> <a href="tg://user?id=` + strconv.FormatInt(offer.IDWhoseAd, 10) + `">` + "\n\nВсё так? Если нет, нажмите /cancel")
+            keyboard := tgbotapi.NewInlineKeyboardMarkup(
+                tgbotapi.NewInlineKeyboardRow(
+                    tgbotapi.NewInlineKeyboardButtonData("Подтверждаю", "ad:confirm_pass")))
+            msg.ParseMode = tgbotapi.ModeHTML
             msg.ReplyMarkup = keyboard
             bot.Send(msg)
         //case "sponsorship_set_text":

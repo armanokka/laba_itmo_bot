@@ -44,31 +44,28 @@ func handleInline(update *tgbotapi.InlineQuery) {
         end = languagesLen - 1
     }
     results := make([]interface{}, 0, 10)
-    
-    //var sponsorship Sponsorships
-    //err = db.Model(&Sponsorships{}).Where("start <= current_timestamp AND finish >= current_timestamp").Limit(1).Find(&sponsorship).Error
-    //if err != nil {
-    //   WarnAdmin(err)
-    //} else { // no error
-    //   langs := strings.Split(sponsorship.ToLangs, ",")
-    //   if inArray(update.From.LanguageCode, langs) {
-    //       inputMessageContent := map[string]interface{}{
-    //           "message_text": sponsorship.Text,
-    //           "parse_mode": tgbotapi.ModeHTML,
-    //           "disable_web_page_preview":false,
-    //       }
-    //
-    //       results = append(results, tgbotapi.InlineQueryResultArticle{
-    //           Type:                "article",
-    //           ID:                  "advertise",
-    //           Title:               "Ad",
-    //           InputMessageContent: inputMessageContent,
-    //           URL:                 "https://t.me/TransloBot?start=from_inline",
-    //           HideURL:             true,
-    //           Description:         sponsorship.Text,
-    //       })
-    //   }
-    //}
+
+    var offer Ads
+    if err = db.Model(&Ads{}).Where("start_date <= current_timestamp AND finish_date >= current_timestamp").Limit(1).Find(&offer).Error; err == nil {
+        // here no error
+        inputMessageContent := map[string]interface{}{
+            "message_text": offer.Content,
+            "parse_mode": tgbotapi.ModeHTML,
+            "disable_web_page_preview":false,
+        }
+        results = append(results, tgbotapi.InlineQueryResultArticle{
+            Type:                "article",
+            ID:                  "ad1",
+            Title:               "Advertise",
+            InputMessageContent: inputMessageContent,
+            ReplyMarkup: nil,
+            URL:                 "https://t.me/TransloBot?start=from_inline",
+            HideURL:             true,
+            Description:         offer.Content,
+        })
+        results = append(results, results)
+    }
+
     
     
     for ;offset < end; offset++ {

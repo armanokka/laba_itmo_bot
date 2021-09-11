@@ -9,6 +9,7 @@ import (
     "os"
     "strconv"
     "strings"
+    "time"
 )
 
 func handleCallback(callback *tgbotapi.CallbackQuery) {
@@ -70,9 +71,38 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
             bot.AnswerCallbackQuery(call)
             return
         }
+        var namesOfCountries = make([]string, 0, len(langs))
+        for _, lang := range langs {
+            namesOfCountries = append(namesOfCountries, iso6391.Name(lang))
+        }
+        var countries string = strings.Join(namesOfCountries, ", ")
+        bot.Send(tgbotapi.NewEditMessageText(callback.From.ID, callback.Message.MessageID, "Страны успешно выбраны: " + countries))
 
+        now := time.Now()
+        bot.Send(tgbotapi.NewMessage(callback.From.ID, "Введите дату НАЧАЛА РЕКЛАМЫ в формате год-месяц-день час:минута, например сейчас будет: " + now.Format("2006-01-02 15:01")))
 
-        //bot.Send(tgbotapi.NewMessage())
+        user.SetStep("ad:pass_start_date")
+    case "ad:confirm_pass":
+        var offer AdsOffers
+        if err := db.Model(&AdsOffers{}).Where("id = ?", callback.From.ID).Find(&offer).Error; err != nil {
+            warn(err)
+        }
+
+        if err := db.Create(&Ads{
+            ID:         offer.ID,
+            Content:    offer.Content,
+            StartDate:  offer.StartDate,
+            FinishDate: offer.FinishDate,
+            IDWhoseAd:  offer.IDWhoseAd,
+            Views:      0,
+            ToLangs:    offer.ToLangs,
+        }).Error; err != nil {
+            warn(err)
+            return
+        }
+
+        bot.Send(tgbotapi.NewEditMessageText(callback.From.ID, callback.Message.MessageID, "Реклама создана."))
+
     }
 
     arr := strings.Split(callback.Data, ":")
