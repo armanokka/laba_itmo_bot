@@ -151,7 +151,7 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
         sdec, err := translate.TTS(arr[1], text)
         if err != nil {
             if err == translate.ErrTTSLanguageNotSupported {
-                call := tgbotapi.NewCallback(callback.ID, user.Localize("%s language is not supported"))
+                call := tgbotapi.NewCallback(callback.ID, user.Localize("%s language is not supported", iso6391.Name(arr[1])))
                 call.ShowAlert = true
                 bot.AnswerCallbackQuery(call)
                 return
