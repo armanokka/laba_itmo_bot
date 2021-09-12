@@ -80,7 +80,7 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
         for _, lang := range langs {
             namesOfCountries = append(namesOfCountries, iso6391.Name(lang))
         }
-        var countries string = strings.Join(namesOfCountries, ", ")
+        var countries = strings.Join(namesOfCountries, ", ")
         bot.Send(tgbotapi.NewEditMessageText(callback.From.ID, callback.Message.MessageID, "Страны успешно выбраны: " + countries))
 
         now := time.Now()
@@ -143,7 +143,6 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
 
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
     case "speech": // arr[1] - lang code
-        bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, "⏳"))
 
         text := callback.Message.Text
         if callback.Message.Caption != "" {
@@ -151,11 +150,18 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
         }
         sdec, err := translate.TTS(arr[1], text)
         if err != nil {
-            if e, ok := err.(translate.TTSError); ok {
+            if err == translate.ErrTTSLanguageNotSupported {
+                call := tgbotapi.NewCallback(callback.ID, user.Localize("%s language is not supported"))
+                call.ShowAlert = true
+                bot.AnswerCallbackQuery(call)
+                return
+            }
+
+            if e, ok := err.(translate.HTTPError); ok {
                 if e.Code == 500 || e.Code == 414 {
-                    callback := tgbotapi.NewCallback(callback.ID, "Too big text")
-                    callback.ShowAlert = true
-                    bot.AnswerCallbackQuery(callback)
+                    call := tgbotapi.NewCallback(callback.ID, "Too big text")
+                    call.ShowAlert = true
+                    bot.AnswerCallbackQuery(call)
                     return
                 }
             }
@@ -164,6 +170,8 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
             pp.Println(err)
             return
         }
+        bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, "⏳"))
+
         f, err := os.CreateTemp("", "")
         if err != nil {
             warn(err)

@@ -1,6 +1,9 @@
 package translate
 
-import "fmt"
+import (
+    "errors"
+    "fmt"
+)
 
 type HTTPError struct {
     Code int
@@ -30,11 +33,5 @@ type Player struct {
     Lang string // Language code into we have to translate (ISO-6391)
 }
 
-type TTSError struct {
-    Code int
-    Description string
-}
 
-func (e TTSError) Error() string {
-    return fmt.Sprintf("TTSError [%d]: %s", e.Code, e.Description)
-}
+var ErrTTSLanguageNotSupported = errors.New("translateTTS js object not found")

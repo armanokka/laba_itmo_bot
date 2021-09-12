@@ -353,16 +353,6 @@ func localize(text, code string, placeholders ...interface{}) string {
             "de": "💡 Anweisung",
             "ru": "💡 Инструкция",
         },
-        "🙎\u200d♂️Profile": {
-            "uk": "🙍\u200d♂️Профіль",
-            "id": "🙍\u200d♂️Profil",
-            "pt": "🙍\u200d♂️Perfil",
-            "ru": "🙍\u200d♂️Профиль",
-            "de": "🙍\u200d♂️Profil",
-            "es": "🙍\u200d♂️Perfil",
-            "uz": "🙍\u200d♂️Profil",
-            "it": "🙍\u200d♂️Profilo",
-        },
         "⬅Back": {
             "pt": "⬅Back",
             "ru": "⬅Назад",
@@ -415,6 +405,17 @@ func localize(text, code string, placeholders ...interface{}) string {
             "es": "Ingrese un número entero sin caracteres adicionales",
             "it": "Inserisci un numero intero senza caratteri extra",
             "en": "Enter an integer without extra characters",
+        },
+        "%s language is not supported": {
+            "en": "%s language is not supported",
+            "uz": "%s tili qo'llab -quvvatlanmaydi",
+            "de": "%s Sprache wird nicht unterstützt",
+            "pt": "O idioma %s não é compatível",
+            "id": "%s bahasa tidak didukung",
+            "it": "%s lingua non è supportata",
+            "ru": "%s язык не поддерживается",
+            "es": "%s idioma no es compatible",
+            "uk": "Мова %s не підтримується",
         },
     }
     if trigger, ok := languages[text]; ok { // Текст подходит под варианты

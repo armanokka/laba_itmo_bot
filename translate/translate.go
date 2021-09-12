@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/k0kubun/pp"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -157,8 +158,9 @@ func TTS(lang, text string) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+		pp.Println(string(body))
 		if res.StatusCode != 200 {
-			return nil, TTSError{
+			return nil, HTTPError{
 				Code:        res.StatusCode,
 				Description: "Non 200 HTTP code",
 			}
@@ -173,6 +175,9 @@ func TTS(lang, text string) ([]byte, error) {
 		}
 		if len(out.TranslateTTS) == 0 {
 			return nil, errors.New("translateTTS js object not found")
+		}
+		if out.TranslateTTS[0] == "" {
+			return nil, ErrTTSLanguageNotSupported
 		}
 		sDec, err := base64.StdEncoding.DecodeString(out.TranslateTTS[0])
 		return sDec, err
@@ -190,6 +195,7 @@ func TTS(lang, text string) ([]byte, error) {
 	}
 	return out, nil
 }
+
 
 func splitIntoChunks(s string, chunkLength int) []string {
 	length := len(s)
