@@ -8,8 +8,6 @@ import (
     "github.com/armanokka/translobot/translate"
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-    "github.com/k0kubun/pp"
-    "html"
     "runtime/debug"
     "strconv"
     "strings"
@@ -167,20 +165,13 @@ func IsTicked(callback string, keyboard *tgbotapi.InlineKeyboardMarkup) bool {
 
 func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
     if len(entities) == 0 {
-        return html.EscapeString(text)
+        return text
     }
 
-    runes := []rune(text)
+    encoded := utf16.Encode([]rune(text))
+    out := make([]uint16, 0, len(encoded))
 
-    utf16len := len(utf16.Encode(runes))
-    utf8len := len(runes)
-    var diff int
-    if utf16len > utf8len {
-        diff = utf16len - utf8len
-    }
-    pp.Println("diff:", diff)
-
-    pointers := make(map[int]string)
+    pointers := make(map[int][]uint16)
     for _, entity := range entities {
         var startTag string
         switch entity.Type {
@@ -201,11 +192,8 @@ func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
         case "text_mention":
             startTag = `<a href="tg://user?id=` + strconv.FormatInt(entity.User.ID, 10) + `">`
         }
-        if entity.Offset - diff < 0 {
-            pointers[entity.Offset] += startTag
-        } else {
-            pointers[entity.Offset-diff] += startTag
-        }
+        pointers[entity.Offset] = append(pointers[entity.Offset], utf16.Encode([]rune(startTag))...)
+
 
         startTag = strings.TrimPrefix(startTag, "<")
         var endTag string
@@ -225,26 +213,25 @@ func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
         case "text_link", "text_mention":
             endTag = `</a>`
         }
-        pointers[entity.Offset+entity.Length-diff+1] += endTag
+        pointers[entity.Offset+entity.Length] = append(pointers[entity.Offset+entity.Length], utf16.Encode([]rune(endTag))...)
     }
 
 
-    var ret string
 
-    for i, ch := range runes  {
+    for i, ch := range encoded {
         if m, ok := pointers[i]; ok {
-            ret += m
+            out = append(out, m...)
         }
-        ret += string(ch)
+        out = append(out, ch)
 
-        if i == len(runes) - 1 {
+        if i == len(encoded) - 1 {
             if m, ok := pointers[i+1]; ok {
-                ret += m
+                out = append(out, m...)
             }
         }
     }
-    ret = strings.Replace(ret, "\n", "<br>", -1)
-    return ret
+    ret := utf16.Decode(out)
+    return strings.Replace(string(ret), "\n", "<br>", -1)
 }
 
 func setMyCommands(langs []string, commands []tgbotapi.BotCommand) error {

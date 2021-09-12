@@ -16,18 +16,10 @@ const (
 )
 
 var (
-    now = time.Now().In(LoadLocation())
+    now time.Time
     Location *time.Location
 )
 
-func LoadLocation() *time.Location {
-    loc, err := time.LoadLocation(TimeLocation)
-    if err != nil {
-        panic(err) // проверяем на валидность константы TimeLocation
-    }
-    Location = loc
-    return loc
-}
 
 
 var (

@@ -17,6 +17,11 @@ import (
 
 // botRun is main handler of bot
 func botRun(update *tgbotapi.Update) {
+	defer func() {
+		if err := recover(); err != nil {
+			WarnAdmin("panic:", err)
+		}
+	}()
 	if update.Message != nil {
 		handleMessage(update.Message)
 	} else if update.CallbackQuery != nil {
@@ -79,18 +84,18 @@ func main() {
 	requestHandler := func(ctx *fasthttp.RequestCtx) {
 		switch string(ctx.Path()) {
 		case "/" + botToken:
-			if isPost := ctx.IsPost(); isPost {
-				data := ctx.PostBody()
-				var update tgbotapi.Update
-				err := json.Unmarshal(data, &update)
-				if err != nil {
-					fmt.Fprint(ctx, "can't parse")
-				} else {
-					go botRun(&update)
-				}
-			} else {
+			if !ctx.IsPost() {
 				fmt.Fprint(ctx, "no way")
+				return
 			}
+			data := ctx.PostBody()
+			var update tgbotapi.Update
+			err := json.Unmarshal(data, &update)
+			if err != nil {
+				fmt.Fprint(ctx, "can't parse")
+				return
+			}
+			botRun(&update)
 		default:
 			_, err = fmt.Fprintln(ctx, "ok")
 			if err != nil {

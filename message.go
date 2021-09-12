@@ -263,7 +263,7 @@ func handleMessage(message *tgbotapi.Message) {
                 return
             }
             if !offer.StartDate.Before(t) { // время начала позже времени окончания
-                bot.Send(tgbotapi.NewMessage(message.From.ID, "Время начала должно быть позже времени окончания"))
+                bot.Send(tgbotapi.NewMessage(message.From.ID, "Время окончания должно быть позже времени начала"))
                 return
             }
             if err = db.Model(&AdsOffers{}).Where("id = ?", message.From.ID).Update("finish_date", t).Error; err != nil {
