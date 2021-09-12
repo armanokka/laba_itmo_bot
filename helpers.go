@@ -231,7 +231,7 @@ func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
         }
     }
     ret := utf16.Decode(out)
-    return strings.Replace(string(ret), "\n", "<br>", -1)
+    return strings.NewReplacer("\r\n", "<br>", "\r", "<br>", "\n", "<br>").Replace(string(ret))
 }
 
 func setMyCommands(langs []string, commands []tgbotapi.BotCommand) error {
