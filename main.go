@@ -67,7 +67,7 @@ func main() {
 		panic(err)
 	}
 
-	loc, err := time.LoadLocation(TimeLocation)
+	loc, err = time.LoadLocation(TimeLocation)
 	if err != nil {
 		panic(err) // проверяем на валидность константы TimeLocation
 	}

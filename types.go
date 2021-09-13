@@ -17,7 +17,7 @@ const (
 
 var (
     now time.Time
-    Location *time.Location
+    loc *time.Location
 )
 
 

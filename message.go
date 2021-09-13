@@ -231,7 +231,7 @@ func handleMessage(message *tgbotapi.Message) {
             msg.ReplyMarkup = keyboard
             bot.Send(msg)
         case "ad:pass_start_date":
-            t, err := time.ParseInLocation(layout, message.Text, Location)
+            t, err := time.ParseInLocation(layout, message.Text, loc)
             if err != nil {
                 bot.Send(tgbotapi.NewMessage(message.From.ID, "Неверный ввод"))
                 return
@@ -248,7 +248,7 @@ func handleMessage(message *tgbotapi.Message) {
             bot.Send(tgbotapi.NewMessage(message.From.ID, "Теперь введите дату окончания в таком же формате"))
             user.SetStep("ad:pass_finish_date")
         case "ad:pass_finish_date":
-            t, err := time.ParseInLocation(layout, message.Text, Location)
+            t, err := time.ParseInLocation(layout, message.Text, loc)
             if err != nil {
                 bot.Send(tgbotapi.NewMessage(message.From.ID, "Неверный ввод"))
                 return
@@ -308,6 +308,7 @@ func handleMessage(message *tgbotapi.Message) {
             msg.ParseMode = tgbotapi.ModeHTML
             msg.ReplyMarkup = keyboard
             bot.Send(msg)
+            user.SetStep("")
         //case "sponsorship_set_text":
         //    if len(message.Text) > 130 {
         //        bot.Send(tgbotapi.NewMessage(message.Chat.ID, user.Localize("Too big text")))
