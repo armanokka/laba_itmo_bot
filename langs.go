@@ -13,10 +13,6 @@ var langs = map[string]Lang{
         Name:  "Malay",
         Emoji: "🇲🇸",
     },
-    "aa": {
-        Name:  "Afar",
-        Emoji: "",
-    },
     "ae": {
         Name:  "Avestan",
         Emoji: "🇦🇪",
@@ -509,10 +505,6 @@ var langs = map[string]Lang{
         Name:  "Komi",
         Emoji: "",
     },
-    "ak": {
-        Name:  "Akan",
-        Emoji: "",
-    },
     "km": {
         Name:  "Khmer",
         Emoji: "🇰🇲",
@@ -760,8 +752,6 @@ var codes = []string{
     "fa",
     "gu",
     "ab",
-    "aa",
-    "ak",
     "sq",
     "am",
     "an",
