@@ -445,7 +445,8 @@ func handleMessage(message *tgbotapi.Message) {
             }
 
             if tr.Text == "" {
-                answer := tgbotapi.NewEditMessageText(message.Chat.ID, msg.MessageID, user.Localize("Empty result"))
+                answer := tgbotapi.NewEditMessageText(message.Chat.ID, msg.MessageID, user.Localize("%s language is not supported", iso6391.Name(to)))
+                WarnAdmin("короче на " + to + " не переводит")
                 bot.Send(answer)
                 return
             }
