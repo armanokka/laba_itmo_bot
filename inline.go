@@ -79,11 +79,11 @@ func handleInline(update *tgbotapi.InlineQuery) {
     
     var wg sync.WaitGroup
     for ;offset < end; offset++ {
-        offset := offset
+        offs := offset
         wg.Add(1)
         go func() {
             defer wg.Done()
-            to := codes[offset] // language code to translate
+            to := codes[offs] // language code to translate
             tr, err := translate.GoogleHTMLTranslate("auto", to, update.Query)
             if err != nil {
                 warn(err)
@@ -107,7 +107,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
                     }))
             results = append(results, tgbotapi.InlineQueryResultArticle{
                 Type:                "article",
-                ID:                  strconv.Itoa(offset+1), // надо для рекламы
+                ID:                  strconv.Itoa(offs+1), // надо для рекламы
                 Title:               iso6391.Name(to),
                 InputMessageContent: inputMessageContent,
                 ReplyMarkup: &keyboard,
@@ -119,9 +119,17 @@ func handleInline(update *tgbotapi.InlineQuery) {
     }
     wg.Wait()
     sort.Slice(results, func(i, j int) bool {
-        return results[i].(tgbotapi.InlineQueryResultArticle).ID < results[j].(tgbotapi.InlineQueryResultArticle).ID
+        a, err := strconv.Atoi(results[i].(tgbotapi.InlineQueryResultArticle).ID)
+        if err != nil {
+            warn(err)
+        }
+        b, _ := strconv.Atoi(results[j].(tgbotapi.InlineQueryResultArticle).ID)
+        if err != nil {
+            warn(err)
+        }
+        return a < b
     })
-    
+
     var nextOffset int
     if end < len(codes) {
         nextOffset = end
