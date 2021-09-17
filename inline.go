@@ -5,6 +5,7 @@ import (
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "github.com/k0kubun/pp"
+    "sort"
     "strconv"
     "sync"
 )
@@ -117,6 +118,9 @@ func handleInline(update *tgbotapi.InlineQuery) {
         }()
     }
     wg.Wait()
+    sort.Slice(results, func(i, j int) bool {
+        return results[i].(tgbotapi.InlineQueryResultArticle).ID < results[j].(tgbotapi.InlineQueryResultArticle).ID
+    })
     
     var nextOffset int
     if end < len(codes) {
