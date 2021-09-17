@@ -45,7 +45,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
     if end > languagesLen - 1 {
         end = languagesLen - 1
     }
-    results := make([]interface{}, 0, 10)
+    results := make([]interface{}, 0, 50)
 
 
     var l int
@@ -123,7 +123,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
         if err != nil {
             warn(err)
         }
-        b, _ := strconv.Atoi(results[j].(tgbotapi.InlineQueryResultArticle).ID)
+        b, err := strconv.Atoi(results[j].(tgbotapi.InlineQueryResultArticle).ID)
         if err != nil {
             warn(err)
         }
