@@ -6,6 +6,7 @@ import (
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "github.com/k0kubun/pp"
     "strconv"
+    "sync"
 )
 
 func handleInline(update *tgbotapi.InlineQuery) {
@@ -39,7 +40,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
         return
     }
     
-    end := offset + 10
+    end := offset + 50
     if end > languagesLen - 1 {
         end = languagesLen - 1
     }
@@ -75,41 +76,47 @@ func handleInline(update *tgbotapi.InlineQuery) {
 
 
     
-    
+    var wg sync.WaitGroup
     for ;offset < end; offset++ {
-        to := codes[offset] // language code to translate
-        tr, err := translate.GoogleHTMLTranslate("auto", to, update.Query)
-        if err != nil {
-            warn(err)
-            return
-        }
-        if tr.Text == "" {
-            continue // ну не вышло, так не вышло, че бубнить-то
-        }
-        
-        inputMessageContent := map[string]interface{}{
-            "message_text": tr.Text,
-            "parse_mode": tgbotapi.ModeHTML,
-            "disable_web_page_preview":false,
-        }
+        offset := offset
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            to := codes[offset] // language code to translate
+            tr, err := translate.GoogleHTMLTranslate("auto", to, update.Query)
+            if err != nil {
+                warn(err)
+                return
+            }
+            if tr.Text == "" {
+                return // ну не вышло, так не вышло, че бубнить-то
+            }
 
-        keyboard := tgbotapi.NewInlineKeyboardMarkup(
-            tgbotapi.NewInlineKeyboardRow(
-                tgbotapi.InlineKeyboardButton{
-                    Text:                         "translate",
-                    SwitchInlineQueryCurrentChat: &tr.Text,
-                }))
-        results = append(results, tgbotapi.InlineQueryResultArticle{
-            Type:                "article",
-            ID:                  strconv.Itoa(offset+1), // надо для рекламы
-            Title:               iso6391.Name(to),
-            InputMessageContent: inputMessageContent,
-            ReplyMarkup: &keyboard,
-            URL:                 "https://t.me/TransloBot?start=from_inline",
-            HideURL:             true,
-            Description:         tr.Text,
-        })
+            inputMessageContent := map[string]interface{}{
+                "message_text": tr.Text,
+                "parse_mode": tgbotapi.ModeHTML,
+                "disable_web_page_preview":false,
+            }
+
+            keyboard := tgbotapi.NewInlineKeyboardMarkup(
+                tgbotapi.NewInlineKeyboardRow(
+                    tgbotapi.InlineKeyboardButton{
+                        Text:                         "translate",
+                        SwitchInlineQueryCurrentChat: &tr.Text,
+                    }))
+            results = append(results, tgbotapi.InlineQueryResultArticle{
+                Type:                "article",
+                ID:                  strconv.Itoa(offset+1), // надо для рекламы
+                Title:               iso6391.Name(to),
+                InputMessageContent: inputMessageContent,
+                ReplyMarkup: &keyboard,
+                URL:                 "https://t.me/TransloBot?start=from_inline",
+                HideURL:             true,
+                Description:         tr.Text,
+            })
+        }()
     }
+    wg.Wait()
     
     var nextOffset int
     if end < len(codes) {
