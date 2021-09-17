@@ -121,7 +121,7 @@ func handleMessage(message *tgbotapi.Message) {
         }
         keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
             tgbotapi.NewInlineKeyboardButtonData("◀", "set_my_lang_pagination:0"),
-            tgbotapi.NewInlineKeyboardButtonData("0/"+strconv.Itoa(len(langs)), "none"),
+            tgbotapi.NewInlineKeyboardButtonData("0/"+strconv.Itoa(len(codes)), "none"),
             tgbotapi.NewInlineKeyboardButtonData("▶", "set_my_lang_pagination:10")))
         msg := tgbotapi.NewMessage(message.Chat.ID, user.Localize("Ваш язык %s. Выберите Ваш язык.", iso6391.Name(user.MyLang)))
         msg.ReplyMarkup = keyboard
@@ -149,7 +149,7 @@ func handleMessage(message *tgbotapi.Message) {
         }
         keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
             tgbotapi.NewInlineKeyboardButtonData("◀", "set_translate_lang_pagination:0"),
-        tgbotapi.NewInlineKeyboardButtonData("0/"+strconv.Itoa(len(langs)), "none"),
+        tgbotapi.NewInlineKeyboardButtonData("0/"+strconv.Itoa(len(codes)), "none"),
             tgbotapi.NewInlineKeyboardButtonData("▶", "set_translate_lang_pagination:10")))
         msg := tgbotapi.NewMessage(message.Chat.ID, user.Localize("Сейчас бот переводит на %s. Выберите язык для перевода", iso6391.Name(user.ToLang)))
         msg.ReplyMarkup = keyboard
