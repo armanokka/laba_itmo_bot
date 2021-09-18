@@ -101,9 +101,9 @@ func handleInline(update *tgbotapi.InlineQuery) {
         return a < b
     })
 
-    var nextOffset int = end
-    if nextOffset >= languagesLen {
-        nextOffset = 0
+    var nextOffset string = strconv.Itoa(end)
+    if end >= languagesLen {
+        nextOffset = ""
     }
     pmtext := "From: " + iso6391.Name(from)
     if update.Query == "" {
@@ -114,7 +114,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
         InlineQueryID:     update.ID,
         Results:           results[:50],
         CacheTime:         InlineCacheTime,
-        NextOffset: 	   strconv.Itoa(nextOffset),
+        NextOffset: 	     nextOffset,
         IsPersonal:        false,
         SwitchPMText:      pmtext,
         SwitchPMParameter: "from_inline",
