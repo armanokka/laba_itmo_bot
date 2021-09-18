@@ -44,33 +44,6 @@ func handleInline(update *tgbotapi.InlineQuery) {
     }
     results := make([]interface{}, 0, 50)
 
-    //var l int
-    //if err = db.Model(&Ads{}).Raw("SELECT COUNT(*) FROM ads LIMIT 1").Find(&l).Error; err == nil {
-    //    // no error
-    //
-    //    if l > 0 {
-    //        var offer Ads
-    //        if err = db.Model(&Ads{}).Where("start_date <= current_timestamp AND finish_date >= current_timestamp").Limit(1).Find(&offer).Error; err == nil {
-    //            // here no error
-    //            inputMessageContent := map[string]interface{}{
-    //                "message_text": offer.Content,
-    //                "parse_mode": tgbotapi.ModeHTML,
-    //                "disable_web_page_preview":false,
-    //            }
-    //            results = append(results, tgbotapi.InlineQueryResultArticle{
-    //                Type:                "article",
-    //                ID:                  "0",
-    //                Title:               "Advertise",
-    //                InputMessageContent: inputMessageContent,
-    //                ReplyMarkup: nil,
-    //                URL:                 "https://t.me/TransloBot?start=from_inline",
-    //                HideURL:             true,
-    //                Description:         offer.Content,
-    //            })
-    //        }
-    //    }
-    //}
-
     var from string
     
     var wg sync.WaitGroup
@@ -106,7 +79,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
                     }))
             results = append(results, tgbotapi.InlineQueryResultArticle{
                 Type:                "article",
-                ID:                  strconv.Itoa(offs+2), // +2, потому что могут быть языки юзера
+                ID:                  strconv.Itoa(offs), // +2, потому что могут быть языки юзера
                 Title:               iso6391.Name(to),
                 InputMessageContent: inputMessageContent,
                 ReplyMarkup: &keyboard,
@@ -129,9 +102,9 @@ func handleInline(update *tgbotapi.InlineQuery) {
         return a < b
     })
 
-    var nextOffset int
-    if end < len(codes) {
-        nextOffset = end
+    var nextOffset int = end
+    if nextOffset > len(codes) {
+        nextOffset = 0
     }
     pmtext := "From: " + iso6391.Name(from)
     if update.Query == "" {
