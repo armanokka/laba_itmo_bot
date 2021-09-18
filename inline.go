@@ -44,70 +44,6 @@ func handleInline(update *tgbotapi.InlineQuery) {
     }
     results := make([]interface{}, 0, 50)
 
-    user := NewUser(update.From.ID, warn)
-    if user.Exists() {
-        user.Fill()
-
-        tr, err := translate.GoogleHTMLTranslate("auto", user.MyLang, update.Query)
-        if err != nil {
-            warn(err)
-            return
-        }
-
-        inputMessageContent := map[string]interface{}{
-            "message_text": tr.Text,
-            "parse_mode": tgbotapi.ModeHTML,
-            "disable_web_page_preview":false,
-        }
-        keyboard := tgbotapi.NewInlineKeyboardMarkup(
-            tgbotapi.NewInlineKeyboardRow(
-                tgbotapi.InlineKeyboardButton{
-                    Text:                         "translate",
-                    SwitchInlineQueryCurrentChat: &tr.Text,
-                }))
-        results = append(results, tgbotapi.InlineQueryResultArticle{
-            Type:                "article",
-            ID:                  "0", // надо для рекламы
-            Title:               iso6391.Name(user.MyLang),
-            InputMessageContent: inputMessageContent,
-            ReplyMarkup: &keyboard,
-            URL:                 "https://t.me/TransloBot?start=from_inline",
-            HideURL:             true,
-            Description:         tr.Text,
-        })
-
-
-
-        tr, err = translate.GoogleHTMLTranslate("auto", user.ToLang, update.Query)
-        if err != nil {
-            warn(err)
-            return
-        }
-
-        inputMessageContent = map[string]interface{}{
-            "message_text": tr.Text,
-            "parse_mode": tgbotapi.ModeHTML,
-            "disable_web_page_preview":false,
-        }
-
-        keyboard = tgbotapi.NewInlineKeyboardMarkup(
-            tgbotapi.NewInlineKeyboardRow(
-                tgbotapi.InlineKeyboardButton{
-                    Text:                         "translate",
-                    SwitchInlineQueryCurrentChat: &tr.Text,
-                }))
-        results = append(results, tgbotapi.InlineQueryResultArticle{
-            Type:                "article",
-            ID:                  "1",
-            Title:               iso6391.Name(user.ToLang),
-            InputMessageContent: inputMessageContent,
-            ReplyMarkup: &keyboard,
-            URL:                 "https://t.me/TransloBot?start=from_inline",
-            HideURL:             true,
-            Description:         tr.Text,
-        })
-    }
-
     //var l int
     //if err = db.Model(&Ads{}).Raw("SELECT COUNT(*) FROM ads LIMIT 1").Find(&l).Error; err == nil {
     //    // no error
@@ -165,14 +101,10 @@ func handleInline(update *tgbotapi.InlineQuery) {
                         Text:                         "translate",
                         SwitchInlineQueryCurrentChat: &tr.Text,
                     }))
-            title := iso6391.Name(to)
-            if tr.From == to {
-                title += " (source)"
-            }
             results = append(results, tgbotapi.InlineQueryResultArticle{
                 Type:                "article",
                 ID:                  strconv.Itoa(offs+2), // +2, потому что могут быть языки юзера
-                Title:               title,
+                Title:               iso6391.Name(to),
                 InputMessageContent: inputMessageContent,
                 ReplyMarkup: &keyboard,
                 URL:                 "https://t.me/TransloBot?start=from_inline",
