@@ -113,7 +113,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
     
     if _, err := bot.AnswerInlineQuery(tgbotapi.InlineConfig{
         InlineQueryID:     update.ID,
-        Results:           results[:50],
+        Results:           results,
         CacheTime:         InlineCacheTime,
         NextOffset: 	     nextOffset,
         IsPersonal:        false,
@@ -121,7 +121,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
         SwitchPMParameter: "from_inline",
     }); err != nil {
         warn(err)
-        WarnAdmin("из ошибки выше результат был таков:", results[:50])
+        WarnAdmin("из ошибки выше результат был таков:", results)
     }
     
     analytics.Bot(update.From.ID, "Inline succeeded", "Inline succeeded")
