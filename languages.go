@@ -196,7 +196,7 @@ func localize(text, code string, placeholders ...interface{}) string {
             "uz": "Agar do&#39;stlaringizga biz haqimizda aytib bersangiz, minnatdor bo&#39;lamiz. <b>Translo Bot</b> Tez va qulay inline tarjimon <i>182</i> <b>(!)</b> <i>Tilni</i> <i>qo&#39;llab -quvvatlaydi</i> @translobot",
         },
         "bot_advertise_without_html_tags": {
-            "en": "Translo Bot Fast and convenient inline translator Supports 182 (!) Languages \u200b\u200b@translobot",
+            "en": "Translo Bot Fast and convenient inline translator Supports 182 (!) Languages \n\n@translobot",
             "uk": "Translo Bot Швидкий і зручний інлайн перекладач Підтримує 182 (!) Мови @translobot",
             "id": "Translo Bot Penerjemah sebaris yang cepat dan nyaman Mendukung 182 (!) Bahasa @translobot",
             "pt": "Translo Bot Conversor embutido rápido e conveniente Suporta 182 (!) Idiomas @translobot",
