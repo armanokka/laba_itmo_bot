@@ -6,7 +6,6 @@ import (
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "github.com/k0kubun/pp"
-    "net/url"
     "os"
     "strconv"
     "strings"
@@ -387,10 +386,7 @@ func handleMessage(message *tgbotapi.Message) {
                 defer func() {
                     photo := tgbotapi.NewPhoto(message.Chat.ID, "logo.jpg")
                     photo.Caption = user.Localize("bot_advertise")
-                    keyboard := tgbotapi.NewInlineKeyboardMarkup(
-                        tgbotapi.NewInlineKeyboardRow(
-                            tgbotapi.NewInlineKeyboardButtonURL(user.Localize("Share"), "tg:msg?text=" + url.PathEscape(user.Localize("bot_advertise_without_html_tags")))))
-                    photo.ReplyMarkup = keyboard
+                    photo.ParseMode = tgbotapi.ModeHTML
                     if _, err = bot.Send(photo); err != nil {
                         pp.Println(err)
                     }
