@@ -464,7 +464,7 @@ func handleMessage(message *tgbotapi.Message) {
                 tgbotapi.NewInlineKeyboardRow(otherLanguagesButton),
             )
     
-            edit := tgbotapi.NewEditMessageTextAndMarkup(message.Chat.ID, msg.MessageID, iso6391.Name(from) + ": " + tr.Text, keyboard)
+            edit := tgbotapi.NewEditMessageTextAndMarkup(message.Chat.ID, msg.MessageID, iso6391.Name(from) + " -> " + iso6391.Name(to) + ":\n" + tr.Text, keyboard)
             edit.ParseMode = tgbotapi.ModeHTML
             edit.DisableWebPagePreview = true
 
