@@ -63,7 +63,7 @@ func main() {
 		port = "80"
 	}
 
-	if _, err := os.Stat("ad.jpg"); err != nil {
+	if _, err := os.Stat("logo.jpg"); err != nil {
 		panic(err)
 	}
 
