@@ -71,7 +71,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
     //    }
     //}
 
-
+    var from string
     
     var wg sync.WaitGroup
     for ;offset < end; offset++ {
@@ -87,6 +87,9 @@ func handleInline(update *tgbotapi.InlineQuery) {
             }
             if tr.Text == "" {
                 return // ну не вышло, так не вышло, че бубнить-то
+            }
+            if from == "" {
+                from = tr.From
             }
 
             inputMessageContent := map[string]interface{}{
@@ -130,7 +133,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
     if end < len(codes) {
         nextOffset = end
     }
-    pmtext := "Translo"
+    pmtext := "From: " + iso6391.Name(from)
     if update.Query == "" {
         pmtext = "Enter text"
     }
