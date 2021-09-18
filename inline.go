@@ -1,6 +1,7 @@
 package main
 
 import (
+    "errors"
     "github.com/armanokka/translobot/translate"
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -22,24 +23,24 @@ func handleInline(update *tgbotapi.InlineQuery) {
     }
 
     var offset int
-    var err error
     if update.Offset != "" { // Ищем смещение
+        var err error
         offset, err = strconv.Atoi(update.Offset)
         if err != nil {
             warn(err)
             return
         }
     }
-    languagesLen := len(codes)
+    l := len(codes)
 
-    if offset >= languagesLen { // Слишком большое смещение
-        warn(err)
+    if offset >= l { // Слишком большое смещение
+        warn(errors.New("слишком большое смещение"))
         return
     }
     
     end := offset + 50
-    if end > languagesLen - 1 {
-        end = languagesLen - 1
+    if end > l - 1 {
+        end = l - 1
     }
     results := make([]interface{}, 0, 50)
 
@@ -102,7 +103,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
     })
 
     var nextOffset string
-    if end < len(codes) {
+    if end < l {
         nextOffset = strconv.Itoa(end)
     }
     pmtext := "From: " + iso6391.Name(from)
@@ -110,7 +111,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
         pmtext = "Enter text"
     }
     
-    if _, err = bot.AnswerInlineQuery(tgbotapi.InlineConfig{
+    if _, err := bot.AnswerInlineQuery(tgbotapi.InlineConfig{
         InlineQueryID:     update.ID,
         Results:           results[:50],
         CacheTime:         InlineCacheTime,
