@@ -32,7 +32,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
         }
     }
     languagesLen := len(codes)
-    
+
     if offset >= languagesLen { // Слишком большое смещение
         warn(err)
         return
@@ -122,6 +122,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
     }); err != nil {
         pp.Println(err)
         warn(err)
+        WarnAdmin("из ошибки выше результат был таков:", results[:50])
     }
     
     analytics.Bot(update.From.ID, "Inline succeeded", "Inline succeeded")

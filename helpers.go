@@ -8,6 +8,7 @@ import (
     "github.com/armanokka/translobot/translate"
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+    "github.com/k0kubun/pp"
     "runtime/debug"
     "strconv"
     "strings"
@@ -59,7 +60,7 @@ func WarnAdmin(args ...interface{}) {
         case int:
             text += "\n" + strconv.Itoa(v)
         default:
-            text += "[wrong type given]"
+            text += "\n" + pp.Sprint(arg)
         }
     }
     msg := tgbotapi.NewMessage(AdminID, text)
