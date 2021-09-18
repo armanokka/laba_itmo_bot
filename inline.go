@@ -59,7 +59,6 @@ func handleInline(update *tgbotapi.InlineQuery) {
             "parse_mode": tgbotapi.ModeHTML,
             "disable_web_page_preview":false,
         }
-
         keyboard := tgbotapi.NewInlineKeyboardMarkup(
             tgbotapi.NewInlineKeyboardRow(
                 tgbotapi.InlineKeyboardButton{
@@ -69,7 +68,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
         results = append(results, tgbotapi.InlineQueryResultArticle{
             Type:                "article",
             ID:                  "0", // надо для рекламы
-            Title:               iso6391.Name(user.MyLang),
+            Title:               iso6391.Name(user.MyLang) + " 🔥",
             InputMessageContent: inputMessageContent,
             ReplyMarkup: &keyboard,
             URL:                 "https://t.me/TransloBot?start=from_inline",
@@ -100,7 +99,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
         results = append(results, tgbotapi.InlineQueryResultArticle{
             Type:                "article",
             ID:                  "1",
-            Title:               iso6391.Name(user.ToLang),
+            Title:               iso6391.Name(user.ToLang) + " 🔥",
             InputMessageContent: inputMessageContent,
             ReplyMarkup: &keyboard,
             URL:                 "https://t.me/TransloBot?start=from_inline",
@@ -166,10 +165,14 @@ func handleInline(update *tgbotapi.InlineQuery) {
                         Text:                         "translate",
                         SwitchInlineQueryCurrentChat: &tr.Text,
                     }))
+            title := iso6391.Name(to)
+            if tr.From == to {
+                title += " ◀ source language"
+            }
             results = append(results, tgbotapi.InlineQueryResultArticle{
                 Type:                "article",
                 ID:                  strconv.Itoa(offs+2), // +2, потому что могут быть языки юзера
-                Title:               iso6391.Name(to),
+                Title:               title,
                 InputMessageContent: inputMessageContent,
                 ReplyMarkup: &keyboard,
                 URL:                 "https://t.me/TransloBot?start=from_inline",
