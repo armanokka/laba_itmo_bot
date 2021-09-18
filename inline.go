@@ -4,7 +4,6 @@ import (
     "github.com/armanokka/translobot/translate"
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-    "github.com/k0kubun/pp"
     "sort"
     "strconv"
     "sync"
@@ -103,7 +102,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
     })
 
     var nextOffset int = end
-    if nextOffset > len(codes) {
+    if nextOffset >= languagesLen {
         nextOffset = 0
     }
     pmtext := "From: " + iso6391.Name(from)
@@ -120,7 +119,6 @@ func handleInline(update *tgbotapi.InlineQuery) {
         SwitchPMText:      pmtext,
         SwitchPMParameter: "from_inline",
     }); err != nil {
-        pp.Println(err)
         warn(err)
         WarnAdmin("из ошибки выше результат был таков:", results[:50])
     }
