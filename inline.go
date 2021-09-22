@@ -22,8 +22,8 @@ func handleInline(update *tgbotapi.InlineQuery) {
         WarnAdmin(err)
     }
 
-    var offset int
-    if update.Offset != "" { // Ищем смещение
+    var offset int // смещение для пагинации
+    if update.Offset != "" {
         var err error
         offset, err = strconv.Atoi(update.Offset)
         if err != nil {
@@ -31,29 +31,48 @@ func handleInline(update *tgbotapi.InlineQuery) {
             return
         }
     }
-    l := len(codes)
 
-    if offset >= l { // Слишком большое смещение
+    if offset > len(codes) { // Слишком большое смещение
         warn(errors.New("слишком большое смещение"))
         return
     }
     
     end := offset + 50
-    if end > l - 1 {
-        end = l - 1
+    if end > len(codes) - 1 {
+        end = len(codes) - 1
     }
-    results := make([]interface{}, 0, 50)
+    results := make([]interface{}, 0, 52)
+
+    user := NewUser(update.From.ID, warn)
+    if user.Exists() {
+        myLangTr, err := translate.GoogleHTMLTranslate("auto", user.MyLang, update.Query)
+        if err != nil {
+            warn(err)
+            return
+        }
+        results = append(results, makeArticle(iso6391.Name(user.MyLang) + " 🔥", myLangTr.Text))
+
+        toLangTr, err := translate.GoogleHTMLTranslate("auto", user.MyLang, update.Query)
+        if err != nil {
+            warn(err)
+            return
+        }
+        results = append(results, makeArticle(iso6391.Name(user.ToLang) + " 🔥", toLangTr.Text))
+    }
 
     var from string
-    
+
+    if len(results) > 0 {
+        end -= len(results)
+    }
+
     var wg sync.WaitGroup
-    for ;offset < end; offset++ {
-        offs := offset
+    for _, lang := range codes[offset:end]{
         wg.Add(1)
+        lang := lang
         go func() {
             defer wg.Done()
-            to := codes[offs] // language code to translate
-            tr, err := translate.GoogleHTMLTranslate("auto", to, update.Query)
+            tr, err := translate.GoogleHTMLTranslate("auto", lang, update.Query)
             if err != nil {
                 warn(err)
                 return
@@ -65,50 +84,24 @@ func handleInline(update *tgbotapi.InlineQuery) {
                 from = tr.From
             }
 
-            inputMessageContent := map[string]interface{}{
-                "message_text": tr.Text,
-                "parse_mode": tgbotapi.ModeHTML,
-                "disable_web_page_preview":false,
-            }
-
-            keyboard := tgbotapi.NewInlineKeyboardMarkup(
-                tgbotapi.NewInlineKeyboardRow(
-                    tgbotapi.InlineKeyboardButton{
-                        Text:                         "translate",
-                        SwitchInlineQueryCurrentChat: &tr.Text,
-                    }))
-            results = append(results, tgbotapi.InlineQueryResultArticle{
-                Type:                "article",
-                ID:                  strconv.Itoa(offs), // +2, потому что могут быть языки юзера
-                Title:               iso6391.Name(to),
-                InputMessageContent: inputMessageContent,
-                ReplyMarkup: &keyboard,
-                URL:                 "https://t.me/TransloBot?start=from_inline",
-                HideURL:             true,
-                Description:         tr.Text,
-            })
+            results = append(results, makeArticle(iso6391.Name(tr.From), tr.Text))
         }()
     }
+
     wg.Wait()
     sort.Slice(results, func(i, j int) bool {
-        a, err := strconv.Atoi(results[i].(tgbotapi.InlineQueryResultArticle).ID)
-        if err != nil {
-            warn(err)
-        }
-        b, err := strconv.Atoi(results[j].(tgbotapi.InlineQueryResultArticle).ID)
-        if err != nil {
-            warn(err)
-        }
-        return a < b
+        return results[i].(tgbotapi.InlineQueryResultArticle).Title < results[j].(tgbotapi.InlineQueryResultArticle).Title
     })
 
-    var nextOffset string
-    if end < l {
-        nextOffset = strconv.Itoa(end)
-    }
+    var nextOffset string = strconv.Itoa(end)
+
     pmtext := "From: " + iso6391.Name(from)
     if update.Query == "" {
         pmtext = "Enter text"
+    }
+
+    if len(results) > 50 {
+        results = results[:50]
     }
     
     if _, err := bot.AnswerInlineQuery(tgbotapi.InlineConfig{

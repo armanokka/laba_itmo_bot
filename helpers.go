@@ -265,3 +265,27 @@ func setMyCommands(langs []string, commands []tgbotapi.BotCommand) error {
     }
     return nil
 }
+
+func makeArticle(title, description string) tgbotapi.InlineQueryResultArticle {
+    keyboard := tgbotapi.NewInlineKeyboardMarkup(
+        tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.InlineKeyboardButton{
+                Text:                         "translate",
+                SwitchInlineQueryCurrentChat: &description,
+            }))
+
+    return tgbotapi.InlineQueryResultArticle{
+        Type:                "article",
+        ID:                  title,
+        Title:               title,
+        InputMessageContent: map[string]interface{}{
+            "message_text": description,
+            "parse_mode": tgbotapi.ModeHTML,
+            "disable_web_page_preview":false,
+        },
+        ReplyMarkup: &keyboard,
+        URL:                 "https://t.me/TransloBot?start=from_inline",
+        HideURL:             true,
+        Description:         description,
+    }
+}
