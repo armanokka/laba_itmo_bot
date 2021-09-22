@@ -12,6 +12,7 @@ import (
     "runtime/debug"
     "strconv"
     "strings"
+    "time"
     "unicode/utf16"
 )
 
@@ -273,10 +274,10 @@ func makeArticle(title, description string) tgbotapi.InlineQueryResultArticle {
                 Text:                         "translate",
                 SwitchInlineQueryCurrentChat: &description,
             }))
-
+    id := strconv.FormatInt(time.Now().UnixNano(), 10)
     return tgbotapi.InlineQueryResultArticle{
         Type:                "article",
-        ID:                  title,
+        ID:                  id,
         Title:               title,
         InputMessageContent: map[string]interface{}{
             "message_text": description,
