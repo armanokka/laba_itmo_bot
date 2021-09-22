@@ -109,7 +109,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
         Results:           results,
         CacheTime:         InlineCacheTime,
         NextOffset: 	     nextOffset,
-        IsPersonal:        false,
+        IsPersonal:        true,
         SwitchPMText:      pmtext,
         SwitchPMParameter: "from_inline",
     }); err != nil {
