@@ -52,7 +52,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
         }
         results = append(results, makeArticle(iso6391.Name(user.MyLang) + " 🔥", myLangTr.Text))
 
-        toLangTr, err := translate.GoogleHTMLTranslate("auto", user.MyLang, update.Query)
+        toLangTr, err := translate.GoogleHTMLTranslate("auto", user.ToLang, update.Query)
         if err != nil {
             warn(err)
             return
@@ -84,7 +84,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
                 from = tr.From
             }
 
-            results = append(results, makeArticle(iso6391.Name(tr.From), tr.Text))
+            results = append(results, makeArticle(iso6391.Name(lang), tr.Text))
         }()
     }
 
