@@ -12,7 +12,6 @@ import (
     "runtime/debug"
     "strconv"
     "strings"
-    "time"
     "unicode/utf16"
 )
 
@@ -166,13 +165,13 @@ func IsTicked(callback string, keyboard *tgbotapi.InlineKeyboardMarkup) bool {
 }
 
 func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
+
     if len(entities) == 0 {
         return text
     }
 
     encoded := utf16.Encode([]rune(text))
     out := make([]uint16, 0, len(encoded))
-
     pointers := make(map[int][]uint16)
     for _, entity := range entities {
         var startTag string
@@ -232,8 +231,7 @@ func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
             }
         }
     }
-    ret := utf16.Decode(out)
-    return strings.NewReplacer("\r\n", "<br>", "\r", "<br>", "\n", "<br>").Replace(string(ret))
+    return string(utf16.Decode(out))
 }
 
 func setMyCommands(langs []string, commands []tgbotapi.BotCommand) error {
@@ -267,14 +265,13 @@ func setMyCommands(langs []string, commands []tgbotapi.BotCommand) error {
     return nil
 }
 
-func makeArticle(title, description string) tgbotapi.InlineQueryResultArticle {
+func makeArticle(id string, title, description string) tgbotapi.InlineQueryResultArticle {
     keyboard := tgbotapi.NewInlineKeyboardMarkup(
         tgbotapi.NewInlineKeyboardRow(
             tgbotapi.InlineKeyboardButton{
                 Text:                         "translate",
                 SwitchInlineQueryCurrentChat: &description,
             }))
-    id := strconv.FormatInt(time.Now().UnixNano(), 10)
     return tgbotapi.InlineQueryResultArticle{
         Type:                "article",
         ID:                  id,
@@ -289,4 +286,11 @@ func makeArticle(title, description string) tgbotapi.InlineQueryResultArticle {
         HideURL:             true,
         Description:         description,
     }
+}
+
+func prepend(obj []interface{}, keys ...interface{}) []interface{} {
+    out := make([]interface{}, 0, len(obj) + len(keys))
+    out = append(out, keys...)
+    out = append(out, obj...)
+    return out
 }

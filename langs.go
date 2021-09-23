@@ -720,21 +720,6 @@ var langs = map[string]Lang{
 }
 
 var codes = []string{
-	"en",
-	"ru",
-	"ja",
-	"ar",
-	"fr",
-	"de",
-	"af",
-	"uk",
-	"uz",
-	"es",
-	"ko",
-	"zh",
-	"la",
-	"be",
-	"pt",
 	"af",
 	"am",
 	"ar",

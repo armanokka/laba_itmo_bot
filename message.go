@@ -381,8 +381,12 @@ func handleMessage(message *tgbotapi.Message) {
         //        warn(err)
         //    }
         default: // У пользователя нет шага и сообщение не команда
+            start := time.Now()
+            defer func() {
+                pp.Println(time.Since(start).String())
+            }()
 
-            if user.Usings == 10 || user.Usings % 20 == 0 {
+            if user.Usings % 20 == 0 {
                 defer func() {
                     photo := tgbotapi.NewPhoto(message.Chat.ID, "logo.jpg")
                     photo.Caption = user.Localize("bot_advertise")
@@ -437,7 +441,8 @@ func handleMessage(message *tgbotapi.Message) {
             } else if len(message.CaptionEntities) > 0 {
                 text = applyEntitiesHtml(text, message.CaptionEntities)
             }
-            
+            text = strings.ReplaceAll(text, "\n", "<br>")
+
             tr, err := translate.GoogleHTMLTranslate(from, to, text)
             if err != nil {
                 bot.Send(tgbotapi.NewEditMessageText(message.Chat.ID, msg.MessageID, user.Localize("Unsupported language or internal error")))
@@ -452,9 +457,8 @@ func handleMessage(message *tgbotapi.Message) {
                 return
             }
 
-            tr.Text = strings.NewReplacer(`<label class="notranslate">`, ``, `</label>`, ``).Replace(tr.Text)
+            tr.Text = strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "").Replace(tr.Text)
             tr.Text = strings.ReplaceAll(tr.Text, `<br>`, "\n")
-
             otherLanguagesButton := tgbotapi.InlineKeyboardButton{
                 Text:                         user.Localize("Другие языки"),
                 SwitchInlineQueryCurrentChat: &message.Text,

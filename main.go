@@ -72,8 +72,8 @@ func main() {
 		panic(err) // проверяем на валидность константы TimeLocation
 	}
 
-	now = time.Now().In(loc)
-
+	//now = time.Now().In(loc)
+	//
 	//updates := bot.GetUpdatesChan(tgbotapi.UpdateConfig{})
 	//for update := range updates {
 	//	go botRun(&update)
