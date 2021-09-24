@@ -80,6 +80,9 @@ func handleInline(update *tgbotapi.InlineQuery) {
 
 
     for i, lang := range codes[start:end] {
+        if lang == user.MyLang && lang == user.ToLang {
+            continue
+        }
         wg.Add(1)
         lang := lang
         i := i
