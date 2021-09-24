@@ -105,7 +105,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
     })
 
 
-    if user.MyLang != "" {
+    if start == 0 && user.MyLang != "" {
         myLangTr, err := translate.GoogleHTMLTranslate("auto", user.MyLang, update.Query)
         if err != nil {
             warn(err)
