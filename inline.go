@@ -67,15 +67,10 @@ func handleInline(update *tgbotapi.InlineQuery) {
 
 
     var wg sync.WaitGroup
-    wg.Add(1)
-    var user User
-    go func() {
-        defer wg.Done()
-        user = NewUser(update.From.ID, warn)
-        if user.Exists() {
-            user.Fill()
-        }
-    }()
+    var user = NewUser(update.From.ID, warn)
+    if user.Exists() {
+        user.Fill()
+    }
 
     tr, err := translate.GoogleHTMLTranslate("auto", "en", update.Query) // определяем язык
     if err != nil {
