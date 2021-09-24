@@ -77,10 +77,11 @@ func handleInline(update *tgbotapi.InlineQuery) {
         }
     }()
 
-    from, err := translate.DetectLanguageGoogle(cutString(update.Query, 100))
+    tr, err := translate.GoogleHTMLTranslate("auto", "en", update.Query)
     if err != nil {
         warn(err)
     }
+    from := tr.From
 
     for i, lang := range codes[start:end] {
         if lang == user.MyLang || lang == user.ToLang || lang == from {
