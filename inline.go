@@ -113,17 +113,23 @@ func handleInline(update *tgbotapi.InlineQuery) {
 
 
     if start == 0 && user.MyLang != "" {
-        myLangTr, err := translate.GoogleHTMLTranslate("auto", user.MyLang, update.Query)
-        if err != nil {
-            warn(err)
-            return
+        if from != user.MyLang {
+            myLangTr, err := translate.GoogleHTMLTranslate("auto", user.MyLang, update.Query)
+            if err != nil {
+                warn(err)
+                return
+            }
+            results = prepend(results, makeArticle("my_lang", iso6391.Name(user.MyLang) + " 🔥", html.UnescapeString(myLangTr.Text)))
         }
-        toLangTr, err := translate.GoogleHTMLTranslate("auto", user.ToLang, update.Query)
-        if err != nil {
-            warn(err)
-            return
+        if from != user.ToLang {
+            toLangTr, err := translate.GoogleHTMLTranslate("auto", user.ToLang, update.Query)
+            if err != nil {
+                warn(err)
+                return
+            }
+            results = prepend(results, makeArticle("to_lang", iso6391.Name(user.ToLang) + " 🔥", html.UnescapeString(toLangTr.Text)))
         }
-        results = prepend(results, makeArticle("my_lang", iso6391.Name(user.MyLang) + " 🔥", html.UnescapeString(myLangTr.Text)), makeArticle("to_lang", iso6391.Name(user.ToLang) + " 🔥", html.UnescapeString(toLangTr.Text)))
+
     }
 
     pmtext := "From: " + iso6391.Name(from)
