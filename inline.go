@@ -123,7 +123,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
     wg.Wait()
 
     sort.Slice(results[2:], func(i, j int) bool {
-       return results[i].(tgbotapi.InlineQueryResultArticle).Title < results[j].(tgbotapi.InlineQueryResultArticle).Title
+       return results[i+2].(tgbotapi.InlineQueryResultArticle).Title < results[j+2].(tgbotapi.InlineQueryResultArticle).Title
     })
 
 
