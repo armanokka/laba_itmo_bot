@@ -65,7 +65,6 @@ func handleInline(update *tgbotapi.InlineQuery) {
     }
     results := make([]interface{}, 0, 52)
 
-    var from string
 
     var wg sync.WaitGroup
     wg.Add(1)
@@ -78,9 +77,13 @@ func handleInline(update *tgbotapi.InlineQuery) {
         }
     }()
 
+    from, err := translate.DetectLanguageGoogle(cutString(update.Query, 100))
+    if err != nil {
+        warn(err)
+    }
 
     for i, lang := range codes[start:end] {
-        if lang == user.MyLang || lang == user.ToLang {
+        if lang == user.MyLang || lang == user.ToLang || lang == from {
             continue
         }
         wg.Add(1)
