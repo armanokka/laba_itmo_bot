@@ -83,22 +83,25 @@ func handleInline(update *tgbotapi.InlineQuery) {
     }
     from := tr.From
 
-    if from != user.MyLang {
-        myLangTr, err := translate.GoogleHTMLTranslate("auto", user.MyLang, update.Query)
-        if err != nil {
-            warn(err)
-            return
+    if start == 0 {
+        if from != user.MyLang {
+            myLangTr, err := translate.GoogleHTMLTranslate("auto", user.MyLang, update.Query)
+            if err != nil {
+                warn(err)
+                return
+            }
+            results = append(results, makeArticle("my_lang", iso6391.Name(user.MyLang) + " 🔥", html.UnescapeString(myLangTr.Text)))
         }
-        results = append(results, makeArticle("my_lang", iso6391.Name(user.MyLang) + " 🔥", html.UnescapeString(myLangTr.Text)))
-    }
-    if from != user.ToLang {
-        toLangTr, err := translate.GoogleHTMLTranslate("auto", user.ToLang, update.Query)
-        if err != nil {
-            warn(err)
-            return
+        if from != user.ToLang {
+            toLangTr, err := translate.GoogleHTMLTranslate("auto", user.ToLang, update.Query)
+            if err != nil {
+                warn(err)
+                return
+            }
+            results = append(results, makeArticle("to_lang", iso6391.Name(user.ToLang) + " 🔥", html.UnescapeString(toLangTr.Text)))
         }
-        results = append(results, makeArticle("to_lang", iso6391.Name(user.ToLang) + " 🔥", html.UnescapeString(toLangTr.Text)))
     }
+
 
     for i, lang := range codes[start:end] {
         if lang == user.MyLang || lang == user.ToLang || lang == from {
