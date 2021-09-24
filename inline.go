@@ -1,6 +1,7 @@
 package main
 
 import (
+    "encoding/json"
     "errors"
     "github.com/armanokka/translobot/translate"
     iso6391 "github.com/emvi/iso-639-1"
@@ -115,7 +116,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
             warn(err)
             return
         }
-        results = prepend(results, makeArticle(user.MyLang, iso6391.Name(user.MyLang) + " 🔥", html.UnescapeString(myLangTr.Text)), makeArticle(user.ToLang, iso6391.Name(user.ToLang) + " 🔥", html.UnescapeString(toLangTr.Text)))
+        results = prepend(results, makeArticle("my_lang", iso6391.Name(user.MyLang) + " 🔥", html.UnescapeString(myLangTr.Text)), makeArticle("to_lang", iso6391.Name(user.ToLang) + " 🔥", html.UnescapeString(toLangTr.Text)))
     }
 
     pmtext := "From: " + iso6391.Name(from)
@@ -142,6 +143,8 @@ func handleInline(update *tgbotapi.InlineQuery) {
     }); err != nil {
         warn(err)
         WarnAdmin("из ошибки выше результат был таков:", results)
+        j, _ := json.Marshal(results)
+        WarnAdmin(string(j))
         pp.Println(results)
     }
     
