@@ -21,6 +21,10 @@ import (
 func botRun(update *tgbotapi.Update) {
 	defer func() {
 		if err := recover(); err != nil {
+			if e, ok := err.(error); ok {
+				WarnAdmin("panic:", e.Error())
+				return
+			}
 			WarnAdmin("panic:", err)
 		}
 	}()
