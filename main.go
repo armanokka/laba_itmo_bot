@@ -56,6 +56,7 @@ func main() {
 	}
 	bot = &BotAPI{api}
 	bot.Debug = false // >:(
+	bot.Buffer = 1
 
 	// Ports for Heroku
 	port := os.Getenv("PORT")
