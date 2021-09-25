@@ -3,8 +3,10 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/armanokka/translobot/dashbot"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/valyala/fasthttp"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"os"
@@ -40,6 +42,21 @@ func botRun(update *tgbotapi.Update) {
 
 
 func main() {
+
+	go func() {
+		// Ports for Heroku
+		port := os.Getenv("PORT")
+		if port == "" {
+			port = "80"
+		}
+		handler := func(ctx *fasthttp.RequestCtx) {
+			fmt.Fprint(ctx, "ok")
+		}
+		if err := fasthttp.ListenAndServe(":" + port, handler); err != nil {
+			panic(err)
+		}
+	}()
+
 	// Initializing PostgreSQL DB
 	var err error
 	db, err = gorm.Open(mysql.Open("f0568401_user:NlEbEgda@tcp(141.8.193.236:3306)/f0568401_user?charset=utf8mb4&parseTime=True&loc=Local"), &gorm.Config{SkipDefaultTransaction: true, PrepareStmt: false})
@@ -58,11 +75,6 @@ func main() {
 	bot.Debug = false // >:(
 	bot.Buffer = 1
 
-	// Ports for Heroku
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "80"
-	}
 
 	if _, err := os.Stat("logo.jpg"); err != nil {
 		panic(err)
@@ -87,7 +99,7 @@ func main() {
 	go func() {
 		bot.Send(tgbotapi.NewMessage(AdminID, "Bot was started."))
 	}()
-	bot.MakeRequest("deleteWebhook", tgbotapi.Params{})
+	_, _ = bot.MakeRequest("deleteWebhook", tgbotapi.Params{})
 	updates := bot.GetUpdatesChan(tgbotapi.UpdateConfig{})
 	for {
 		select {
