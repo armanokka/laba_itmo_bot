@@ -114,6 +114,7 @@ func main() {
 				botRun(&update)
 			}()
 		case <-ctx.Done():
+			bot.StopReceivingUpdates()
 			wg.Wait()
 			break
 		}
