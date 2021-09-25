@@ -84,7 +84,9 @@ func main() {
 	}()
 
 	var wg sync.WaitGroup
-
+	go func() {
+		bot.Send(tgbotapi.NewMessage(AdminID, "Bot was started."))
+	}()
 	bot.MakeRequest("deleteWebhook", tgbotapi.Params{})
 	updates := bot.GetUpdatesChan(tgbotapi.UpdateConfig{})
 	for {
