@@ -2,15 +2,15 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
+	"context"
 	"github.com/armanokka/translobot/dashbot"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/valyala/fasthttp"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"log"
 	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 	"time"
 )
 
@@ -72,41 +72,33 @@ func main() {
 		panic(err) // проверяем на валидность константы TimeLocation
 	}
 
-	//now = time.Now().In(loc)
-	//
-	//updates := bot.GetUpdatesChan(tgbotapi.UpdateConfig{})
-	//for update := range updates {
-	//	go botRun(&update)
-	//}
-	
-	
-	bot.Send(tgbotapi.NewMessage(579515224, "Bot started."))
-	requestHandler := func(ctx *fasthttp.RequestCtx) {
-		switch string(ctx.Path()) {
-		case "/" + botToken:
-			if !ctx.IsPost() {
-				fmt.Fprint(ctx, "no way")
-				return
-			}
-			data := ctx.PostBody()
-			var update tgbotapi.Update
-			err := json.Unmarshal(data, &update)
-			if err != nil {
-				fmt.Fprint(ctx, "can't parse")
-				return
-			}
-			botRun(&update)
-		default:
-			_, err = fmt.Fprintln(ctx, "ok")
-			if err != nil {
-				panic(err)
-			}
+	ctx, cancel := context.WithCancel(context.Background())
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, syscall.SIGQUIT, syscall.SIGHUP)
+	go func() {
+		select {
+		case <-c:
+			cancel()
+		}
+	}()
+
+	var wg sync.WaitGroup
+
+	bot.MakeRequest("deleteWebhook", tgbotapi.Params{})
+	updates := bot.GetUpdatesChan(tgbotapi.UpdateConfig{})
+	for {
+		select {
+		case update := <-updates:
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				botRun(&update)
+			}()
+		case <-ctx.Done():
+			wg.Wait()
+			break
 		}
 	}
-	if err = fasthttp.ListenAndServe(":"+port, requestHandler); err != nil {
-		log.Fatalf("Error in ListenAndServe: %s", err)
-	}
-
 }
 
 
