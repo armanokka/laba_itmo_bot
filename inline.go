@@ -78,8 +78,11 @@ func handleInline(update *tgbotapi.InlineQuery) {
     }
     from := tr.From
 
+    sortOffset := 0
+
     if start == 0 {
         if from != user.MyLang {
+            sortOffset++
             myLangTr, err := translate.GoogleHTMLTranslate("auto", user.MyLang, update.Query)
             if err != nil {
                 warn(err)
@@ -88,6 +91,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
             results = append(results, makeArticle("my_lang", iso6391.Name(user.MyLang) + " 🔥", html.UnescapeString(myLangTr.Text)))
         }
         if from != user.ToLang {
+            sortOffset++
             toLangTr, err := translate.GoogleHTMLTranslate("auto", user.ToLang, update.Query)
             if err != nil {
                 warn(err)
@@ -122,8 +126,8 @@ func handleInline(update *tgbotapi.InlineQuery) {
     }
     wg.Wait()
 
-    sort.Slice(results[2:], func(i, j int) bool {
-       return results[i+2].(tgbotapi.InlineQueryResultArticle).Title < results[j+2].(tgbotapi.InlineQueryResultArticle).Title
+    sort.Slice(results[sortOffset:], func(i, j int) bool {
+       return results[i+sortOffset].(tgbotapi.InlineQueryResultArticle).Title < results[j+sortOffset].(tgbotapi.InlineQueryResultArticle).Title
     })
 
 

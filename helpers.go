@@ -278,7 +278,6 @@ func makeArticle(id string, title, description string) tgbotapi.InlineQueryResul
         Title:               title,
         InputMessageContent: map[string]interface{}{
             "message_text": description,
-            "parse_mode": tgbotapi.ModeHTML,
             "disable_web_page_preview":false,
         },
         ReplyMarkup: &keyboard,
