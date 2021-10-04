@@ -287,10 +287,11 @@ func makeArticle(id string, title, description string) tgbotapi.InlineQueryResul
     }
 }
 
-func prepend(obj []interface{}, keys ...interface{}) []interface{} {
-    out := make([]interface{}, 0, len(obj) + len(keys))
-    out = append(out, keys...)
-    out = append(out, obj...)
-    return out
+func inMap(m map[string]string, keys ...string) bool {
+    for _, key := range keys {
+        if _, ok := m[key]; !ok {
+            return false
+        }
+    }
+    return true
 }
-

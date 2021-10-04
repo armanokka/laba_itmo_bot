@@ -6,6 +6,7 @@ import (
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "github.com/k0kubun/pp"
+    "github.com/sirupsen/logrus"
     "os"
     "strconv"
     "strings"
@@ -17,6 +18,7 @@ func handleMessage(message *tgbotapi.Message) {
     warn := func(err error) {
         bot.Send(tgbotapi.NewMessage(message.Chat.ID, localize("Sorry, error caused.\n\nPlease, don't block the bot, I'll fix the bug in near future, the administrator has already been warned about this error ;)", message.From.LanguageCode)))
         WarnAdmin(err)
+        logrus.Error(err)
     }
     analytics.User(message.Text, message.From)
     
@@ -414,7 +416,6 @@ func handleMessage(message *tgbotapi.Message) {
                 return
             }
 
-
             from, err := translate.DetectLanguageGoogle(cutString(text, 100))
             if err != nil {
                 warn(err)
@@ -435,6 +436,16 @@ func handleMessage(message *tgbotapi.Message) {
             } else { // никакой из
                 to = user.MyLang
             }
+
+            //if list := translate.ReversoSupportedLangs(); len(strings.Fields(message.Text)) == 1 && inMap(list, from, to) && from != to {
+            //    tr, err := translate.ReversoTranslate(list[from], list[to], text)
+            //    if err != nil {
+            //        warn(err)
+            //        return
+            //    }
+            //
+            //    return
+            //}
 
             if len(message.Entities) > 0 {
                 text = applyEntitiesHtml(text, message.Entities)
@@ -459,6 +470,7 @@ func handleMessage(message *tgbotapi.Message) {
 
             tr.Text = strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "").Replace(tr.Text)
             tr.Text = strings.ReplaceAll(tr.Text, `<br>`, "\n")
+
             otherLanguagesButton := tgbotapi.InlineKeyboardButton{
                 Text:                         user.Localize("Другие языки"),
                 SwitchInlineQueryCurrentChat: &message.Text,
@@ -468,7 +480,6 @@ func handleMessage(message *tgbotapi.Message) {
                     tgbotapi.NewInlineKeyboardButtonData(user.Localize("To voice"), "speech:"+to)),
                 tgbotapi.NewInlineKeyboardRow(otherLanguagesButton),
             )
-    
             edit := tgbotapi.NewEditMessageTextAndMarkup(message.Chat.ID, msg.MessageID, tr.Text, keyboard)
             edit.ParseMode = tgbotapi.ModeHTML
             edit.DisableWebPagePreview = true

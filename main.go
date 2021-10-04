@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"github.com/armanokka/translobot/dashbot"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/valyala/fasthttp"
+	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"net/http"
+	"net/http/pprof"
 	"os"
 	"os/signal"
 	"sync"
@@ -17,46 +20,31 @@ import (
 )
 
 
-// botRun is main handler of bot
-func botRun(update *tgbotapi.Update) {
-	defer func() {
-		if err := recover(); err != nil {
-			if e, ok := err.(error); ok {
-				WarnAdmin("panic:", e.Error())
-				return
-			}
-			WarnAdmin("panic:", err)
-		}
-	}()
-	if update.Message != nil {
-		handleMessage(update.Message)
-	} else if update.CallbackQuery != nil {
-		handleCallback(update.CallbackQuery)
-	} else if update.InlineQuery != nil {
-		handleInline(update.InlineQuery)
-	}
-	// f, err := os.Create("mem.out")
-	// if err != nil {
-	// 	panic(err)// !
-	// }
-	// if err := pprof.WriteHeapProfile(f); err != nil {
-	// 	panic(err) // !
-	// }
-}
-
-
 func main() {
+	// Logging
+	logrus.SetFormatter(&logrus.TextFormatter{
+		DisableColors: false,
+		FullTimestamp: false,
+	})
 
+	// Profiling
 	go func() {
+		r := mux.NewRouter()
+		r.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
+		r.Handle("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
+		r.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
+		r.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
+		r.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
+		r.PathPrefix("/debug/").Handler(http.DefaultServeMux)
 		// Ports for Heroku
 		port := os.Getenv("PORT")
 		if port == "" {
 			port = "80"
 		}
-		handler := func(ctx *fasthttp.RequestCtx) {
-			fmt.Fprint(ctx, "ok")
-		}
-		if err := fasthttp.ListenAndServe(":" + port, handler); err != nil {
+		r.Handle("/", http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			fmt.Fprint(writer, "ok")
+		}))
+		if err := http.ListenAndServe(":" + port, r); err != nil {
 			panic(err)
 		}
 	}()
@@ -104,10 +92,8 @@ func main() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, syscall.SIGQUIT, syscall.SIGHUP)
 	go func() {
-		select {
-		case <-c:
-			cancel()
-		}
+		<-c
+		cancel()
 	}()
 
 	var wg sync.WaitGroup
@@ -118,14 +104,35 @@ func main() {
 	updates := bot.GetUpdatesChan(tgbotapi.UpdateConfig{})
 	for {
 		select {
-		case update := <-updates:
+		case update, more := <-updates:
+			if !more {
+				wg.Wait()
+				break
+			}
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				botRun(&update)
+
+				// Защита от паники
+				defer func() {
+					if err := recover(); err != nil {
+						if e, ok := err.(error); ok {
+							WarnAdmin("panic:", e.Error())
+							return
+						}
+						WarnAdmin("panic:", err)
+					}
+				}()
+
+				if update.Message != nil {
+					handleMessage(update.Message)
+				} else if update.CallbackQuery != nil {
+					handleCallback(update.CallbackQuery)
+				} else if update.InlineQuery != nil {
+					handleInline(update.InlineQuery)
+				}
 			}()
 		case <-ctx.Done():
-			bot.StopReceivingUpdates()
 			wg.Wait()
 			break
 		}

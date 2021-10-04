@@ -6,6 +6,7 @@ import (
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "github.com/k0kubun/pp"
+    "github.com/sirupsen/logrus"
     "os"
     "strconv"
     "strings"
@@ -16,6 +17,7 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
     warn := func(err error) {
         bot.Send(tgbotapi.NewCallback(callback.ID, "Error, sorry"))
         WarnAdmin(err)
+        logrus.Error(err)
     }
 
     user := NewUser(callback.From.ID, warn)
@@ -194,30 +196,6 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
         kb := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
         audio.ReplyMarkup = kb
         bot.Send(audio)
-    case "variants": // arr[1] - from, arr[2] - to
-        tr, err := translate.GoogleTranslate(arr[1], arr[2], callback.Message.ReplyToMessage.Text)
-        if err != nil {
-            warn(err)
-        }
-        if len(tr.Variants) == 0 {
-            warn(errors.New("не найдено вариантов перевода"))
-        }
-        var text string
-        var limit uint8
-        for _, variant := range tr.Variants {
-            if limit >= 5 {
-                break
-            }
-            text += "\n<b>" + variant.Word + "</b> - " + variant.Meaning
-            limit++
-        }
-        msg := tgbotapi.NewMessage(callback.From.ID, text)
-        msg.ParseMode = tgbotapi.ModeHTML
-        msg.ReplyToMessageID = callback.Message.MessageID
-        kb := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
-        msg.ReplyMarkup = kb
-        bot.Send(msg)
-        bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
     case "set_my_lang_by_callback": // arr[1] - lang
         user.Update(Users{MyLang: arr[1]})
 

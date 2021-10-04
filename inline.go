@@ -7,6 +7,7 @@ import (
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "github.com/k0kubun/pp"
+    "github.com/sirupsen/logrus"
     "html"
     "sort"
     "strconv"
@@ -29,6 +30,7 @@ func handleInline(update *tgbotapi.InlineQuery) {
             SwitchPMParameter: "from_inline",
         })
         WarnAdmin(err)
+        logrus.Error(err)
     }
 
     if update.Query == "" {
