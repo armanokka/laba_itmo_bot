@@ -88,10 +88,10 @@ func getUserStep(chatID int64) (string, error) {
 }
 
 // cutString cut string using runes by limit
-func cutString (text string, limit int) string {
-    runes := []rune(text)
-    if len(runes) > limit {
-        return string(runes[:limit])
+func cutStringUTF16 (text string, limit int) string {
+    points := utf16.Encode([]rune(text))
+    if len(points) > limit {
+        return string(utf16.Decode(points[:limit]))
     }
     return text
 }
@@ -285,13 +285,4 @@ func makeArticle(id string, title, description string) tgbotapi.InlineQueryResul
         HideURL:             true,
         Description:         description,
     }
-}
-
-func inMap(m map[string]string, keys ...string) bool {
-    for _, key := range keys {
-        if _, ok := m[key]; !ok {
-            return false
-        }
-    }
-    return true
 }

@@ -416,7 +416,7 @@ func handleMessage(message *tgbotapi.Message) {
                 return
             }
 
-            from, err := translate.DetectLanguageGoogle(cutString(text, 100))
+            from, err := translate.DetectLanguageGoogle(cutStringUTF16(text, 100))
             if err != nil {
                 warn(err)
                 return
