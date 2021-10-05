@@ -2,7 +2,6 @@ package translate_test
 
 import (
 	"github.com/armanokka/translobot/translate"
-	"github.com/k0kubun/pp"
 	"testing"
 )
 
@@ -13,11 +12,11 @@ func TestTranslateGoogle(t *testing.T) {
 		Input, Result string
 	}{
 		{"",""},
-		{"!+-*(", "! + - * ("},
+		{"!+-*(", "!+-*( en"},
 		{"английский", "English"},
 		{"гаргулия", "gargulia"},
 		{"😂😂😂", "😂😂😂"},
-		{"123", "one hundred twenty-three"},
+		{"123", "123 en"},
 		{"🤡😈👍👌018^$@#&()??>", "🤡😈👍👌018 ^ $ @ # & () ??>"},
 	}
 	for _, test := range tests {
@@ -32,8 +31,24 @@ func TestTranslateGoogle(t *testing.T) {
 	}
 }
 
-func TestReversoQueryService(t *testing.T) {
-	pp.Println(translate.ReversoQueryService("beautiful", "en", "красивый", "ru"))
+func TestReversoTranslate(t *testing.T) {
+	tests := []struct{
+		Input, Result string
+	}{
+		{"",""},
+		{"!+-*(", "! + - * ("},
+		{"английский", "English"},
+		{"гаргулия", "gargulia"},
+		{"😂😂😂", "😂😂😂"},
+		{"123", "one hundred twenty-three"},
+		{"🤡😈👍👌018^$@#&()??>", "🤡😈👍👌018 ^ $ @ # & () ??>"},
+	}
+	for _, test := range tests {
+		_, err := translate.ReversoTranslate("eng", "rus", test.Input)
+		if err != nil {
+			t.Error(err)
+		}
+	}
 }
 
 // надо еще затестить DetectLanguageGoogle, хотя он идентичен TranslateGoogle, просто ищет другой атрибут

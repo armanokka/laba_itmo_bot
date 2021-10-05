@@ -109,7 +109,7 @@ var reversoSupportedLangs = map[string]string{
     "eng": "en",
 }
 
-func Iso6391(iso6392 string) string {
+func ReversoIso6391(iso6392 string) string {
     v, ok := reversoSupportedLangs[iso6392]
     if !ok {
         return ""
@@ -117,7 +117,7 @@ func Iso6391(iso6392 string) string {
     return v
 }
 
-func Iso6392(iso6391 string) string {
+func ReversoIso6392(iso6391 string) string {
     for k, v := range reversoSupportedLangs {
         if v == iso6391 {
             return k

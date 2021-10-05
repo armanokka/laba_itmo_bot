@@ -148,7 +148,7 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
         if callback.Message.Caption != "" {
             text = callback.Message.Caption
         }
-        if err := sendSpeech(arr[1], callback.Message.ReplyToMessage.Text, callback.ID, user); err != nil { // озвучиваем не переведенное сообщение
+        if err := sendSpeech(arr[1], callback.Message.ReplyToMessage.Text, callback.ID, user); err != nil { // озвучиваем непереведенное сообщение
             warn(err)
             return
         }
@@ -158,7 +158,7 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
         }
 
     case "dictionary": // arr[1], arr[2] = from, to (in iso6391)
-        tr, err := translate.ReversoTranslate(translate.Iso6392(arr[1]), translate.Iso6392(arr[2]), callback.Message.ReplyToMessage.Text)
+        tr, err := translate.ReversoTranslate(translate.ReversoIso6392(arr[1]), translate.ReversoIso6392(arr[2]), callback.Message.ReplyToMessage.Text)
         pp.Println(tr)
         if err != nil {
             warn(err)

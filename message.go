@@ -481,7 +481,7 @@ func handleMessage(message *tgbotapi.Message) {
                     tgbotapi.NewInlineKeyboardButtonData(user.Localize("To voice"), "speech_this_message_and_replied_one:"+from+":"+to)),
                 tgbotapi.NewInlineKeyboardRow(otherLanguagesButton),
             )
-            if inMapValues(translate.ReversoSupportedLangs(), from, to) {
+            if inMapValues(translate.ReversoSupportedLangs(), from, to) && from != to {
                 keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
                     tgbotapi.NewInlineKeyboardButtonData(user.Localize("Dictionary"), "dictionary:"+from+":"+to)))
             }
