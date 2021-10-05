@@ -344,3 +344,57 @@ func ReversoTranslate(from, to, text string) (ReversoTranslation, error) {
 func ReversoSupportedLangs() map[string]string {
 		return reversoSupportedLangs
 }
+
+func ReversoQueryService(sourceText, sourceLang, targetText, targetLang string) (ReversoQueryResponse, error) {
+	j, err := json.Marshal(ReversoQueryRequest{
+		SourceText: sourceText,
+		TargetText: targetText,
+		SourceLang: sourceLang,
+		TargetLang: targetLang,
+		Npage:      2,
+		Mode:       0,
+	})
+	if err != nil {
+		return ReversoQueryResponse{}, err
+	}
+
+	buf := bytes.NewBuffer(j)
+
+	request := func() (*http.Response, error) {
+		req, err := http.NewRequest("POST", "https://context.reverso.net/bst-query-service", buf)
+		if err != nil {
+			return nil, err
+		}
+		//req.Header.Add("Content-Type", "application/json; charset=UTF-8")
+		//req.Header.Add("Accept-Language", "en-US,en;q=0.8")
+		//req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36")
+		//
+		req.Header = http.Header{
+			"Content-Type": []string{"application/json; charset=UTF-8"},
+			"Accept-Language": []string{"en-US,en;q=0.8"},
+			"User-Agent": []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36"},
+		}
+		return http.DefaultClient.Do(req)
+	}
+
+	var res *http.Response
+	for i:=0;i<3;i++ {
+		res, err = request()
+		//body, err := ioutil.ReadAll(res.Body)
+		//pp.Println(string(body))
+		if err == nil {
+			break
+		}
+	}
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return ReversoQueryResponse{}, err
+	}
+
+	var ret ReversoQueryResponse
+	if err = json.Unmarshal(body, &ret); err != nil {
+		return ReversoQueryResponse{}, err
+	}
+	return ret, nil
+}

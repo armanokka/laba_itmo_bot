@@ -143,7 +143,7 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
         SendMenu(user)
 
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
-    case "speech_this_message": // arr[1] - lang code
+    case "speech_this_message_and_replied_one": // arr[1] - lang code
         text := callback.Message.Text
         if callback.Message.Caption != "" {
             text = callback.Message.Caption
@@ -152,7 +152,6 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
             warn(err)
             return
         }
-    case "speech_replied_message": //arr[1] - to
         if err := sendSpeech(arr[1], callback.Message.ReplyToMessage.Text, callback.ID, user); err != nil {
             warn(err)
             return
@@ -202,7 +201,12 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
                 message.Text += "\n" + prefix(i, last) + " " +  example
             }
         }
-
+        if message.Text == "" {
+            call := tgbotapi.NewCallback(callback.ID, user.Localize("Too big text"))
+            call.ShowAlert = true
+            bot.Send(call)
+            return
+        }
         bot.Send(message)
         bot.Send(tgbotapi.NewCallback(callback.ID, ""))
     case "set_my_lang_by_callback": // arr[1] - lang

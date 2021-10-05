@@ -125,3 +125,120 @@ func Iso6392(iso6391 string) string {
     }
     return ""
 }
+
+type ReversoQueryRequest struct {
+    Npage      int    `json:"npage"`
+    Mode       int    `json:"mode"`
+    SourceText string `json:"source_text"`
+    TargetText string `json:"target_text"`
+    SourceLang string `json:"source_lang"`
+    TargetLang string `json:"target_lang"`
+}
+
+type ReversoQueryResponse struct {
+    List []ReversoQueryResponseList `json:"list"`
+    Nrows               int      `json:"nrows"`
+    NrowsExact          int      `json:"nrows_exact"`
+    Pagesize            int      `json:"pagesize"`
+    Npages              int      `json:"npages"`
+    Page                int      `json:"page"`
+    RemovedSuperstrings []string `json:"removed_superstrings"`
+    DictionaryEntryList []ReversoQueryResponseDictionaryEntryList `json:"dictionary_entry_list"`
+    DictionaryOtherFrequency int `json:"dictionary_other_frequency"`
+    DictionaryNrows          int `json:"dictionary_nrows"`
+    TimeMs                   int `json:"time_ms"`
+    Request                  ReversoQueryResponseRequest `json:"request"`
+    Suggestions []ReversoQueryResponseSuggestions `json:"suggestions"`
+    DymCase                 int           `json:"dym_case"`
+    DymList                 []interface{} `json:"dym_list"`
+    DymApplied              interface{}   `json:"dym_applied"`
+    DymNonadaptedSearch     interface{}   `json:"dym_nonadapted_search"`
+    DymPairApplied          interface{}   `json:"dym_pair_applied"`
+    DymNonadaptedSearchPair interface{}   `json:"dym_nonadapted_search_pair"`
+    DymPair                 interface{}   `json:"dym_pair"`
+    ExtractedPhrases        []interface{} `json:"extracted_phrases"`
+}
+
+type ReversoQueryResponseList struct {
+    SText string `json:"s_text"`
+    TText string `json:"t_text"`
+    Ref   string `json:"ref"`
+    Cname string `json:"cname"`
+    URL   string `json:"url"`
+    Ctags string `json:"ctags"`
+    Pba   bool   `json:"pba"`
+}
+
+type ReversoQueryResponseDictionaryEntryList struct {
+    Frequency        int           `json:"frequency"`
+    Term             string        `json:"term"`
+    IsFromDict       bool          `json:"isFromDict"`
+    IsPrecomputed    bool          `json:"isPrecomputed"`
+    Stags            []interface{} `json:"stags"`
+    Pos              string        `json:"pos"`
+    Sourcepos        []string      `json:"sourcepos"`
+    Variant          interface{}   `json:"variant"`
+    Domain           interface{}   `json:"domain"`
+    Definition       interface{}   `json:"definition"`
+    Vowels2          interface{}   `json:"vowels2"`
+    Transliteration2 string        `json:"transliteration2"`
+    AlignFreq        int           `json:"alignFreq"`
+    ReverseValidated bool          `json:"reverseValidated"`
+    PosGroup         int           `json:"pos_group"`
+    IsTranslation    bool          `json:"isTranslation"`
+    IsFromLOCD       bool          `json:"isFromLOCD"`
+    InflectedForms []ReversoQueryResponseDictionaryEntryListInflectedForms`json:"inflectedForms"`
+}
+
+type ReversoQueryResponseDictionaryEntryListInflectedForms struct {
+    Frequency        int           `json:"frequency"`
+    Term             string        `json:"term"`
+    IsFromDict       bool          `json:"isFromDict"`
+    IsPrecomputed    bool          `json:"isPrecomputed"`
+    Stags            []interface{} `json:"stags"`
+    Pos              string        `json:"pos"`
+    Sourcepos        []string      `json:"sourcepos"`
+    Variant          interface{}   `json:"variant"`
+    Domain           interface{}   `json:"domain"`
+    Definition       interface{}   `json:"definition"`
+    Vowels2          interface{}   `json:"vowels2"`
+    Transliteration2 string        `json:"transliteration2"`
+    AlignFreq        int           `json:"alignFreq"`
+    ReverseValidated bool          `json:"reverseValidated"`
+    PosGroup         int           `json:"pos_group"`
+    IsTranslation    bool          `json:"isTranslation"`
+    IsFromLOCD       bool          `json:"isFromLOCD"`
+    InflectedForms   []interface{} `json:"inflectedForms"`
+}
+
+type ReversoQueryResponseRequest struct {
+    SourceText      string      `json:"source_text"`
+    TargetText      string      `json:"target_text"`
+    SourceLang      string      `json:"source_lang"`
+    TargetLang      string      `json:"target_lang"`
+    Npage           int         `json:"npage"`
+    Corpus          interface{} `json:"corpus"`
+    Nrows           int         `json:"nrows"`
+    Adapted         bool        `json:"adapted"`
+    NonadaptedText  string      `json:"nonadapted_text"`
+    RudeWords       bool        `json:"rude_words"`
+    Colloquialisms  bool        `json:"colloquialisms"`
+    RiskyWords      bool        `json:"risky_words"`
+    Mode            int         `json:"mode"`
+    ExprSug         int         `json:"expr_sug"`
+    DymApply        bool        `json:"dym_apply"`
+    PosReorder      int         `json:"pos_reorder"`
+    Device          int         `json:"device"`
+    SplitLong       bool        `json:"split_long"`
+    HasLocd         bool        `json:"has_locd"`
+    AvoidLOCD       bool        `json:"avoidLOCD"`
+    SourcePos       interface{} `json:"source_pos"`
+    ToolwordRequest bool        `json:"toolwordRequest"`
+}
+
+type ReversoQueryResponseSuggestions struct {
+    Lang       string `json:"lang"`
+    Suggestion string `json:"suggestion"`
+    Weight     int    `json:"weight"`
+    IsFromDict bool   `json:"isFromDict"`
+}
