@@ -9,6 +9,7 @@ import (
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "github.com/k0kubun/pp"
+    "os"
     "runtime/debug"
     "strconv"
     "strings"
@@ -284,5 +285,97 @@ func makeArticle(id string, title, description string) tgbotapi.InlineQueryResul
         URL:                 "https://t.me/TransloBot?start=from_inline",
         HideURL:             true,
         Description:         description,
+    }
+}
+
+func inMap(m map[string]string, keys ...string) bool {
+    for _, key := range keys {
+        if _, ok := m[key]; !ok {
+            return false
+        }
+    }
+    return true
+}
+
+func inMapValues(m map[string]string, values ...string) bool {
+    for _, v := range values {
+        var ok bool
+        for _, v1 := range m {
+            if v  == v1 {
+                ok = true
+                break
+            }
+        }
+        if !ok {
+            return false
+        }
+    }
+    return true
+}
+
+func sendSpeech(lang, text string, callbackID string, user User) error {
+    sdec, err := translate.TTS(lang, text)
+    if err != nil {
+        if err == translate.ErrTTSLanguageNotSupported {
+            call := tgbotapi.NewCallback(callbackID, user.Localize("%s language is not supported", iso6391.Name(lang)))
+            call.ShowAlert = true
+            bot.AnswerCallbackQuery(call)
+            return nil
+        }
+        if e, ok := err.(translate.HTTPError); ok {
+            if e.Code == 500 || e.Code == 414 {
+                call := tgbotapi.NewCallback(callbackID, "Too big text")
+                call.ShowAlert = true
+                bot.AnswerCallbackQuery(call)
+                return nil
+            }
+        }
+        bot.AnswerCallbackQuery(tgbotapi.NewCallback(callbackID, "Iternal error"))
+        pp.Println(err)
+        return err
+    }
+    bot.AnswerCallbackQuery(tgbotapi.NewCallback(callbackID, "⏳"))
+
+    f, err := os.CreateTemp("", "")
+    if err != nil {
+        return err
+    }
+    defer func() {
+        if err = f.Close(); err != nil {
+            WarnAdmin(err)
+        }
+    }()
+    _, err = f.Write(sdec)
+    if err != nil {
+        return err
+    }
+    audio := tgbotapi.NewAudio(user.ID, f.Name())
+    audio.Title = text
+    audio.Performer = "@TransloBot"
+    kb := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
+    audio.ReplyMarkup = kb
+    bot.Send(audio)
+    return nil
+}
+
+func numToEmoji(n int) string {
+    var out string
+    ret := strconv.Itoa(n)
+    // 1️⃣2️⃣3️⃣4️⃣5️⃣6️⃣7️⃣8️⃣9️⃣🔟
+    for _, ch := range ret {
+        out += string(ch) + "⃣"
+    }
+    return out
+}
+
+func prefix(i, last int) string {
+    if last == 0 { // всего 1 результат
+        return "─"
+    } else if i == 0 {
+        return "┌"
+    } else if i == last {
+        return "└"
+    } else {
+        return "├"
     }
 }

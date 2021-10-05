@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/PuerkitoBio/goquery"
-	"github.com/k0kubun/pp"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -152,7 +151,6 @@ func TTS(lang, text string) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		pp.Println(string(body))
 		if res.StatusCode != 200 {
 			return nil, HTTPError{
 				Code:        res.StatusCode,
@@ -293,12 +291,12 @@ func ReversoTranslate(from, to, text string) (ReversoTranslation, error) {
 	}
 
 
-	j, err := json.Marshal(reversoRequestTranslate{
+	j, err := json.Marshal(ReversoRequestTranslate{
 		Input:   text,
 		From:    from,
 		To:      to,
 		Format:  "text",
-		Options: reversoRequestTranslateOptions{
+		Options: ReversoRequestTranslateOptions{
 			Origin:            "reversodesktop",
 			SentenceSplitter:  true,
 			ContextResults:    true,

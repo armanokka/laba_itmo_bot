@@ -14,6 +14,7 @@ import (
 	"net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"sync"
 	"syscall"
 	"time"
@@ -76,7 +77,7 @@ func main() {
 	}
 	bot = &BotAPI{api}
 	bot.Debug = false // >:(
-	bot.Buffer = 1
+	bot.Buffer = 30
 
 
 	if _, err := os.Stat("logo.jpg"); err != nil {
@@ -91,6 +92,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, syscall.SIGQUIT, syscall.SIGHUP)
+	defer signal.Stop(c)
 	go func() {
 		<-c
 		cancel()
@@ -117,7 +119,7 @@ func main() {
 				defer func() {
 					if err := recover(); err != nil {
 						if e, ok := err.(error); ok {
-							WarnAdmin("panic:", e.Error())
+							WarnAdmin("panic:", e.Error(), "\n\n", string(debug.Stack()))
 							return
 						}
 						WarnAdmin("panic:", err)

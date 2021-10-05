@@ -34,15 +34,15 @@ var ErrTTSLanguageNotSupported = errors.New("translateTTS js object not found")
 var ErrReversoLangNotSupported = errors.New("language is not supported by Reverso")
 var SameLangsWerePassed = errors.New("the same languages were passed to ReversoTranslate()")
 
-type reversoRequestTranslate struct {
+type ReversoRequestTranslate struct {
     Format  string `json:"format"`
     From    string `json:"from"`
     Input   string `json:"input"`
     To      string `json:"to"`
-    Options reversoRequestTranslateOptions `json:"options"`
+    Options ReversoRequestTranslateOptions `json:"options"`
 }
 
-type reversoRequestTranslateOptions struct {
+type ReversoRequestTranslateOptions struct {
     Origin            string `json:"origin"`
     SentenceSplitter  bool   `json:"sentenceSplitter"`
     ContextResults    bool   `json:"contextResults"`
@@ -58,13 +58,13 @@ type ReversoTranslation struct {
     CorrectedText     interface{} `json:"correctedText"`
     Translation       []string    `json:"translation"`
     Engines           []string    `json:"engines"`
-    languageDetection  `json:"languageDetection"`
-    contextResults  `json:"contextResults"`
+    LanguageDetection LanguageDetection  `json:"languageDetection"`
+    ContextResults ContextResults  `json:"contextResults"`
     Truncated bool `json:"truncated"`
     TimeTaken int  `json:"timeTaken"`
 }
 
-type languageDetection struct {
+type LanguageDetection struct {
     DetectedLanguage                string `json:"detectedLanguage"`
     IsDirectionChanged              bool   `json:"isDirectionChanged"`
     OriginalDirection               string `json:"originalDirection"`
@@ -73,16 +73,16 @@ type languageDetection struct {
     TimeTaken                       int    `json:"timeTaken"`
 }
 
-type contextResults struct {
+type ContextResults struct {
     RudeWords      bool `json:"rudeWords"`
     Colloquialisms bool `json:"colloquialisms"`
     RiskyWords     bool `json:"riskyWords"`
-    Results        []results `json:"results"`
+    Results        []Results `json:"results"`
     TotalContextCallsMade int `json:"totalContextCallsMade"`
     TimeTakenContext      int `json:"timeTakenContext"`
 }
 
-type results struct {
+type Results struct {
     Translation    string   `json:"translation"`
     SourceExamples []string `json:"sourceExamples"`
     TargetExamples []string `json:"targetExamples"`
@@ -107,4 +107,21 @@ var reversoSupportedLangs = map[string]string{
     "pol": "pl",
     "fra": "fr",
     "eng": "en",
+}
+
+func Iso6391(iso6392 string) string {
+    v, ok := reversoSupportedLangs[iso6392]
+    if !ok {
+        return ""
+    }
+    return v
+}
+
+func Iso6392(iso6391 string) string {
+    for k, v := range reversoSupportedLangs {
+        if v == iso6391 {
+            return k
+        }
+    }
+    return ""
 }

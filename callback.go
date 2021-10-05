@@ -7,7 +7,6 @@ import (
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "github.com/k0kubun/pp"
     "github.com/sirupsen/logrus"
-    "os"
     "strconv"
     "strings"
     "time"
@@ -144,58 +143,68 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
         SendMenu(user)
 
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
-    case "speech": // arr[1] - lang code
-
+    case "speech_this_message": // arr[1] - lang code
         text := callback.Message.Text
         if callback.Message.Caption != "" {
             text = callback.Message.Caption
         }
-        sdec, err := translate.TTS(arr[1], text)
+        if err := sendSpeech(arr[1], text, callback.ID, user); err != nil {
+            warn(err)
+            return
+        }
+    case "speech_replied_message": //arr[1] - to
+        if err := sendSpeech(arr[1], callback.Message.ReplyToMessage.Text, callback.ID, user); err != nil {
+            warn(err)
+            return
+        }
+    case "dictionary": // arr[1], arr[2] = from, to (in iso6391)
+        tr, err := translate.ReversoTranslate(translate.Iso6392(arr[1]), translate.Iso6392(arr[2]), callback.Message.ReplyToMessage.Text)
+        pp.Println(tr)
         if err != nil {
-            if err == translate.ErrTTSLanguageNotSupported {
-                call := tgbotapi.NewCallback(callback.ID, user.Localize("%s language is not supported", iso6391.Name(arr[1])))
-                call.ShowAlert = true
-                bot.AnswerCallbackQuery(call)
-                return
-            }
+            warn(err)
+            return
+        }
 
-            if e, ok := err.(translate.HTTPError); ok {
-                if e.Code == 500 || e.Code == 414 {
-                    call := tgbotapi.NewCallback(callback.ID, "Too big text")
-                    call.ShowAlert = true
-                    bot.AnswerCallbackQuery(call)
-                    return
-                }
-            }
-            bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, "Iternal error"))
-            warn(err)
-            pp.Println(err)
-            return
-        }
-        bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, "⏳"))
+        message := tgbotapi.NewMessage(callback.From.ID, "")
+        message.ParseMode = tgbotapi.ModeHTML
+        keyboard := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
+        message.ReplyMarkup = keyboard
 
-        f, err := os.CreateTemp("", "")
-        if err != nil {
-            warn(err)
-            return
-        }
-        defer func() {
-            if err = f.Close(); err != nil {
-                warn(err)
+        last := len(tr.ContextResults.Results) - 1
+        for i, res := range tr.ContextResults.Results {
+            if res.Translation == "" {
+                continue
             }
-        }()
-        _, err = f.Write(sdec)
-        if err != nil {
-            warn(err)
-            return
+            if last == 0 { // всего 1 результат
+                message.Text += "\n─"
+            } else if i == 0 {
+                message.Text += "\n┌"
+            } else if i == last {
+                message.Text += "\n└"
+            } else {
+                message.Text += "\n├"
+            }
+            message.Text += "<code>" + res.Translation + "</code>"
+            if res.PartOfSpeech != "" {
+                message.Text += " (" + user.Localize(res.PartOfSpeech) + ")"
+            }
         }
-        audio := tgbotapi.NewAudio(callback.From.ID, f.Name())
-        audio.Title = callback.Message.Text
-        audio.Performer = "@TransloBot"
-        audio.ReplyToMessageID = callback.Message.MessageID
-        kb := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
-        audio.ReplyMarkup = kb
-        bot.Send(audio)
+
+        message.Text += "\n"
+
+        for _, res := range tr.ContextResults.Results {
+            last = len(res.TargetExamples) - 1
+            if last <= 0 {
+                continue
+            }
+            message.Text += "\n<b>" + res.Translation + "</b>"
+            for i, example := range res.TargetExamples {
+                message.Text += "\n" + prefix(i, last) + " " +  example
+            }
+        }
+
+        bot.Send(message)
+        bot.Send(tgbotapi.NewCallback(callback.ID, ""))
     case "set_my_lang_by_callback": // arr[1] - lang
         user.Update(Users{MyLang: arr[1]})
 

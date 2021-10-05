@@ -383,9 +383,12 @@ func handleMessage(message *tgbotapi.Message) {
         //        warn(err)
         //    }
         default: // У пользователя нет шага и сообщение не команда
-            start := time.Now()
+
             defer func() {
-                pp.Println(time.Since(start).String())
+                err = db.Model(&Users{}).Exec("UPDATE users SET usings=usings+1 WHERE id=?", message.From.ID).Error
+                if err != nil {
+                    WarnAdmin(err)
+                }
             }()
 
             if user.Usings % 20 == 0 {
@@ -399,8 +402,16 @@ func handleMessage(message *tgbotapi.Message) {
                 }()
             }
             
-            
-            msg, err := bot.Send(tgbotapi.NewMessage(message.Chat.ID, user.Localize("⏳ Translating...")))
+            msg, err := bot.Send(tgbotapi.MessageConfig{
+                BaseChat:              tgbotapi.BaseChat{
+                    ChatID:                   message.Chat.ID,
+                    ReplyToMessageID: message.MessageID, // very important to "dictionary" callback
+                },
+                Text:                  user.Localize("⏳ Translating..."),
+                ParseMode:             "",
+                Entities:              nil,
+                DisableWebPagePreview: false,
+            })
             if err != nil {
                 return
             }
@@ -437,16 +448,6 @@ func handleMessage(message *tgbotapi.Message) {
                 to = user.MyLang
             }
 
-            //if list := translate.ReversoSupportedLangs(); len(strings.Fields(message.Text)) == 1 && inMap(list, from, to) && from != to {
-            //    tr, err := translate.ReversoTranslate(list[from], list[to], text)
-            //    if err != nil {
-            //        warn(err)
-            //        return
-            //    }
-            //
-            //    return
-            //}
-
             if len(message.Entities) > 0 {
                 text = applyEntitiesHtml(text, message.Entities)
             } else if len(message.CaptionEntities) > 0 {
@@ -477,9 +478,15 @@ func handleMessage(message *tgbotapi.Message) {
             }
             keyboard := tgbotapi.NewInlineKeyboardMarkup(
                 tgbotapi.NewInlineKeyboardRow(
-                    tgbotapi.NewInlineKeyboardButtonData(user.Localize("To voice"), "speech:"+to)),
+                    tgbotapi.NewInlineKeyboardButtonData(user.Localize("To voice"), "speech_this_message:"+to)),
+                tgbotapi.NewInlineKeyboardRow(
+                    tgbotapi.NewInlineKeyboardButtonData(user.Localize("To voice source text"), "speech_replied_message:"+from)),
                 tgbotapi.NewInlineKeyboardRow(otherLanguagesButton),
             )
+            if inMapValues(translate.ReversoSupportedLangs(), from, to) {
+                keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+                    tgbotapi.NewInlineKeyboardButtonData(user.Localize("Dictionary"), "dictionary:"+from+":"+to)))
+            }
             edit := tgbotapi.NewEditMessageTextAndMarkup(message.Chat.ID, msg.MessageID, tr.Text, keyboard)
             edit.ParseMode = tgbotapi.ModeHTML
             edit.DisableWebPagePreview = true
