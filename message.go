@@ -478,7 +478,7 @@ func handleMessage(message *tgbotapi.Message) {
             }
             keyboard := tgbotapi.NewInlineKeyboardMarkup(
                 tgbotapi.NewInlineKeyboardRow(
-                    tgbotapi.NewInlineKeyboardButtonData(user.Localize("To voice"), "speech_this_message_and_replied_one:"+to)),
+                    tgbotapi.NewInlineKeyboardButtonData(user.Localize("To voice"), "speech_this_message_and_replied_one:"+from+":"+to)),
                 tgbotapi.NewInlineKeyboardRow(otherLanguagesButton),
             )
             if inMapValues(translate.ReversoSupportedLangs(), from, to) {

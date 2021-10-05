@@ -143,19 +143,20 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
         SendMenu(user)
 
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
-    case "speech_this_message_and_replied_one": // arr[1] - lang code
+    case "speech_this_message_and_replied_one": // arr[1] - from, arr[2] - to
         text := callback.Message.Text
         if callback.Message.Caption != "" {
             text = callback.Message.Caption
         }
-        if err := sendSpeech(arr[1], text, callback.ID, user); err != nil {
+        if err := sendSpeech(arr[1], callback.Message.ReplyToMessage.Text, callback.ID, user); err != nil { // озвучиваем не переведенное сообщение
             warn(err)
             return
         }
-        if err := sendSpeech(arr[1], callback.Message.ReplyToMessage.Text, callback.ID, user); err != nil {
+        if err := sendSpeech(arr[2], text, callback.ID, user); err != nil { // озвучиваем переведенное сообщение
             warn(err)
             return
         }
+
     case "dictionary": // arr[1], arr[2] = from, to (in iso6391)
         tr, err := translate.ReversoTranslate(translate.Iso6392(arr[1]), translate.Iso6392(arr[2]), callback.Message.ReplyToMessage.Text)
         pp.Println(tr)
