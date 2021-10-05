@@ -46,6 +46,18 @@ func localize(text, code string, placeholders ...interface{}) string {
             "es": "Texto demasiado grande",
             "uk": "Занадто великий текст",
             "pt": "Texto muito grande",
+            "en": "Too big text",
+        },
+        "No data": {
+            "uk": "Немає даних",
+            "pt": "Não há dados",
+            "id": "Tidak ada data",
+            "ru": "Нет данных",
+            "it": "Non ci sono dati",
+            "uz": "Ma'lumot yo'q",
+            "de": "Keine Daten verfügbar",
+            "es": "No hay datos",
+            "en": "No data",
         },
         "Sorry, error caused.\n\nPlease, don't block the bot, I'll fix the bug in near future, the administrator has already been warned about this error ;)": {
             "es": "Lo sentimos, error causado.\n\nPor favor, no bloquees el bot, corregiré el error en un futuro cercano, el administrador ya ha sido advertido sobre este error ;)",

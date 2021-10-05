@@ -165,50 +165,56 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
             return
         }
 
-        message := tgbotapi.NewMessage(callback.From.ID, "")
-        message.ParseMode = tgbotapi.ModeHTML
-        keyboard := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
-        message.ReplyMarkup = keyboard
-
+        text := ""
         last := len(tr.ContextResults.Results) - 1
         for i, res := range tr.ContextResults.Results {
             if res.Translation == "" {
                 continue
             }
             if last == 0 { // всего 1 результат
-                message.Text += "\n─"
+                text += "\n─"
             } else if i == 0 {
-                message.Text += "\n┌"
+                text += "\n┌"
             } else if i == last {
-                message.Text += "\n└"
+                text += "\n└"
             } else {
-                message.Text += "\n├"
+                text += "\n├"
             }
-            message.Text += "<code>" + res.Translation + "</code>"
+            text += "<code>" + res.Translation + "</code>"
             if res.PartOfSpeech != "" {
-                message.Text += " (" + user.Localize(res.PartOfSpeech) + ")"
+                text += " (" + user.Localize(res.PartOfSpeech) + ")"
             }
         }
 
-        message.Text += "\n"
-
-        for _, res := range tr.ContextResults.Results {
+        for i, res := range tr.ContextResults.Results {
+            if i == 0 {
+                text += "\n"
+            }
             last = len(res.TargetExamples) - 1
             if last <= 0 {
                 continue
             }
-            message.Text += "\n<b>" + res.Translation + "</b>"
+            text += "\n<b>" + res.Translation + "</b>"
             for i, example := range res.TargetExamples {
-                message.Text += "\n" + prefix(i, last) + " " +  example
+                text += "\n" + prefix(i, last) + " " +  example
             }
         }
-        if message.Text == "" {
-            call := tgbotapi.NewCallback(callback.ID, user.Localize("Too big text"))
+
+        if text == "" {
+            call := tgbotapi.NewCallback(callback.ID, user.Localize("No data"))
             call.ShowAlert = true
             bot.Send(call)
             return
         }
-        bot.Send(message)
+
+        message := tgbotapi.NewMessage(callback.From.ID, text)
+        message.ParseMode = tgbotapi.ModeHTML
+        keyboard := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
+        message.ReplyMarkup = keyboard
+
+        if _, err = bot.Send(message); err != nil {
+            pp.Println(err)
+        }
         bot.Send(tgbotapi.NewCallback(callback.ID, ""))
     case "set_my_lang_by_callback": // arr[1] - lang
         user.Update(Users{MyLang: arr[1]})

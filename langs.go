@@ -99,7 +99,7 @@ var langs = map[string]Lang{
 	},
 	"bn": {
 		Name:  "Bengali",
-		Emoji: "🇧🇳",
+		Emoji: "🇧🇩",
 	},
 	"kr": {
 		Name:  "Kanuri",
