@@ -304,7 +304,10 @@ func handleMessage(message *tgbotapi.Message) {
             Text:                         user.Localize("Другие языки"),
             SwitchInlineQueryCurrentChat: &message.Text,
         }
+        lang := langs[from]
         keyboard := tgbotapi.NewInlineKeyboardMarkup(
+            tgbotapi.NewInlineKeyboardRow(
+                tgbotapi.NewInlineKeyboardButtonData("From: " + lang.Name + " " + lang.Emoji, "none")),
             tgbotapi.NewInlineKeyboardRow(
                 tgbotapi.NewInlineKeyboardButtonData(user.Localize("To voice"), "speech_this_message_and_replied_one:"+from+":"+to)),
             tgbotapi.NewInlineKeyboardRow(otherLanguagesButton),
@@ -313,7 +316,7 @@ func handleMessage(message *tgbotapi.Message) {
             keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
                 tgbotapi.NewInlineKeyboardButtonData(user.Localize("Dictionary"), "dictionary:"+from+":"+to)))
         }
-        edit := tgbotapi.NewEditMessageTextAndMarkup(message.Chat.ID, msg.MessageID, langs[from].Name + "->" + langs[to].Name + ": " +tr.Text, keyboard)
+        edit := tgbotapi.NewEditMessageTextAndMarkup(message.Chat.ID, msg.MessageID, tr.Text, keyboard)
         edit.ParseMode = tgbotapi.ModeHTML
         edit.DisableWebPagePreview = true
 
