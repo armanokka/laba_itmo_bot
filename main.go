@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime/debug"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -71,7 +72,7 @@ func main() {
 	analytics = dashbot.NewAPI(DashBotAPIKey, WarnErrorAdmin)
 	
 	// Initializing bot
-	api, err := tgbotapi.NewBotAPI(botToken)
+	api, err := tgbotapi.NewBotAPI(strings.TrimSpace(botToken))
 	if err != nil {
 		panic(err)
 	}

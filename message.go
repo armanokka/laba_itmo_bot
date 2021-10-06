@@ -313,7 +313,7 @@ func handleMessage(message *tgbotapi.Message) {
             keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
                 tgbotapi.NewInlineKeyboardButtonData(user.Localize("Dictionary"), "dictionary:"+from+":"+to)))
         }
-        edit := tgbotapi.NewEditMessageTextAndMarkup(message.Chat.ID, msg.MessageID, tr.Text, keyboard)
+        edit := tgbotapi.NewEditMessageTextAndMarkup(message.Chat.ID, msg.MessageID, langs[from].Name + "->" + langs[to].Name + ": " +tr.Text, keyboard)
         edit.ParseMode = tgbotapi.ModeHTML
         edit.DisableWebPagePreview = true
 
