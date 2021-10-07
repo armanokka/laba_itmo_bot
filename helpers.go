@@ -398,19 +398,14 @@ func SendTranslation(user User, from, to, text string, prevMsgID int) error {
         Text:                         user.Localize("Другие языки"),
         SwitchInlineQueryCurrentChat: &text,
     }
+    lang := langs[from]
     keyboard := tgbotapi.NewInlineKeyboardMarkup(
         tgbotapi.NewInlineKeyboardRow(
             tgbotapi.NewInlineKeyboardButtonData(user.Localize("To voice"), "speech_this_message_and_replied_one:"+from+":"+to)),
+        tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData("From " + lang.Name + " " + lang.Emoji, "none")),
         tgbotapi.NewInlineKeyboardRow(otherLanguagesButton),
     )
-    lang := langs[from]
-    if from != user.MyLang && from != user.ToLang {
-        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-            tgbotapi.NewInlineKeyboardButtonData("👉" + lang.Name + " " + lang.Emoji, "show_choose_language_of_text:" + user.MyLang + ":" + user.ToLang + ":" + from)),)
-    } else {
-        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-            tgbotapi.NewInlineKeyboardButtonData(lang.Name + " " + lang.Emoji, "none")),)
-    }
     if inMapValues(translate.ReversoSupportedLangs(), from, to) && from != to {
         keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
             tgbotapi.NewInlineKeyboardButtonData(user.Localize("Dictionary"), "dictionary:"+from+":"+to)))

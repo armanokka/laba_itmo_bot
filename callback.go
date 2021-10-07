@@ -156,30 +156,52 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
             warn(err)
             return
         }
-    case "show_choose_language_of_text": // arr[1] - from, arr[2] - to, arr[3] - detected lang (another than mylang and tolang)\
-        keyboard := tgbotapi.NewInlineKeyboardMarkup()
-        for _, code := range arr[1:] {
-            lang := langs[code]
-            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-                tgbotapi.NewInlineKeyboardButtonData(lang.Name + " " + lang.Emoji, "translate_replied_message:"+code+":"+arr[2])))
-        }
-        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
-        edit := tgbotapi.NewMessage(callback.From.ID, user.Localize("Select the source language of your text if it was not defined correctly"))
-        edit.ReplyMarkup = keyboard
-        edit.ReplyToMessageID = callback.Message.MessageID
-        bot.Send(edit)
-
-        bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
-    case "translate_replied_message": // arr[1] - from, arr[2] - to
-        if err := SendTranslation(user, arr[1], arr[2], callback.Message.ReplyToMessage.Text, callback.Message.ReplyToMessage.MessageID); err != nil {
-            warn(err)
-            return
-        }
-
-        //bot.Send(tgbotapi.NewDeleteMessage(callback.From.ID, callback.Message.ReplyToMessage.MessageID))
-        bot.Send(tgbotapi.NewDeleteMessage(callback.From.ID, callback.Message.MessageID))
-
-        bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
+    //case "translate_pagination": // arr[1] - offset, arr[2] - to
+    //    offset, err := strconv.Atoi(arr[1])
+    //    if err != nil {
+    //        warn(err)
+    //        return
+    //    }
+    //    keyboard := tgbotapi.NewInlineKeyboardMarkup()
+    //    for i, code := range codes[offset:] {
+    //        if i >= LanguagesPaginationLimit {
+    //            break
+    //        }
+    //        lang, ok := langs[code]
+    //        if !ok {
+    //            warn(errors.New("no such code "+ code + " in langs"))
+    //            return
+    //        }
+    //        if i % 2 == 0 {
+    //            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "translate:"  + code + ":" + arr[2])))
+    //        } else {
+    //            l := len(keyboard.InlineKeyboard)-1
+    //            keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "translate:"  + code + ":" + arr[2]))
+    //        }
+    //    }
+    //
+    //    prev := offset - 20
+    //    if prev < 0 {
+    //        prev = 0
+    //    }
+    //    next := offset + LanguagesPaginationLimit
+    //    if next > len(codes) - 1 {
+    //        next = len(codes) - 1
+    //    }
+    //    keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+    //        tgbotapi.NewInlineKeyboardButtonData("◀", "translate_pagination:" + strconv.Itoa(prev) + ":" + arr[2]),
+    //        tgbotapi.NewInlineKeyboardButtonData(arr[1] + "/"+strconv.Itoa(len(codes)), "none"),
+    //        tgbotapi.NewInlineKeyboardButtonData("▶", "translate_pagination:"+strconv.Itoa(next) + ":" + arr[2])))
+    //    keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
+    //
+    //    msg := tgbotapi.NewEditMessageTextAndMarkup(callback.From.ID, callback.Message.MessageID, user.Localize("Select the source language of your text if it was not defined correctly"), keyboard)
+    //    bot.Send(msg)
+    //    bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
+    //case "translate": // arr[1] - from, arr[2] - to. Text in replied message
+    //    if err := SendTranslation(user, arr[1], arr[2], callback.Message.ReplyToMessage.ReplyToMessage.Text, callback.Message.ReplyToMessage.ReplyToMessage.MessageID); err != nil {
+    //        warn(err)
+    //    }
+    //    bot.Send(tgbotapi.NewDeleteMessage(callback.From.ID, callback.Message.MessageID))
     case "dictionary": // arr[1], arr[2] = from, to (in iso6391)
         tr, err := translate.ReversoTranslate(translate.ReversoIso6392(arr[1]), translate.ReversoIso6392(arr[2]), callback.Message.ReplyToMessage.Text)
         pp.Println(tr)
