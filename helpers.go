@@ -379,3 +379,53 @@ func prefix(i, last int) string {
         return "├"
     }
 }
+
+func SendTranslation(user User, from, to, text string, prevMsgID int) error {
+    tr, err := translate.GoogleHTMLTranslate(from, to, text)
+    if err != nil {
+        return err
+    }
+
+    if tr.Text == "" {
+        WarnAdmin("короче на " + to + " не переводит")
+        return err
+    }
+
+    tr.Text = strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "").Replace(tr.Text)
+    tr.Text = strings.ReplaceAll(tr.Text, `<br>`, "\n")
+
+    otherLanguagesButton := tgbotapi.InlineKeyboardButton{
+        Text:                         user.Localize("Другие языки"),
+        SwitchInlineQueryCurrentChat: &text,
+    }
+    keyboard := tgbotapi.NewInlineKeyboardMarkup(
+        tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData(user.Localize("To voice"), "speech_this_message_and_replied_one:"+from+":"+to)),
+        tgbotapi.NewInlineKeyboardRow(otherLanguagesButton),
+    )
+    lang := langs[from]
+    if from != user.MyLang && from != user.ToLang {
+        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData("👉" + lang.Name + " " + lang.Emoji, "show_choose_language_of_text:" + user.MyLang + ":" + user.ToLang + ":" + from)),)
+    } else {
+        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData(lang.Name + " " + lang.Emoji, "none")),)
+    }
+    if inMapValues(translate.ReversoSupportedLangs(), from, to) && from != to {
+        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData(user.Localize("Dictionary"), "dictionary:"+from+":"+to)))
+    }
+    message := tgbotapi.NewMessage(user.ID, tr.Text)
+    message.ParseMode = tgbotapi.ModeHTML
+    message.DisableWebPagePreview = true
+    message.ReplyMarkup = keyboard
+    message.ReplyToMessageID = prevMsgID
+    bot.Send(message)
+
+    analytics.Bot(user.ID, tr.Text, "Translated")
+
+    if err = db.Exec("UPDATE users SET usings=usings+1 WHERE id=?", user.ID).Error; err != nil {
+        WarnAdmin(err)
+    }
+    return nil
+}

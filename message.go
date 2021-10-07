@@ -104,7 +104,7 @@ func handleMessage(message *tgbotapi.Message) {
     case "/my_lang", user.Localize("My Language"):
         keyboard := tgbotapi.NewInlineKeyboardMarkup()
         for i, code := range codes {
-            if i >= 10 {
+            if i >= 20 {
                 break
             }
             lang, ok := langs[code]
@@ -122,7 +122,7 @@ func handleMessage(message *tgbotapi.Message) {
         keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
             tgbotapi.NewInlineKeyboardButtonData("◀", "set_my_lang_pagination:0"),
             tgbotapi.NewInlineKeyboardButtonData("0/"+strconv.Itoa(len(codes)), "none"),
-            tgbotapi.NewInlineKeyboardButtonData("▶", "set_my_lang_pagination:10")))
+            tgbotapi.NewInlineKeyboardButtonData("▶", "set_my_lang_pagination:20")))
         msg := tgbotapi.NewMessage(message.Chat.ID, user.Localize("Ваш язык %s. Выберите Ваш язык.", iso6391.Name(user.MyLang)))
         msg.ReplyMarkup = keyboard
         bot.Send(msg)
@@ -131,7 +131,7 @@ func handleMessage(message *tgbotapi.Message) {
     case "/to_lang", user.Localize("Translate Language"):
         keyboard := tgbotapi.NewInlineKeyboardMarkup()
         for i, code := range codes {
-            if i >= 10 {
+            if i >= 20 {
                 break
             }
             lang, ok := langs[code]
@@ -150,7 +150,7 @@ func handleMessage(message *tgbotapi.Message) {
         keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
             tgbotapi.NewInlineKeyboardButtonData("◀", "set_translate_lang_pagination:0"),
         tgbotapi.NewInlineKeyboardButtonData("0/"+strconv.Itoa(len(codes)), "none"),
-            tgbotapi.NewInlineKeyboardButtonData("▶", "set_translate_lang_pagination:10")))
+            tgbotapi.NewInlineKeyboardButtonData("▶", "set_translate_lang_pagination:20")))
         msg := tgbotapi.NewMessage(message.Chat.ID, user.Localize("Сейчас бот переводит на %s. Выберите язык для перевода", iso6391.Name(user.ToLang)))
         msg.ReplyMarkup = keyboard
         bot.Send(msg)
@@ -189,35 +189,9 @@ func handleMessage(message *tgbotapi.Message) {
         doc := tgbotapi.NewInputMediaDocument("users.txt")
         group := tgbotapi.NewMediaGroup(message.From.ID, []interface{}{doc})
         bot.Send(group)
-    case "/ad":
-        if message.From.ID != AdminID {
-            return
-        }
-        bot.Send(tgbotapi.NewMessage(message.From.ID, "Введите текст сообщения: (до 100 символов)\n\n/cancel для отмены, можно вызвать в любом месте"))
-        user.SetStep("ad:accept_text")
-    case "/cancel":
-        if message.From.ID != AdminID {
-            return
-        }
-        if err := db.Model(&AdsOffers{}).Where("id = ?", message.From.ID).Delete(&AdsOffers{}).Error; err != nil {
-            warn(err)
-            return
-        }
-
-        user.SetStep("")
-
-        bot.Send(tgbotapi.NewMessage(message.From.ID, "Создание рекламы отменено."))
-        SendMenu(user)
     case "/id":
         bot.Send(tgbotapi.NewMessage(message.From.ID, strconv.FormatInt(message.From.ID, 10)))
     default: // Сообщение не является командой.
-
-        defer func() {
-            err := db.Model(&Users{}).Exec("UPDATE users SET usings=usings+1 WHERE id=?", message.From.ID).Error
-            if err != nil {
-                WarnAdmin(err)
-            }
-        }()
 
         if user.Usings % 20 == 0 {
             defer func() {
@@ -236,9 +210,6 @@ func handleMessage(message *tgbotapi.Message) {
                 ReplyToMessageID: message.MessageID, // very important to "dictionary" callback
             },
             Text:                  user.Localize("⏳ Translating..."),
-            ParseMode:             "",
-            Entities:              nil,
-            DisableWebPagePreview: false,
         })
         if err != nil {
             return
@@ -263,8 +234,6 @@ func handleMessage(message *tgbotapi.Message) {
 
         if from == "" {
             from = "auto"
-            //bot.Send(tgbotapi.NewEditMessageText(message.Chat.ID, msg.MessageID, text))
-            //return
         }
 
         var to string // language into need to translate
@@ -283,51 +252,11 @@ func handleMessage(message *tgbotapi.Message) {
         }
         text = strings.ReplaceAll(text, "\n", "<br>")
 
-        tr, err := translate.GoogleHTMLTranslate(from, to, text)
-        if err != nil {
-            bot.Send(tgbotapi.NewEditMessageText(message.Chat.ID, msg.MessageID, user.Localize("Unsupported language or internal error")))
+        if err = SendTranslation(user, from, to, text, message.MessageID); err != nil {
             warn(err)
             return
         }
+        bot.Send(tgbotapi.NewDeleteMessage(message.From.ID, msg.MessageID))
 
-        if tr.Text == "" {
-            answer := tgbotapi.NewEditMessageText(message.Chat.ID, msg.MessageID, user.Localize("%s language is not supported", iso6391.Name(to)))
-            WarnAdmin("короче на " + to + " не переводит")
-            bot.Send(answer)
-            return
-        }
-
-        tr.Text = strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "").Replace(tr.Text)
-        tr.Text = strings.ReplaceAll(tr.Text, `<br>`, "\n")
-
-        otherLanguagesButton := tgbotapi.InlineKeyboardButton{
-            Text:                         user.Localize("Другие языки"),
-            SwitchInlineQueryCurrentChat: &message.Text,
-        }
-        lang := langs[from]
-        keyboard := tgbotapi.NewInlineKeyboardMarkup(
-            tgbotapi.NewInlineKeyboardRow(
-                tgbotapi.NewInlineKeyboardButtonData("From: " + lang.Name + " " + lang.Emoji, "none")),
-            tgbotapi.NewInlineKeyboardRow(
-                tgbotapi.NewInlineKeyboardButtonData(user.Localize("To voice"), "speech_this_message_and_replied_one:"+from+":"+to)),
-            tgbotapi.NewInlineKeyboardRow(otherLanguagesButton),
-        )
-        if inMapValues(translate.ReversoSupportedLangs(), from, to) && from != to {
-            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-                tgbotapi.NewInlineKeyboardButtonData(user.Localize("Dictionary"), "dictionary:"+from+":"+to)))
-        }
-        edit := tgbotapi.NewEditMessageTextAndMarkup(message.Chat.ID, msg.MessageID, tr.Text, keyboard)
-        edit.ParseMode = tgbotapi.ModeHTML
-        edit.DisableWebPagePreview = true
-
-        if _, err = bot.Send(edit); err != nil {
-            pp.Println(err)
-        }
-
-        analytics.Bot(message.Chat.ID, tr.Text, "Translated")
-
-        if err = db.Exec("UPDATE users SET usings=usings+1 WHERE id=?", message.Chat.ID).Error; err != nil {
-            WarnAdmin(err)
-        }
     }
 }

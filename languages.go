@@ -540,6 +540,17 @@ func localize(text, code string, placeholders ...interface{}) string {
             "uk": "Озвучити вихідний текст",
             "id": "Voice the source text",
         },
+        "Select the source language of your text if it was not defined correctly": {
+            "id": "Pilih bahasa asli teks Anda jika tidak didefinisikan dengan benar",
+            "uz": "Agar matn to'g'ri aniqlanmagan bo'lsa, uning asl tilini tanlang",
+            "de": "Wählen Sie die Originalsprache Ihres Textes aus, wenn diese nicht richtig definiert wurde",
+            "ru": "Выберите исходный язык вашего текста, если он был определен неправильно",
+            "es": "Seleccione el idioma original de su texto si no se definió correctamente",
+            "en": "Select the source language of your text if it was not defined correctly",
+            "it": "Seleziona la lingua originale del tuo testo se non è stata definita correttamente",
+            "uk": "Виберіть вихідний мову вашого тексту, якщо він був визначений неправильно",
+            "pt": "Selecione o idioma original do seu texto se não foi definido corretamente",
+        },
     }
     if trigger, ok := languages[text]; ok { // Текст подходит под варианты
         if result, ok := trigger[code]; ok {
