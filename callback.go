@@ -9,6 +9,7 @@ import (
     "github.com/sirupsen/logrus"
     "strconv"
     "strings"
+    "sync"
     "time"
 )
 
@@ -203,48 +204,71 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
     //    }
     //    bot.Send(tgbotapi.NewDeleteMessage(callback.From.ID, callback.Message.MessageID))
     case "dictionary": // arr[1], arr[2] = from, to (in iso6391)
-        tr, err := translate.ReversoTranslate(translate.ReversoIso6392(arr[1]), translate.ReversoIso6392(arr[2]), callback.Message.ReplyToMessage.Text)
-        pp.Println(tr)
-        if err != nil {
-            warn(err)
-            return
-        }
+        var wg sync.WaitGroup
+        var tr translate.GoogleTranslateSingleResult
+        var err error
+        callback.Message.ReplyToMessage.Text = strings.ToLower(callback.Message.ReplyToMessage.Text)
 
-        text := ""
-        last := len(tr.ContextResults.Results) - 1
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            tr, err = translate.GoogleTranslateSingle(arr[1], arr[2], callback.Message.ReplyToMessage.Text)
+            if err != nil {
+                warn(err)
+                return
+            }
+        }()
 
-        for i, res := range tr.ContextResults.Results {
-            if res.Translation == "" {
-                continue
+        var rev translate.ReversoTranslation
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            rev, err = translate.ReversoTranslate(translate.ReversoIso6392(arr[1]), translate.ReversoIso6392(arr[2]), callback.Message.ReplyToMessage.Text)
+            if err != nil {
+                warn(err)
             }
-            if last == 0 { // всего 1 результат
-                text += "\n─"
-            } else if i == 0 {
-                text += "\n┌"
-            } else if i == last {
-                text += "\n└"
-            } else {
-                text += "\n├"
-            }
-            text += "<code>" + res.Translation + "</code>"
-            if res.PartOfSpeech != "" {
-                text += " (" + user.Localize(res.PartOfSpeech) + ")"
-            }
-        }
+        }()
 
-        for i, res := range tr.ContextResults.Results {
+        wg.Wait()
+
+        var text string
+
+        for i, dict := range tr.Dict {
             if i == 0 {
                 text += "\n"
             }
-            last = len(res.TargetExamples) - 1
-            if last <= 0 {
-                continue
-            }
-            text += "\n<b>" + res.Translation + "</b>"
-            for i, example := range res.TargetExamples {
-                text += "\n" + prefix(i, last) + " " +  example
+            for i, term := range dict.Terms {
+                text += "\n<b>" + term + "</b>"
+                l := len(dict.Entry[i].ReverseTranslation) - 1
+                for idx, entry := range dict.Entry[i].ReverseTranslation {
+                    entry = "<code>" + entry + "</code>"
+                    if idx == l {
+                        text += "\n└" + entry
+                    } else {
+                        text += "\n├"  + entry
+                    }
+
+                    switch dict.Entry[i].Gender {
+                    case 1:
+                        text += " 🙍‍♂"
+                    case 2:
+                        text += " 🙍‍♀"
+                    }
+                }
             }
         }
+
+        for i, example := range rev.ContextResults.Results {
+            if len(example.SourceExamples) > 0 && len(example.TargetExamples) > 0 {
+                if i == 0 {
+                    text += "\n"
+                }
+                text += "\n<b>"+example.Translation + "</b>\n"+example.SourceExamples[0] + "\n└" + example.TargetExamples[0]
+            }
+        }
+
+
+
 
         if text == "" {
             call := tgbotapi.NewCallback(callback.ID, user.Localize("No data"))

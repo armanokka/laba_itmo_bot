@@ -424,3 +424,18 @@ func SendTranslation(user User, from, to, text string, prevMsgID int) error {
     }
     return nil
 }
+
+func buildLines(arr []interface{}, g func(i int, s string)) {
+   last := len(arr) - 1
+   for i, _ := range arr {
+       if last == 0 {
+           g(i, "─")
+       } else if i == 0 {
+           g(i, "┌")
+       } else if i <= last {
+           g(i, "├")
+       } else {
+           g(i, "└")
+       }
+   }
+}

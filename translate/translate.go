@@ -398,3 +398,25 @@ func ReversoQueryService(sourceText, sourceLang, targetText, targetLang string) 
 	}
 	return ret, nil
 }
+
+
+func GoogleTranslateSingle(from, to, text string, possibleLangs ...string) (GoogleTranslateSingleResult, error) {
+	var res *http.Response
+	var err error
+	var hl string
+	if possibleLangs != nil {
+		hl = strings.Join(possibleLangs, ",")
+	}
+	for i:=0;i<3;i++ {
+		res, err = http.Get("https://translate.googleapis.com/translate_a/single?dt=t&dt=bd&dt=qc&dt=rm&dt=ex&client=gtx&hl=" + url.PathEscape(hl) + "&sl=" + url.PathEscape(from) + "&tl=" + url.PathEscape(to) + "&q=" + url.PathEscape(text) + "&dj=1&tk=607955.607955")
+		if err == nil {
+			break
+		}
+	}
+
+	var out GoogleTranslateSingleResult
+	if err = json.NewDecoder(res.Body).Decode(&out); err != nil {
+		return GoogleTranslateSingleResult{}, err
+	}
+	return out, err
+}

@@ -242,3 +242,48 @@ type ReversoQueryResponseSuggestions struct {
     Weight     int    `json:"weight"`
     IsFromDict bool   `json:"isFromDict"`
 }
+
+type GoogleTranslateSingleResult struct {
+    Sentences []Sentences `json:"sentences"`
+    Dict []Dict `json:"dict"`
+    Src string `json:"src"`
+    Confidence float64 `json:"confidence"`
+    Spell Spell `json:"spell"`
+    LdResult LdResult `json:"ld_result"`
+    Examples Examples `json:"examples"`
+}
+type Sentences struct {
+    Trans string `json:"trans,omitempty"`
+    Orig string `json:"orig,omitempty"`
+    Backend int `json:"backend,omitempty"`
+    Translit string `json:"translit,omitempty"`
+    SrcTranslit string `json:"src_translit,omitempty"`
+}
+type Entry struct {
+    Word string `json:"word"`
+    ReverseTranslation []string `json:"reverse_translation"`
+    Score float64 `json:"score"`
+    Gender int `json:"gender,omitempty"`
+}
+type Dict struct {
+    Pos string `json:"pos"`
+    Terms []string `json:"terms"`
+    Entry []Entry `json:"entry"`
+    BaseForm string `json:"base_form"`
+    PosEnum int `json:"pos_enum"`
+}
+type Spell struct {
+}
+type LdResult struct {
+    Srclangs []string `json:"srclangs"`
+    SrclangsConfidences []float64 `json:"srclangs_confidences"`
+    ExtendedSrclangs []string `json:"extended_srclangs"`
+}
+type Example struct {
+    Text string `json:"text"`
+    SourceType int `json:"source_type"`
+    DefinitionID string `json:"definition_id"`
+}
+type Examples struct {
+    Example []Example `json:"example"`
+}
