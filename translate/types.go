@@ -287,3 +287,15 @@ type Example struct {
 type Examples struct {
     Example []Example `json:"example"`
 }
+
+type getSamplesRequest struct {
+    Direction string `json:"direction"`
+    Source    string `json:"source"`
+    AppID     string `json:"appId"`
+}
+
+type GetSamplesRespone struct {
+    Success     bool     `json:"success"`
+    Error       bool     `json:"error"`
+    Suggestions []string `json:"suggestions"`
+}

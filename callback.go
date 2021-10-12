@@ -9,7 +9,6 @@ import (
     "github.com/sirupsen/logrus"
     "strconv"
     "strings"
-    "sync"
     "time"
 )
 
@@ -136,13 +135,12 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
         bot.Send(tgbotapi.NewEditMessageReplyMarkup(callback.From.ID, callback.Message.MessageID, *callback.Message.ReplyMarkup))
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
     case "register_bot_lang": // arr[1] - lang code
-        defer SendHelp(user)
-        fallthrough
+        bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
+        user.Update(Users{Lang: arr[1]})
+        SendMenu(user)
     case "set_bot_lang": // arr[1] - lang code
         user.Update(Users{Lang: arr[1]})
-
         SendMenu(user)
-
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
     case "speech_this_message_and_replied_one": // arr[1] - from, arr[2] - to
         text := callback.Message.Text
@@ -203,75 +201,37 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
     //        warn(err)
     //    }
     //    bot.Send(tgbotapi.NewDeleteMessage(callback.From.ID, callback.Message.MessageID))
+    case "examples": // arr[1], arr[2] = from, to (in iso6391)
+
     case "dictionary": // arr[1], arr[2] = from, to (in iso6391)
-        var wg sync.WaitGroup
-        var tr translate.GoogleTranslateSingleResult
-        var err error
         callback.Message.ReplyToMessage.Text = strings.ToLower(callback.Message.ReplyToMessage.Text)
 
-        wg.Add(1)
-        go func() {
-            defer wg.Done()
-            tr, err = translate.GoogleTranslateSingle(arr[1], arr[2], callback.Message.ReplyToMessage.Text)
-            if err != nil {
-                warn(err)
-                return
-            }
-        }()
-
-        var rev translate.ReversoTranslation
-        wg.Add(1)
-        go func() {
-            defer wg.Done()
-            rev, err = translate.ReversoTranslate(translate.ReversoIso6392(arr[1]), translate.ReversoIso6392(arr[2]), callback.Message.ReplyToMessage.Text)
-            if err != nil {
-                warn(err)
-            }
-        }()
-
-        wg.Wait()
-
+        tr, err := translate.GoogleTranslateSingle(arr[1], arr[2], callback.Message.ReplyToMessage.Text)
+        if err != nil {
+            warn(err)
+            return
+        }
+        pp.Println(tr)
         var text string
 
-        for i, dict := range tr.Dict {
-            if i == 0 {
-                text += "\n"
-            }
+        for _, dict := range tr.Dict {
             for i, term := range dict.Terms {
-                text += "\n<b>" + term + "</b>"
-                l := len(dict.Entry[i].ReverseTranslation) - 1
+                text += "\n<b>" + term + "</b> \n└"
+                //l := len(dict.Entry[i].ReverseTranslation) - 1
                 for idx, entry := range dict.Entry[i].ReverseTranslation {
-                    entry = "<code>" + entry + "</code>"
-                    if idx == l {
-                        text += "\n└" + entry
-                    } else {
-                        text += "\n├"  + entry
+                    if idx > 0 {
+                        text += ", "
                     }
-
-                    switch dict.Entry[i].Gender {
-                    case 1:
-                        text += " 🙍‍♂"
-                    case 2:
-                        text += " 🙍‍♀"
+                    text += entry
+                    if entry == callback.Message.ReplyToMessage.Text {
+                        text += " 👈"
                     }
                 }
             }
         }
-
-        for i, example := range rev.ContextResults.Results {
-            if len(example.SourceExamples) > 0 && len(example.TargetExamples) > 0 {
-                if i == 0 {
-                    text += "\n"
-                }
-                text += "\n<b>"+example.Translation + "</b>\n"+example.SourceExamples[0] + "\n└" + example.TargetExamples[0]
-            }
-        }
-
-
-
 
         if text == "" {
-            call := tgbotapi.NewCallback(callback.ID, user.Localize("No data"))
+            call := tgbotapi.NewCallback(callback.ID, user.Localize("Available only for idioms, nouns, verbs and adjectives"))
             call.ShowAlert = true
             bot.Send(call)
             return

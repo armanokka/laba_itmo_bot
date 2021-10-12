@@ -17,7 +17,7 @@ import (
 )
 
 func SendMenu(user User) {
-    msg := tgbotapi.NewMessage(user.ID, user.Localize("/start", iso6391.Name(user.MyLang), iso6391.Name(user.ToLang)))
+    msg := tgbotapi.NewMessage(user.ID, user.Localize("Just send me a text and I will translate it"))
     keyboard := tgbotapi.NewReplyKeyboard(
         tgbotapi.NewKeyboardButtonRow(
             tgbotapi.NewKeyboardButton(user.Localize("My Language")),
@@ -30,22 +30,6 @@ func SendMenu(user User) {
     bot.Send(msg)
 
     analytics.Bot(user.ID, msg.Text, "Start")
-}
-
-func SendHelp(user User) {
-    msg := tgbotapi.NewMessage(user.ID, user.Localize("/help"))
-    msg.ParseMode = tgbotapi.ModeHTML
-    query := user.Localize("пишите сюда")
-    btn := tgbotapi.InlineKeyboardButton{
-        Text:                         "inline",
-        SwitchInlineQuery:            &query,
-    }
-    keyboard := tgbotapi.NewInlineKeyboardMarkup(
-        tgbotapi.NewInlineKeyboardRow(btn))
-    msg.ReplyMarkup = keyboard
-    bot.Send(msg)
-
-    analytics.Bot(user.ID, msg.Text, "Help")
 }
 
 // WarnAdmin send error message to the admin (by AdminID const)

@@ -45,8 +45,8 @@ func handleMessage(message *tgbotapi.Message) {
         }
         user.Create(Users{
             ID:      message.Chat.ID,
-            MyLang:  "en",
-            ToLang:  "en",
+            MyLang:  message.From.LanguageCode,
+            ToLang:  "ja",
             Lang:    message.From.LanguageCode,
             ReferrerID: referrerID,
         })
@@ -56,7 +56,7 @@ func handleMessage(message *tgbotapi.Message) {
         keyboard := tgbotapi.NewInlineKeyboardMarkup()
         var i int
         for code, name := range langs {
-            if i % 3 == 0 {
+            if i % 2 == 0 {
                 keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(name, "register_bot_lang:"+code)))
             } else {
                 l := len(keyboard.InlineKeyboard)-1
@@ -157,7 +157,7 @@ func handleMessage(message *tgbotapi.Message) {
 
         analytics.Bot(message.Chat.ID, msg.Text, "Set translate lang")
     case "/help":
-        SendHelp(user)
+        SendMenu(user)
     case "/stats":
         var users int
         err := db.Model(&Users{}).Raw("SELECT COUNT(*) FROM users").Find(&users).Error
@@ -192,8 +192,12 @@ func handleMessage(message *tgbotapi.Message) {
     case "/id":
         bot.Send(tgbotapi.NewMessage(message.From.ID, strconv.FormatInt(message.From.ID, 10)))
     default: // Сообщение не является командой.
+        if user.MyLang == user.ToLang {
+            bot.Send(tgbotapi.NewMessage(message.From.ID, user.Localize("The original text language and the target language are the same, please set different")))
+            return
+        }
 
-        if user.Usings % 20 == 0 {
+        if user.Usings == 20 || user.Usings == 50 || user.Usings == 100 || (user.Usings > 100 && user.Usings % 50 == 0) {
             defer func() {
                 photo := tgbotapi.NewPhoto(message.Chat.ID, "logo.jpg")
                 photo.Caption = user.Localize("bot_advertise")

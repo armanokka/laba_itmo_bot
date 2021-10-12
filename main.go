@@ -133,6 +133,8 @@ func main() {
 					handleCallback(update.CallbackQuery)
 				} else if update.InlineQuery != nil {
 					handleInline(update.InlineQuery)
+				} else if update.MyChatMember != nil {
+					handleMyChatMember(update.MyChatMember)
 				}
 			}()
 		case <-ctx.Done():
