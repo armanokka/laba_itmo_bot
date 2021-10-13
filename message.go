@@ -50,9 +50,37 @@ func handleMessage(message *tgbotapi.Message) {
         }
         return
     }
-    
-    switch message.Text {
-    case user.Localize("My Language"):
+
+    if inArray(message.Text, AllTranslations("Translate Language")) || message.Text == "/to_lang"  {
+        keyboard := tgbotapi.NewInlineKeyboardMarkup()
+        for i, code := range codes {
+            if i >= 20 {
+                break
+            }
+            lang, ok := langs[code]
+            if !ok {
+                warn(errors.New("no such code "+ code + " in langs"))
+                return
+            }
+
+            if i % 2 == 0 {
+                keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_translate_lang_by_callback:"  + code)))
+            } else {
+                l := len(keyboard.InlineKeyboard)-1
+                keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_translate_lang_by_callback:"  + code))
+            }
+        }
+        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData("◀", "set_translate_lang_pagination:0"),
+            tgbotapi.NewInlineKeyboardButtonData("0/"+strconv.Itoa(len(codes)), "none"),
+            tgbotapi.NewInlineKeyboardButtonData("▶", "set_translate_lang_pagination:20")))
+        msg := tgbotapi.NewMessage(message.Chat.ID, user.Localize("Сейчас бот переводит на %s. Выберите язык для перевода", iso6391.Name(user.ToLang)))
+        msg.ReplyMarkup = keyboard
+        bot.Send(msg)
+
+        analytics.Bot(message.Chat.ID, msg.Text, "Set translate lang")
+        return
+    } else if inArray(message.Text, AllTranslations("My Language")) || message.Text == "/my_lang" {
         keyboard := tgbotapi.NewInlineKeyboardMarkup()
         for i, code := range codes {
             if i >= 20 {
@@ -79,34 +107,10 @@ func handleMessage(message *tgbotapi.Message) {
         bot.Send(msg)
 
         analytics.Bot(message.Chat.ID, msg.Text, "Set my lang")
-    case user.Localize("Translate Language"):
-        keyboard := tgbotapi.NewInlineKeyboardMarkup()
-        for i, code := range codes {
-            if i >= 20 {
-                break
-            }
-            lang, ok := langs[code]
-            if !ok {
-                warn(errors.New("no such code "+ code + " in langs"))
-                return
-            }
-
-            if i % 2 == 0 {
-                keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_translate_lang_by_callback:"  + code)))
-            } else {
-                l := len(keyboard.InlineKeyboard)-1
-                keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_translate_lang_by_callback:"  + code))
-            }
-        }
-        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-            tgbotapi.NewInlineKeyboardButtonData("◀", "set_translate_lang_pagination:0"),
-        tgbotapi.NewInlineKeyboardButtonData("0/"+strconv.Itoa(len(codes)), "none"),
-            tgbotapi.NewInlineKeyboardButtonData("▶", "set_translate_lang_pagination:20")))
-        msg := tgbotapi.NewMessage(message.Chat.ID, user.Localize("Сейчас бот переводит на %s. Выберите язык для перевода", iso6391.Name(user.ToLang)))
-        msg.ReplyMarkup = keyboard
-        bot.Send(msg)
-
-        analytics.Bot(message.Chat.ID, msg.Text, "Set translate lang")
+        return
+    }
+    
+    switch message.Text {
     case "/stats":
         var users int
         err := db.Model(&Users{}).Raw("SELECT COUNT(*) FROM users").Find(&users).Error
