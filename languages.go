@@ -1,6 +1,34 @@
 package main
 
-import "fmt"
+import (
+    "fmt"
+    "strings"
+)
+
+var commandTranslations = map[string][]string{
+    "my language": {
+        "meine Sprache",
+        "mi idioma",
+        "моя мова",
+        "bahasaku",
+        "my language",
+        "mio linguaggio",
+        "mening tilim",
+        "мой язык",
+        "minha língua",
+    },
+    "translate language": {
+        "lengua de llegada",
+        "translate language",
+        "язык перевода",
+        "Zielsprache",
+        "мова перекладу",
+        "idioma de chegada",
+        "bahasa sasaran",
+        "lingua di destinazione",
+        "maqsadli til",
+    },
+}
 
 var translations = map[string]map[string]string{
     "Сейчас бот переводит на %s. Выберите язык для перевода": map[string]string{
@@ -576,14 +604,11 @@ func localize(text, code string, placeholders ...interface{}) string {
    return fmt.Sprintf(text, placeholders...)
 }
 
-func AllTranslations(intent string) []string {
-    translation, ok := translations[intent]
+func TranslateCommand(intent string) []string {
+    intent = strings.ToLower(intent)
+    v, ok := commandTranslations[intent]
     if !ok {
         return []string{}
     }
-    var out = make([]string, 0, len(translation))
-    for _, v := range translation {
-        out = append(out, v)
-    }
-    return out
+    return v
 }

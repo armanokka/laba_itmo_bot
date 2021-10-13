@@ -51,7 +51,7 @@ func handleMessage(message *tgbotapi.Message) {
         return
     }
 
-    if inArray(message.Text, AllTranslations("Translate Language")) || message.Text == "/to_lang"  {
+    if inArray(strings.ToLower(message.Text), TranslateCommand("translate language")) || message.Text == "/to_lang"  {
         keyboard := tgbotapi.NewInlineKeyboardMarkup()
         for i, code := range codes {
             if i >= 20 {
@@ -80,7 +80,7 @@ func handleMessage(message *tgbotapi.Message) {
 
         analytics.Bot(message.Chat.ID, msg.Text, "Set translate lang")
         return
-    } else if inArray(message.Text, AllTranslations("My Language")) || message.Text == "/my_lang" {
+    } else if inArray(strings.ToLower(message.Text), TranslateCommand("my language")) || message.Text == "/my_lang" {
         keyboard := tgbotapi.NewInlineKeyboardMarkup()
         for i, code := range codes {
             if i >= 20 {

@@ -10,7 +10,7 @@ import (
 const (
     DashBotAPIKey = "cjVjdWDRijXDk5kl9yGi5TTS9XImME7HbZMOg09F"
     AdminID       = 579515224
-    botToken string = "1737819626:AAEJyD8fnSHdkh6VP3ePdwFkpEnrirLMHp4 " //
+    botToken string = "1737819626:AAEJyD8fnSHdkh6VP3ePdwFkpEnrirLMHp4" //
     LanguagesPaginationLimit int = 20
 )
 
