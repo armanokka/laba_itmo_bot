@@ -85,11 +85,6 @@ func main() {
 		panic(err)
 	}
 
-	loc, err = time.LoadLocation(TimeLocation)
-	if err != nil {
-		panic(err) // проверяем на валидность константы TimeLocation
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, syscall.SIGQUIT, syscall.SIGHUP)

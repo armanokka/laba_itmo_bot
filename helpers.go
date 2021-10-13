@@ -393,15 +393,18 @@ func SendTranslation(user User, from, to, text string, prevMsgID int) error {
 
     }()
 
-    // Ищем в словаре
-    wg.Add(1)
-    go func() {
-        defer wg.Done()
-        single, err = translate.GoogleTranslateSingle(from, to, text)
-        if err != nil {
-            errs <- err
-        }
-    }()
+    if inMapValues(translate.ReversoSupportedLangs(), from, to) && from != to {
+        // Ищем в словаре
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            single, err = translate.GoogleTranslateSingle(from, to, text)
+            if err != nil {
+                errs <- err
+            }
+        }()
+    }
+
 
     wg.Wait()
 

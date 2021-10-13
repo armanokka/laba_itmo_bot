@@ -11,14 +11,7 @@ const (
     DashBotAPIKey = "cjVjdWDRijXDk5kl9yGi5TTS9XImME7HbZMOg09F"
     AdminID       = 579515224
     botToken string = "1737819626:AAEJyD8fnSHdkh6VP3ePdwFkpEnrirLMHp4" //
-    layout string = "2006/01/02 15:04" // для парсинга времени в /ad, год-месяц-день час:минута
-    TimeLocation string = "Europe/Moscow"
     LanguagesPaginationLimit int = 20
-)
-
-var (
-    now time.Time
-    loc *time.Location
 )
 
 

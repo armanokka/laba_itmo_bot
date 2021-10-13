@@ -9,7 +9,6 @@ import (
     "github.com/sirupsen/logrus"
     "strconv"
     "strings"
-    "time"
 )
 
 func handleCallback(callback *tgbotapi.CallbackQuery) {
@@ -32,83 +31,6 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
             MessageID:       callback.Message.MessageID,
         })
         return
-    case "sponsorship_pay":
-        bot.Send(tgbotapi.NewEditMessageReplyMarkup(callback.From.ID, callback.Message.MessageID, tgbotapi.InlineKeyboardMarkup{}))
-        bot.Send(tgbotapi.NewEditMessageText(callback.From.ID, callback.Message.MessageID, "Скоро будет дальше, а пока тут пусто"))
-    case "ad:confirm_entered_text_for_ad":
-        bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
-
-        text := strings.Join(strings.Split(callback.Message.Text, "\n")[2:], "\n")
-
-        if err := db.Create(&AdsOffers{
-            ID:         callback.From.ID,
-            Content:    applyEntitiesHtml(text, callback.Message.Entities),
-        }).Error; err != nil {
-            warn(err)
-            return
-        }
-
-        bot.Send(tgbotapi.NewEditMessageText(callback.From.ID, callback.Message.MessageID, "Текст рекламы принят."))
-
-        langs := map[string]string{"en": "🇬🇧 English", "it": "🇮🇹 Italiano", "uz":"🇺🇿 O'zbek tili", "de":"🇩🇪 Deutsch", "ru":"🇷🇺 Русский", "es":"🇪🇸 Español", "uk":"🇺🇦 Український", "pt":"🇵🇹 Português", "id":"🇮🇩 Indonesia"}
-        keyboard := tgbotapi.NewInlineKeyboardMarkup()
-        var i int
-        for code, name := range langs {
-            if i % 2 == 0 {
-                keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(name, "tick_country:"+code)))
-            } else {
-                l := len(keyboard.InlineKeyboard)-1
-                keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(name, "tick_country:"+code))
-            }
-            i++
-        }
-        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Продолжить", "ad:pass_countries")))
-        msg := tgbotapi.NewMessage(callback.From.ID, "Выберите страны для рекламы")
-        msg.ReplyMarkup = keyboard
-        bot.Send(msg)
-
-        user.SetStep("")
-
-    case "ad:pass_countries":
-        langs := GetTickedCallbacks(*callback.Message.ReplyMarkup)
-        if len(langs) == 0 {
-            call := tgbotapi.NewCallback(callback.ID, "Выберите хотя бы одну страну.")
-            call.ShowAlert = true
-            bot.AnswerCallbackQuery(call)
-            return
-        }
-        var namesOfCountries = make([]string, 0, len(codes))
-        for _, lang := range langs {
-            namesOfCountries = append(namesOfCountries, iso6391.Name(lang))
-        }
-        var countries = strings.Join(namesOfCountries, ", ")
-        bot.Send(tgbotapi.NewEditMessageText(callback.From.ID, callback.Message.MessageID, "Страны успешно выбраны: " + countries))
-
-        now := time.Now()
-        bot.Send(tgbotapi.NewMessage(callback.From.ID, "Введите дату НАЧАЛА РЕКЛАМЫ в формате год/месяц/день час:минута, например сейчас будет: " + now.Format(layout)))
-
-        user.SetStep("ad:pass_start_date")
-    case "ad:confirm_pass":
-        var offer AdsOffers
-        if err := db.Model(&AdsOffers{}).Where("id = ?", callback.From.ID).Find(&offer).Error; err != nil {
-            warn(err)
-        }
-
-        if err := db.Create(&Ads{
-            ID:         offer.ID,
-            Content:    offer.Content,
-            StartDate:  offer.StartDate,
-            FinishDate: offer.FinishDate,
-            IDWhoseAd:  offer.IDWhoseAd,
-            Views:      0,
-            ToLangs:    offer.ToLangs,
-        }).Error; err != nil {
-            warn(err)
-            return
-        }
-
-        bot.Send(tgbotapi.NewEditMessageText(callback.From.ID, callback.Message.MessageID, "Реклама создана."))
-
     }
 
     arr := strings.Split(callback.Data, ":")
