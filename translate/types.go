@@ -291,11 +291,26 @@ type Examples struct {
 type getSamplesRequest struct {
     Direction string `json:"direction"`
     Source    string `json:"source"`
+    Translation string `json:"translation"`
     AppID     string `json:"appId"`
 }
 
-type GetSamplesRespone struct {
-    Success     bool     `json:"success"`
-    Error       bool     `json:"error"`
-    Suggestions []string `json:"suggestions"`
+type GetSamplesResponse struct {
+    Success     bool   `json:"success"`
+    Error       bool   `json:"error"`
+    Source      string `json:"source"`
+    Translation string `json:"translation"`
+    Samples []Samples `json:"samples"`
+    ReverseTranslations []string      `json:"reverseTranslations"`
+    InflectedForms      []string      `json:"inflectedForms"`
+    Transliteration     string        `json:"transliteration"`
+    Vowels              interface{}   `json:"vowels"`
+    Suggestions         []string `json:"suggestions"`
+}
+
+type Samples struct {
+    Source string `json:"source"`
+    Target string `json:"target"`
+    FavoriteID interface{} `json:"favoriteId"`
+    IsGood bool `json:"isGood"`
 }

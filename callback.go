@@ -201,8 +201,33 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
     //        warn(err)
     //    }
     //    bot.Send(tgbotapi.NewDeleteMessage(callback.From.ID, callback.Message.MessageID))
-    case "examples": // arr[1], arr[2] = from, to (in iso6391)
+    case "examples": // arr[1], arr[2], arr[3] = from, to, source text. Target text in replied message
+        samples, err := translate.GetSamples(arr[1], arr[2], arr[3], callback.Message.ReplyToMessage.Text)
+        if err != nil {
+            warn(err)
+            return
+        }
 
+        pp.Println(arr[1], arr[2], callback.Message.ReplyToMessage.Text)
+        pp.Println(samples)
+
+        var text string
+        for _, sample := range samples.Samples[:5] {
+            sample.Target = strings.ReplaceAll(sample.Target, ` class="both"`, "")
+            text += "\n\n" + sample.Target + "\n<b>└</b>"+sample.Source
+        }
+        for _, suggestion := range samples.Suggestions {
+            text += "\n>" + suggestion
+        }
+        msg := tgbotapi.NewMessage(callback.From.ID, text)
+        msg.ParseMode = tgbotapi.ModeHTML
+        keyboard := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
+        msg.ReplyMarkup = keyboard
+        if _, err = bot.Send(msg); err != nil {
+            pp.Println(err)
+        }
+
+        bot.Send(tgbotapi.NewCallback(callback.ID, ""))
     case "dictionary": // arr[1], arr[2] = from, to (in iso6391)
         callback.Message.ReplyToMessage.Text = strings.ToLower(callback.Message.ReplyToMessage.Text)
 
@@ -211,21 +236,20 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
             warn(err)
             return
         }
-        pp.Println(tr)
+
+
         var text string
 
         for _, dict := range tr.Dict {
+            text += "\n"
             for i, term := range dict.Terms {
-                text += "\n<b>" + term + "</b> \n└"
+                text += "\n<b>" + strconv.Itoa(i+1) + ". " + term + "</b> - "
                 //l := len(dict.Entry[i].ReverseTranslation) - 1
                 for idx, entry := range dict.Entry[i].ReverseTranslation {
                     if idx > 0 {
                         text += ", "
                     }
                     text += entry
-                    if entry == callback.Message.ReplyToMessage.Text {
-                        text += " 👈"
-                    }
                 }
             }
         }

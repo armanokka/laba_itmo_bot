@@ -96,6 +96,7 @@ func main() {
 	defer signal.Stop(c)
 	go func() {
 		<-c
+		// Write profile of mem and cpu
 		cancel()
 	}()
 

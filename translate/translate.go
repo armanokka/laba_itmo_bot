@@ -421,42 +421,45 @@ func GoogleTranslateSingle(from, to, text string, possibleLangs ...string) (Goog
 	return out, err
 }
 
-//func GetSamples(from, to, text string) ([]string, error) {
-//	j, err := json.Marshal(getSamplesRequest{
-//		Direction: from + "-" + to,
-//		Source:    text,
-//		AppID:     "26ad41b9-102f-57b8-5cb4-3dcf1dbf7cad",
-//	})
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	buf := bytes.NewBuffer(j)
-//
-//	request := func() (*http.Response, error) {
-//		req, err := http.NewRequest("POST", "https://cps.reverso.net/api2/Suggest", buf)
-//		if err != nil {
-//			return nil, err
-//		}
-//		//req.Header.Add("Content-Type", "application/json; charset=UTF-8")
-//		//req.Header.Add("Accept-Language", "en-US,en;q=0.8")
-//		//req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36")
-//		//
-//		req.Header = http.Header{
-//			"Content-Type": []string{"application/json; charset=UTF-8"},
-//			"Accept-Language": []string{"en-US,en;q=0.8"},
-//			"User-Agent": []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36"},
-//		}
-//		return http.DefaultClient.Do(req)
-//	}
-//
-//	var res *http.Response
-//	for i:=0;i<3;i++ {
-//		res, err = request()
-//		//body, err := ioutil.ReadAll(res.Body)
-//		//pp.Println(string(body))
-//		if err == nil {
-//			break
-//		}
-//	}
-//}
+func GetSamples(from, to, source, translation string) (GetSamplesResponse, error) {
+	j, err := json.Marshal(getSamplesRequest{
+		Direction: from + "-" + to,
+		Source:    source,
+		Translation: translation,
+		AppID:     "26ad41b9-102f-57b8-5cb4-3dcf1dbf7cad",
+	})
+	if err != nil {
+		return GetSamplesResponse{}, err
+	}
+
+	buf := bytes.NewBuffer(j)
+
+	request := func() (*http.Response, error) {
+		req, err := http.NewRequest("POST", "https://cps.reverso.net/api2/GetSamples", buf)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Add("Content-Type", "application/json; charset=UTF-8")
+		req.Header.Add("Accept-Language", "en-US,en;q=0.8")
+		req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36")
+		//req.Header["accept-language"] = []string{"en-US,en;q=0.8"}
+		//req.Header["content-type"] = []string{"application/json; charset=UTF-8"}
+		//req.Header["user-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36"}
+		return http.DefaultClient.Do(req)
+	}
+
+	var res *http.Response
+	for i:=0;i<3;i++ {
+		res, err = request()
+		//body, err := ioutil.ReadAll(res.Body)
+		//pp.Println(string(body))
+		if err == nil {
+			break
+		}
+	}
+	var result GetSamplesResponse
+	if err = json.NewDecoder(res.Body).Decode(&result); err != nil {
+		return GetSamplesResponse{}, err
+	}
+	return result, nil
+}

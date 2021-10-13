@@ -13,6 +13,7 @@ import (
     "runtime/debug"
     "strconv"
     "strings"
+    "sync"
     "unicode/utf16"
 )
 
@@ -365,35 +366,67 @@ func prefix(i, last int) string {
 }
 
 func SendTranslation(user User, from, to, text string, prevMsgID int) error {
-    tr, err := translate.GoogleHTMLTranslate(from, to, text)
-    if err != nil {
-        return err
+    var (
+    	tr translate.GoogleHTMLTranslation
+    	single translate.GoogleTranslateSingleResult
+    	wg sync.WaitGroup
+    	errs = make(chan error, 2)
+    	err error
+    )
+
+    // Переводим в гугле, как обычно
+    wg.Add(1)
+    go func() {
+        defer wg.Done()
+        tr, err = translate.GoogleHTMLTranslate(from, to, text)
+        if err != nil {
+            errs <- err
+        }
+        if tr.Text == "" && text != "" {
+            WarnAdmin("короче на " + to + " не переводит")
+            errs <- err
+            return
+        }
+
+        tr.Text = strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "").Replace(tr.Text)
+        tr.Text = strings.ReplaceAll(tr.Text, `<br>`, "\n")
+
+    }()
+
+    // Ищем в словаре
+    wg.Add(1)
+    go func() {
+        defer wg.Done()
+        single, err = translate.GoogleTranslateSingle(from, to, text)
+        if err != nil {
+            errs <- err
+        }
+    }()
+
+    wg.Wait()
+
+    if len(errs) > 0 {
+        return <-errs
     }
 
-    if tr.Text == "" {
-        WarnAdmin("короче на " + to + " не переводит")
-        return err
-    }
-
-    tr.Text = strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "").Replace(tr.Text)
-    tr.Text = strings.ReplaceAll(tr.Text, `<br>`, "\n")
 
     otherLanguagesButton := tgbotapi.InlineKeyboardButton{
         Text:                         user.Localize("Другие языки"),
         SwitchInlineQueryCurrentChat: &text,
     }
-    lang := langs[from]
     keyboard := tgbotapi.NewInlineKeyboardMarkup(
         tgbotapi.NewInlineKeyboardRow(
             tgbotapi.NewInlineKeyboardButtonData(user.Localize("To voice"), "speech_this_message_and_replied_one:"+from+":"+to)),
         tgbotapi.NewInlineKeyboardRow(
-            tgbotapi.NewInlineKeyboardButtonData("From " + lang.Name + " " + lang.Emoji, "none")),
+            tgbotapi.NewInlineKeyboardButtonData(langs[from].Name + " -> " + langs[to].Name, "none")),
         tgbotapi.NewInlineKeyboardRow(otherLanguagesButton),
     )
-    if inMapValues(translate.ReversoSupportedLangs(), from, to) && from != to {
+
+    if len(single.Dict) > 0 {
         keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
             tgbotapi.NewInlineKeyboardButtonData(user.Localize("Dictionary"), "dictionary:"+from+":"+to)))
     }
+
     message := tgbotapi.NewMessage(user.ID, tr.Text)
     message.ParseMode = tgbotapi.ModeHTML
     message.DisableWebPagePreview = true
@@ -403,7 +436,21 @@ func SendTranslation(user User, from, to, text string, prevMsgID int) error {
 
     analytics.Bot(user.ID, tr.Text, "Translated")
 
-    if err = db.Exec("UPDATE users SET usings=usings+1 WHERE id=?", user.ID).Error; err != nil {
+
+    //// Ищем примеры
+    //samples, err := translate.GetSamples(from, to, text, tr.Text)
+    //if err != nil {
+    //    WarnAdmin(err)
+    //    return nil
+    //}
+    //
+    //if len(samples.Samples) > 0 {
+    //    keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+    //        tgbotapi.NewInlineKeyboardButtonData(user.Localize("Examples"), "examples:"+from+":"+to+":"+text)))
+    //    bot.Send(tgbotapi.NewEditMessageTextAndMarkup(user.ID, msg.MessageID, tr.Text, keyboard))
+    //}
+
+    if err := db.Exec("UPDATE users SET usings=usings+1 WHERE id=?", user.ID).Error; err != nil {
         WarnAdmin(err)
     }
     return nil

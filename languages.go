@@ -584,6 +584,17 @@ func localize(text, code string, placeholders ...interface{}) string {
             "uk": "Вхідна мова тексту і мова перекладу однакові, встановіть різні",
             "id": "Bahasa teks asli dan bahasa target sama, harap atur berbeda",
         },
+        "Examples": {
+            "en": "Examples",
+            "it": "Esempi",
+            "de": "Beispiele",
+            "pt": "Exemplos",
+            "uz": "Misollar",
+            "ru": "Примеры",
+            "es": "Ejemplos de",
+            "uk": "Приклади",
+            "id": "Contoh",
+        },
     }
     if trigger, ok := languages[text]; ok { // Текст подходит под варианты
         if result, ok := trigger[code]; ok {

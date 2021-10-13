@@ -29,47 +29,14 @@ func handleMessage(message *tgbotapi.Message) {
         if message.From.LanguageCode == "" {
             message.From.LanguageCode = "en"
         }
-        var referrerID int64
-        if strings.HasPrefix(message.Text, "/start ") {
-            fields := strings.Fields(message.Text)
-            if len(fields) == 2 {
-                var err error
-                rID, err := strconv.ParseInt(fields[1], 10, 32)
-                if err == nil {
-                    referrer := NewUser(referrerID, warn)
-                    if referrer.Exists() {
-                        referrerID = rID
-                    }
-                }
-            }
-        }
         user.Create(Users{
             ID:      message.Chat.ID,
             MyLang:  message.From.LanguageCode,
             ToLang:  "ja",
             Lang:    message.From.LanguageCode,
-            ReferrerID: referrerID,
+            ReferrerID: 0,
         })
-
-        // Приветственное сообщение
-        langs := map[string]string{"en": "🇬🇧 English", "it": "🇮🇹 Italiano", "uz":"🇺🇿 O'zbek tili", "de":"🇩🇪 Deutsch", "ru":"🇷🇺 Русский", "es":"🇪🇸 Español", "uk":"🇺🇦 Український", "pt":"🇵🇹 Português", "id":"🇮🇩 Indonesia"}
-        keyboard := tgbotapi.NewInlineKeyboardMarkup()
-        var i int
-        for code, name := range langs {
-            if i % 2 == 0 {
-                keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(name, "register_bot_lang:"+code)))
-            } else {
-                l := len(keyboard.InlineKeyboard)-1
-                keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(name, "register_bot_lang:"+code))
-            }
-            i++
-        }
-        msg := tgbotapi.NewMessage(message.Chat.ID, user.Localize("Please, select bot language"))
-        msg.ReplyMarkup = keyboard
-        bot.Send(msg)
-
-        analytics.Bot(message.Chat.ID, msg.Text, "New user, register")
-
+        SendMenu(user)
         return
     } else {
         user.Fill()
@@ -85,23 +52,7 @@ func handleMessage(message *tgbotapi.Message) {
     }
     
     switch message.Text {
-    case "/bot_lang":
-        langs := map[string]string{"en": "🇬🇧 English", "it": "🇮🇹 Italiano", "uz":"🇺🇿 O'zbek tili", "de":"🇩🇪 Deutsch", "ru":"🇷🇺 Русский", "es":"🇪🇸 Español", "uk":"🇺🇦 Український", "pt":"🇵🇹 Português", "id":"🇮🇩 Indonesia"}
-        keyboard := tgbotapi.NewInlineKeyboardMarkup()
-        var i int
-        for code, name := range langs {
-            if i % 2 == 0 {
-                keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(name, "set_bot_lang:"+code)))
-            } else {
-                l := len(keyboard.InlineKeyboard)-1
-                keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(name, "set_bot_lang:"+code))
-            }
-            i++
-        }
-        msg := tgbotapi.NewMessage(message.Chat.ID, user.Localize("Please, select bot language"))
-        msg.ReplyMarkup = keyboard
-        bot.Send(msg)
-    case "/my_lang", user.Localize("My Language"):
+    case user.Localize("My Language"):
         keyboard := tgbotapi.NewInlineKeyboardMarkup()
         for i, code := range codes {
             if i >= 20 {
@@ -128,7 +79,7 @@ func handleMessage(message *tgbotapi.Message) {
         bot.Send(msg)
 
         analytics.Bot(message.Chat.ID, msg.Text, "Set my lang")
-    case "/to_lang", user.Localize("Translate Language"):
+    case user.Localize("Translate Language"):
         keyboard := tgbotapi.NewInlineKeyboardMarkup()
         for i, code := range codes {
             if i >= 20 {
@@ -156,8 +107,6 @@ func handleMessage(message *tgbotapi.Message) {
         bot.Send(msg)
 
         analytics.Bot(message.Chat.ID, msg.Text, "Set translate lang")
-    case "/help":
-        SendMenu(user)
     case "/stats":
         var users int
         err := db.Model(&Users{}).Raw("SELECT COUNT(*) FROM users").Find(&users).Error
