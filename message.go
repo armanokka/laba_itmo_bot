@@ -42,7 +42,7 @@ func handleMessage(message *tgbotapi.Message) {
         user.Fill()
     }
 
-    if strings.HasPrefix(message.Text, "/start") || message.Text == user.Localize("⬅Back") {
+    if strings.HasPrefix(message.Text, "/start") || message.Text == "/help" || message.Text == "/bot_lang" {
         SendMenu(user)
         if err := setUserStep(message.Chat.ID, ""); err != nil {
             warn(err)
