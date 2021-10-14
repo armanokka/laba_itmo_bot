@@ -286,11 +286,11 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
                 keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_my_lang_by_callback:"  + code))
             }
         }
-        if offset == 0 {
+        if offset <= 0 {
             keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
                 tgbotapi.NewInlineKeyboardButtonData("◀", "set_my_lang_pagination:0"),
                 tgbotapi.NewInlineKeyboardButtonData(arr[1] + "/"+strconv.Itoa(len(codes)), "none"),
-                tgbotapi.NewInlineKeyboardButtonData("▶", "set_my_lang_pagination:"+strconv.Itoa(offset+LanguagesPaginationLimit))))
+                tgbotapi.NewInlineKeyboardButtonData("▶", "set_my_lang_pagination:"+strconv.Itoa(LanguagesPaginationLimit))))
         } else if offset + LanguagesPaginationLimit < len(codes) {
             keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
                 tgbotapi.NewInlineKeyboardButtonData("◀", "set_my_lang_pagination:"+strconv.Itoa(offset-LanguagesPaginationLimit)),
