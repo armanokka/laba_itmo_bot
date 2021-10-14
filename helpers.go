@@ -82,7 +82,7 @@ func cutStringUTF16 (text string, limit int) string {
     return text
 }
 
-func inArray(k string, arr []string,) bool {
+func in(arr []string, k string) bool {
     for _, v := range arr {
         if k == v {
              return true
@@ -369,6 +369,7 @@ func SendTranslation(user User, from, to, text string, prevMsgID int) error {
     var (
     	tr translate.GoogleHTMLTranslation
     	single translate.GoogleTranslateSingleResult
+    	samples translate.ReversoQueryResponse
     	wg sync.WaitGroup
     	errs = make(chan error, 2)
     	err error
@@ -405,13 +406,16 @@ func SendTranslation(user User, from, to, text string, prevMsgID int) error {
         }()
     }
 
-
     wg.Wait()
 
     if len(errs) > 0 {
         return <-errs
     }
 
+    samples, err = translate.ReversoQueryService(text, from, tr.Text, to)
+    if err != nil {
+        return err
+    }
 
     otherLanguagesButton := tgbotapi.InlineKeyboardButton{
         Text:                         user.Localize("Другие языки"),
@@ -430,28 +434,20 @@ func SendTranslation(user User, from, to, text string, prevMsgID int) error {
             tgbotapi.NewInlineKeyboardButtonData(user.Localize("Dictionary"), "dictionary:"+from+":"+to)))
     }
 
+    if len(samples.Suggestions) > 0 || len(samples.List) > 0 {
+        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData(user.Localize("Examples"), "examples:"+from+":"+to+":"+text)))
+    }
+
     message := tgbotapi.NewMessage(user.ID, tr.Text)
     message.ParseMode = tgbotapi.ModeHTML
     message.DisableWebPagePreview = true
     message.ReplyMarkup = keyboard
     message.ReplyToMessageID = prevMsgID
+
     bot.Send(message)
 
     analytics.Bot(user.ID, tr.Text, "Translated")
-
-
-    //// Ищем примеры
-    //samples, err := translate.GetSamples(from, to, text, tr.Text)
-    //if err != nil {
-    //    WarnAdmin(err)
-    //    return nil
-    //}
-    //
-    //if len(samples.Samples) > 0 {
-    //    keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-    //        tgbotapi.NewInlineKeyboardButtonData(user.Localize("Examples"), "examples:"+from+":"+to+":"+text)))
-    //    bot.Send(tgbotapi.NewEditMessageTextAndMarkup(user.ID, msg.MessageID, tr.Text, keyboard))
-    //}
 
     if err := db.Exec("UPDATE users SET usings=usings+1 WHERE id=?", user.ID).Error; err != nil {
         WarnAdmin(err)

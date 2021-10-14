@@ -124,7 +124,7 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
     //    }
     //    bot.Send(tgbotapi.NewDeleteMessage(callback.From.ID, callback.Message.MessageID))
     case "examples": // arr[1], arr[2], arr[3] = from, to, source text. Target text in replied message
-        samples, err := translate.GetSamples(arr[1], arr[2], arr[3], callback.Message.ReplyToMessage.Text)
+        samples, err := translate.ReversoQueryService(arr[3], arr[1], callback.Message.ReplyToMessage.Text, arr[2])
         if err != nil {
             warn(err)
             return
@@ -134,12 +134,18 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
         pp.Println(samples)
 
         var text string
-        for _, sample := range samples.Samples[:5] {
-            sample.Target = strings.ReplaceAll(sample.Target, ` class="both"`, "")
-            text += "\n\n" + sample.Target + "\n<b>└</b>"+sample.Source
+
+        if len(samples.List) > 10 {
+            samples.List = samples.List[:10]
         }
+
+        for i, sample := range samples.List {
+            sample.TText = strings.ReplaceAll(sample.TText, ` class="both"`, "")
+            text += "\n\n<b>" + strconv.Itoa(i+1) + ".</b> " + sample.TText + "\n<b>└</b>"+sample.SText
+        }
+        text += "\n"
         for _, suggestion := range samples.Suggestions {
-            text += "\n>" + suggestion
+            text += "\n>" + suggestion.Suggestion
         }
         msg := tgbotapi.NewMessage(callback.From.ID, text)
         msg.ParseMode = tgbotapi.ModeHTML
@@ -165,7 +171,7 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
         for _, dict := range tr.Dict {
             text += "\n"
             for i, term := range dict.Terms {
-                text += "\n<b>" + strconv.Itoa(i+1) + ". " + term + "</b> - "
+                text += "\n<b>" + term + "\n└</b>"
                 //l := len(dict.Entry[i].ReverseTranslation) - 1
                 for idx, entry := range dict.Entry[i].ReverseTranslation {
                     if idx > 0 {

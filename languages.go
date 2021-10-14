@@ -604,7 +604,7 @@ func localize(text, code string, placeholders ...interface{}) string {
    return fmt.Sprintf(text, placeholders...)
 }
 
-func TranslateCommand(intent string) []string {
+func command(intent string) []string {
     intent = strings.ToLower(intent)
     v, ok := commandTranslations[intent]
     if !ok {
