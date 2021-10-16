@@ -1,6 +1,10 @@
 package main
 
-import "database/sql"
+import (
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/patrickmn/go-cache"
+	"time"
+)
 
 type User struct {
 	Users
@@ -32,43 +36,62 @@ func (u User) Create(user Users) {
 }
 
 func (u *User) Fill() {
+	if v, ok := c.Get(format(u.ID)); ok {
+		u.Users = v.(Users)
+		return
+	}
 	if err := db.Model(&Users{}).Where("id = ?", u.ID).Find(&u.Users).Error; err != nil {
 		u.error(err)
 	}
+	c.Set(format(u.ID), u.Users, cache.DefaultExpiration)
 }
 
 func (u *User) Update(user Users) {
 	if err := db.Model(&u.Users).Updates(user).Error; err != nil {
 		u.error(err)
 	}
-	u.Fill()
+	if err := db.Model(&Users{}).Where("id = ?", u.ID).Find(&u.Users).Error; err != nil {
+		u.error(err)
+	}
+	c.Set(format(u.ID), u.Users, cache.DefaultExpiration)
 }
 
 func (u User) Localize(text string, placeholders ...interface{}) string {
 	return localize(text, u.Lang, placeholders...)
 }
 
-func (u *User) SetStep(step string) {
-	if step == "" {
-		if err := db.Model(&Users{}).Where("id = ?", u.ID).Updates(map[string]interface{}{"act":nil}).Error; err != nil {
-			u.error(err)
-			return
-		}
-		u.Act = sql.NullString{
-			String: "",
-			Valid:  false,
-		}
+//func (u User) WriteLog(intent string) {
+//	var exists bool
+//	if err := db.Model(&UsersLogs{}).Raw("SELECT EXISTS(SELECT uid FROM users_logs WHERE intent=? AND id=? ORDER BY uid DESC LIMIT 1)", intent, u.ID).Find(&exists).Error; err != nil {
+//		u.error(err)
+//	}
+//	if !exists {
+//		err := db.Model(&UsersLogs{}).Raw("UPDATE users_logs SET times=times+1 WHERE id=? AND intent=? ORDER BY uid DESC LIMIT 1", u.ID, intent).Error
+//		if err != nil {
+//			u.error(err)
+//		}
+//		return
+//	}
+//}
 
-	} else {
-		if err := db.Model(&Users{}).Where("id = ?", u.ID).Update("act", step).Error; err != nil {
-			u.error(err)
-			return
-		}
-		u.Act = sql.NullString{
-			String: step,
-			Valid:  true,
-		}
-
+func (u User) UpdateLastActivity() {
+	if err := db.Model(&Users{}).Where("id = ?", u.ID).Update("last_activity", time.Now()).Error; err != nil {
+		u.error(err)
 	}
+}
 
+func (u User) SendStart() {
+	msg := tgbotapi.NewMessage(u.ID, u.Localize("Just send me a text and I will translate it"))
+	keyboard := tgbotapi.NewReplyKeyboard(
+		tgbotapi.NewKeyboardButtonRow(
+			tgbotapi.NewKeyboardButton(u.Localize("My Language")),
+			tgbotapi.NewKeyboardButton(u.Localize("Translate Language")),
+		),
+	)
+
+	msg.ReplyMarkup = keyboard
+	msg.ParseMode = tgbotapi.ModeHTML
+	bot.Send(msg)
+
+	analytics.Bot(u.ID, msg.Text, "Start")
 }

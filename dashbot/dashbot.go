@@ -14,8 +14,8 @@ type DashBot struct {
     Error func(err error)
 }
 
-func NewAPI(APIkey string, errFunc func(error)) *DashBot {
-    return &DashBot{APIKey: APIkey, Error: errFunc}
+func NewAPI(APIkey string, errFunc func(error)) DashBot {
+    return DashBot{APIKey: APIkey, Error: errFunc}
 }
 
 func (d DashBot) User(message string,  user *tgbotapi.User) {

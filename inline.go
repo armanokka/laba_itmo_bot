@@ -12,15 +12,9 @@ import (
     "sort"
     "strconv"
     "sync"
-    "time"
 )
 
-func handleInline(update *tgbotapi.InlineQuery) {
-    started := time.Now()
-    defer func() {
-        pp.Println(time.Since(started).String())
-    }()
-
+func handleInline(update tgbotapi.InlineQuery) {
     analytics.User(update.Query, update.From)
     
     warn := func(err error) {
@@ -85,24 +79,33 @@ func handleInline(update *tgbotapi.InlineQuery) {
     if start == 0 {
         if from != user.MyLang {
             sortOffset++
-            myLangTr, err := translate.GoogleHTMLTranslate("auto", user.MyLang, update.Query)
-            if err != nil {
-                warn(err)
-                return
-            }
-            results = append(results, makeArticle("my_lang", iso6391.Name(user.MyLang) + " 🔥", html.UnescapeString(myLangTr.Text)))
+            wg.Add(1)
+            go func() {
+                defer wg.Done()
+                myLangTr, err := translate.GoogleHTMLTranslate("auto", user.MyLang, update.Query)
+                if err != nil {
+                    warn(err)
+                    return
+                }
+                results = append(results, makeArticle("my_lang", iso6391.Name(user.MyLang) + " 🔥", html.UnescapeString(myLangTr.Text)))
+            }()
         }
         if from != user.ToLang {
             sortOffset++
-            toLangTr, err := translate.GoogleHTMLTranslate("auto", user.ToLang, update.Query)
-            if err != nil {
-                warn(err)
-                return
-            }
-            results = append(results, makeArticle("to_lang", iso6391.Name(user.ToLang) + " 🔥", html.UnescapeString(toLangTr.Text)))
+            wg.Add(1)
+            go func() {
+                defer wg.Done()
+                toLangTr, err := translate.GoogleHTMLTranslate("auto", user.ToLang, update.Query)
+                if err != nil {
+                    warn(err)
+                    return
+                }
+                results = append(results, makeArticle("to_lang", iso6391.Name(user.ToLang) + " 🔥", html.UnescapeString(toLangTr.Text)))
+            }()
         }
     }
 
+    wg.Wait()
 
     for i, lang := range codes[start:end] {
         if lang == user.MyLang || lang == user.ToLang || lang == from {

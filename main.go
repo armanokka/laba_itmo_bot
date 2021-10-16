@@ -7,6 +7,7 @@ import (
 	"github.com/armanokka/translobot/dashbot"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/gorilla/mux"
+	"github.com/k0kubun/pp"
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -64,9 +65,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	sqlDb.SetMaxOpenConns(25)
-	sqlDb.SetMaxIdleConns(10)
-	sqlDb.SetConnMaxLifetime(6 * time.Hour)
+	sqlDb.SetMaxOpenConns(24)
+	sqlDb.SetMaxIdleConns(24)
+	sqlDb.SetConnMaxLifetime(15 * time.Minute)
 
 	
 	analytics = dashbot.NewAPI(DashBotAPIKey, WarnErrorAdmin)
@@ -122,16 +123,17 @@ func main() {
 						WarnAdmin("panic:", err)
 					}
 				}()
-
+				start := time.Now()
 				if update.Message != nil {
-					handleMessage(update.Message)
+					handleMessage(*update.Message)
 				} else if update.CallbackQuery != nil {
-					handleCallback(update.CallbackQuery)
+					handleCallback(*update.CallbackQuery)
 				} else if update.InlineQuery != nil {
-					handleInline(update.InlineQuery)
+					handleInline(*update.InlineQuery)
 				} else if update.MyChatMember != nil {
-					handleMyChatMember(update.MyChatMember)
+					handleMyChatMember(*update.MyChatMember)
 				}
+				pp.Println(time.Since(start).String())
 			}()
 		case <-ctx.Done():
 			wg.Wait()

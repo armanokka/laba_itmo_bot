@@ -13,24 +13,11 @@ import (
     "runtime/debug"
     "strconv"
     "strings"
-    "sync"
     "unicode/utf16"
 )
 
-func SendMenu(user User) {
-    msg := tgbotapi.NewMessage(user.ID, user.Localize("Just send me a text and I will translate it"))
-    keyboard := tgbotapi.NewReplyKeyboard(
-        tgbotapi.NewKeyboardButtonRow(
-            tgbotapi.NewKeyboardButton(user.Localize("My Language")),
-            tgbotapi.NewKeyboardButton(user.Localize("Translate Language")),
-        ),
-    )
-
-    msg.ReplyMarkup = keyboard
-    msg.ParseMode = tgbotapi.ModeHTML
-    bot.Send(msg)
-
-    analytics.Bot(user.ID, msg.Text, "Start")
+func format(i int64) string {
+    return strconv.FormatInt(i, 10)
 }
 
 // WarnAdmin send error message to the admin (by AdminID const)
@@ -56,21 +43,6 @@ func WarnAdmin(args ...interface{}) {
 func WarnErrorAdmin(err error) {
     msg := tgbotapi.NewMessage(AdminID, err.Error() + "\n\n" + string(debug.Stack()))
     bot.Send(msg)
-}
-
-// setUserStep set user's step to your. If string is empty "", then step will be null
-func setUserStep(chatID int64, step string) error {
-    if step == "" {
-        return db.Model(&Users{ID: chatID}).Where("id = ?", chatID).Limit(1).Updates(map[string]interface{}{"act":nil}).Error
-    }
-    return db.Model(&Users{ID: chatID}).Where("id = ?", chatID).Limit(1).Update("act", step).Error
-}
-
-// getUserStep return user's step at the moment. Step can be set by setUserStep
-func getUserStep(chatID int64) (string, error) {
-    var user Users
-    err := db.Model(&Users{ID: chatID}).Select("act").Where("id", chatID).Limit(1).Find(&user).Error
-    return user.Act.String, err
 }
 
 // cutString cut string using runes by limit
@@ -363,96 +335,6 @@ func prefix(i, last int) string {
     } else {
         return "├"
     }
-}
-
-func SendTranslation(user User, from, to, text string, prevMsgID int) error {
-    var (
-    	tr translate.GoogleHTMLTranslation
-    	single translate.GoogleTranslateSingleResult
-    	samples translate.ReversoQueryResponse
-    	wg sync.WaitGroup
-    	errs = make(chan error, 2)
-    	err error
-    )
-
-    // Переводим в гугле, как обычно
-    wg.Add(1)
-    go func() {
-        defer wg.Done()
-        tr, err = translate.GoogleHTMLTranslate(from, to, text)
-        if err != nil {
-            errs <- err
-        }
-        if tr.Text == "" && text != "" {
-            WarnAdmin("короче на " + to + " не переводит")
-            errs <- err
-            return
-        }
-
-        tr.Text = strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "").Replace(tr.Text)
-        tr.Text = strings.ReplaceAll(tr.Text, `<br>`, "\n")
-
-    }()
-
-    if inMapValues(translate.ReversoSupportedLangs(), from, to) && from != to {
-        // Ищем в словаре
-        wg.Add(1)
-        go func() {
-            defer wg.Done()
-            single, err = translate.GoogleTranslateSingle(from, to, text)
-            if err != nil {
-                errs <- err
-            }
-        }()
-    }
-
-    wg.Wait()
-
-    if len(errs) > 0 {
-        return <-errs
-    }
-
-    samples, err = translate.ReversoQueryService(text, from, tr.Text, to)
-    if err != nil {
-        return err
-    }
-
-    otherLanguagesButton := tgbotapi.InlineKeyboardButton{
-        Text:                         user.Localize("Другие языки"),
-        SwitchInlineQueryCurrentChat: &text,
-    }
-    keyboard := tgbotapi.NewInlineKeyboardMarkup(
-        tgbotapi.NewInlineKeyboardRow(
-            tgbotapi.NewInlineKeyboardButtonData(user.Localize("To voice"), "speech_this_message_and_replied_one:"+from+":"+to)),
-        tgbotapi.NewInlineKeyboardRow(
-            tgbotapi.NewInlineKeyboardButtonData(langs[from].Name + " -> " + langs[to].Name, "none")),
-        tgbotapi.NewInlineKeyboardRow(otherLanguagesButton),
-    )
-
-    if len(single.Dict) > 0 {
-        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-            tgbotapi.NewInlineKeyboardButtonData(user.Localize("Dictionary"), "dictionary:"+from+":"+to)))
-    }
-
-    if len(samples.Suggestions) > 0 || len(samples.List) > 0 {
-        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-            tgbotapi.NewInlineKeyboardButtonData(user.Localize("Examples"), "examples:"+from+":"+to+":"+text)))
-    }
-
-    message := tgbotapi.NewMessage(user.ID, tr.Text)
-    message.ParseMode = tgbotapi.ModeHTML
-    message.DisableWebPagePreview = true
-    message.ReplyMarkup = keyboard
-    message.ReplyToMessageID = prevMsgID
-
-    bot.Send(message)
-
-    analytics.Bot(user.ID, tr.Text, "Translated")
-
-    if err := db.Exec("UPDATE users SET usings=usings+1 WHERE id=?", user.ID).Error; err != nil {
-        WarnAdmin(err)
-    }
-    return nil
 }
 
 func buildLines(arr []interface{}, g func(i int, s string)) {

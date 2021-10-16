@@ -11,6 +11,7 @@ require (
 	github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 // indirect
 	github.com/k0kubun/pp v3.0.1+incompatible
 	github.com/mattn/go-colorable v0.1.6 // indirect
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.5.1 // indirect
 	golang.org/x/net v0.0.0-20210510120150-4163338589ed // indirect

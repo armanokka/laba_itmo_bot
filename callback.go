@@ -11,7 +11,7 @@ import (
     "strings"
 )
 
-func handleCallback(callback *tgbotapi.CallbackQuery) {
+func handleCallback(callback tgbotapi.CallbackQuery) {
     warn := func(err error) {
         bot.Send(tgbotapi.NewCallback(callback.ID, "Error, sorry"))
         WarnAdmin(err)
@@ -38,32 +38,6 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
         return
     }
     switch arr[0] {
-    case "tick_country": // when user that want to buy sponsorship clicks on a button, arr[1] - lang code
-        if IsTicked(callback.Data, callback.Message.ReplyMarkup) {
-            UnTickByCallback(callback.Data, callback.Message.ReplyMarkup)
-        } else {
-            TickByCallback(callback.Data, callback.Message.ReplyMarkup)
-        }
-        callbacks := GetTickedCallbacks(*callback.Message.ReplyMarkup)
-        langs := make([]string, 0)
-        for _, callback := range callbacks {
-            langs = append(langs, strings.Split(callback, ":")[1])
-        }
-        err := db.Model(&AdsOffers{}).Where("id = ?", callback.From.ID).Update("to_langs", strings.Join(langs, ",")).Error
-        if err != nil {
-            warn(err)
-            return
-        }
-        bot.Send(tgbotapi.NewEditMessageReplyMarkup(callback.From.ID, callback.Message.MessageID, *callback.Message.ReplyMarkup))
-        bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
-    case "register_bot_lang": // arr[1] - lang code
-        bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
-        user.Update(Users{Lang: arr[1]})
-        SendMenu(user)
-    case "set_bot_lang": // arr[1] - lang code
-        user.Update(Users{Lang: arr[1]})
-        SendMenu(user)
-        bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
     case "speech_this_message_and_replied_one": // arr[1] - from, arr[2] - to
         text := callback.Message.Text
         if callback.Message.Caption != "" {
@@ -77,61 +51,12 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
             warn(err)
             return
         }
-    //case "translate_pagination": // arr[1] - offset, arr[2] - to
-    //    offset, err := strconv.Atoi(arr[1])
-    //    if err != nil {
-    //        warn(err)
-    //        return
-    //    }
-    //    keyboard := tgbotapi.NewInlineKeyboardMarkup()
-    //    for i, code := range codes[offset:] {
-    //        if i >= LanguagesPaginationLimit {
-    //            break
-    //        }
-    //        lang, ok := langs[code]
-    //        if !ok {
-    //            warn(errors.New("no such code "+ code + " in langs"))
-    //            return
-    //        }
-    //        if i % 2 == 0 {
-    //            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "translate:"  + code + ":" + arr[2])))
-    //        } else {
-    //            l := len(keyboard.InlineKeyboard)-1
-    //            keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "translate:"  + code + ":" + arr[2]))
-    //        }
-    //    }
-    //
-    //    prev := offset - 20
-    //    if prev < 0 {
-    //        prev = 0
-    //    }
-    //    next := offset + LanguagesPaginationLimit
-    //    if next > len(codes) - 1 {
-    //        next = len(codes) - 1
-    //    }
-    //    keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-    //        tgbotapi.NewInlineKeyboardButtonData("◀", "translate_pagination:" + strconv.Itoa(prev) + ":" + arr[2]),
-    //        tgbotapi.NewInlineKeyboardButtonData(arr[1] + "/"+strconv.Itoa(len(codes)), "none"),
-    //        tgbotapi.NewInlineKeyboardButtonData("▶", "translate_pagination:"+strconv.Itoa(next) + ":" + arr[2])))
-    //    keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
-    //
-    //    msg := tgbotapi.NewEditMessageTextAndMarkup(callback.From.ID, callback.Message.MessageID, user.Localize("Select the source language of your text if it was not defined correctly"), keyboard)
-    //    bot.Send(msg)
-    //    bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
-    //case "translate": // arr[1] - from, arr[2] - to. Text in replied message
-    //    if err := SendTranslation(user, arr[1], arr[2], callback.Message.ReplyToMessage.ReplyToMessage.Text, callback.Message.ReplyToMessage.ReplyToMessage.MessageID); err != nil {
-    //        warn(err)
-    //    }
-    //    bot.Send(tgbotapi.NewDeleteMessage(callback.From.ID, callback.Message.MessageID))
     case "examples": // arr[1], arr[2], arr[3] = from, to, source text. Target text in replied message
         samples, err := translate.ReversoQueryService(arr[3], arr[1], callback.Message.ReplyToMessage.Text, arr[2])
         if err != nil {
             warn(err)
             return
         }
-
-        pp.Println(arr[1], arr[2], callback.Message.ReplyToMessage.Text)
-        pp.Println(samples)
 
         var text string
 
@@ -141,7 +66,7 @@ func handleCallback(callback *tgbotapi.CallbackQuery) {
 
         for i, sample := range samples.List {
             sample.TText = strings.ReplaceAll(sample.TText, ` class="both"`, "")
-            text += "\n\n<b>" + strconv.Itoa(i+1) + ".</b> " + sample.TText + "\n<b>└</b>"+sample.SText
+            text += "\n\n<b>" + strconv.Itoa(i+1) + ".</b> " + sample.TText + "\n└" + sample.SText
         }
         text += "\n"
         for _, suggestion := range samples.Suggestions {
