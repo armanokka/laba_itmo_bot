@@ -11,7 +11,7 @@ import (
 const (
     DashBotAPIKey = "cjVjdWDRijXDk5kl9yGi5TTS9XImME7HbZMOg09F"
     AdminID       = 579515224
-    botToken string = "1737819626:AAEJyD8fnSHdkh6VP3ePdwFkpEnrirLMHp4 " //
+    botToken string = "1737819626:AAEJyD8fnSHdkh6VP3ePdwFkpEnrirLMHp4" //
     LanguagesPaginationLimit int = 20
 )
 
@@ -23,6 +23,7 @@ var (
     analytics dashbot.DashBot
     InlineCacheTime int = 864000
     c = cache.New(6 * time.Hour, 12 * time.Hour)
+    logs = make(chan UsersLogs, 10)
 )
 
 // Users is table in DB
@@ -39,10 +40,11 @@ type Users struct {
 }
 
 type UsersLogs struct {
-    uID int64 `gorm:"autoIncrement"`
     ID int64 // fk users.id
-    Intent string // varchar(255)
-    Times int `gorm:"default:0"` // number of consecutive identical actions
+    Intent sql.NullString // varchar(25)
+    Text string // varchar(518)
+    FromBot bool
+    Date time.Time
 }
 
 type Lang struct {

@@ -464,7 +464,7 @@ func GoogleDictionary(lang, text string) (GoogleDictionaryResponse, error) {
 		return GoogleDictionaryResponse{}, err
 	}
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
-	req.Header["x-origin"] = []string{"en-US,en;q=0.8"}
+	req.Header.Add("X-Origin", "chrome-extension://mgijmajocgfcbeboacabfgobmjgjcoja")
 
 	var res *http.Response
 	for i:=0;i<3;i++ {
@@ -475,9 +475,12 @@ func GoogleDictionary(lang, text string) (GoogleDictionaryResponse, error) {
 			break
 		}
 	}
+	if res.StatusCode != 200 {
+		return GoogleDictionaryResponse{}, errors.New("non 200 http code from GoogleDictionary:" + lang + " "+ text)
+	}
 	var result GoogleDictionaryResponse
 	if err = json.NewDecoder(res.Body).Decode(&result); err != nil {
 		return GoogleDictionaryResponse{}, err
 	}
-	return result, nil
+	return result, err
 }

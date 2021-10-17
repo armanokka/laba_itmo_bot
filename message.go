@@ -28,7 +28,7 @@ func handleMessage(message tgbotapi.Message) {
 
     var user = NewUser(message.From.ID, warn)
     if message.Text == "/start" {
-        user := NewUser(message.From.ID, warn)
+        user = NewUser(message.From.ID, warn)
         if !user.Exists() {
             if message.From.LanguageCode == "" {
                 message.From.LanguageCode = "en"
@@ -46,11 +46,26 @@ func handleMessage(message tgbotapi.Message) {
             }
         }
 
-        user.SendStart()
+        msg := tgbotapi.NewMessage(message.From.ID, user.Localize("Just send me a text and I will translate it"))
+        keyboard := tgbotapi.NewReplyKeyboard(
+            tgbotapi.NewKeyboardButtonRow(
+                tgbotapi.NewKeyboardButton(user.Localize("My Language")),
+                tgbotapi.NewKeyboardButton(user.Localize("Translate Language")),
+            ),
+        )
+
+        msg.ReplyMarkup = keyboard
+        msg.ParseMode = tgbotapi.ModeHTML
+        bot.Send(msg)
+
+        analytics.Bot(user.ID, msg.Text, "Start")
+        user.WriteUserLog(message.Text)
+        user.WriteBotLog("pm_start", msg.Text)
         return
     }
     user.Fill()
 
+    user.WriteUserLog(message.Text)
 
     if low := strings.ToLower(message.Text); low != "" {
         switch {
@@ -81,6 +96,7 @@ func handleMessage(message tgbotapi.Message) {
             bot.Send(msg)
 
             analytics.Bot(message.Chat.ID, msg.Text, "Set my lang")
+            user.WriteBotLog("pm_my_lang", msg.Text)
             return
         case in(command("translate language"), low):
             keyboard := tgbotapi.NewInlineKeyboardMarkup()
@@ -110,6 +126,7 @@ func handleMessage(message tgbotapi.Message) {
             bot.Send(msg)
 
             analytics.Bot(message.Chat.ID, msg.Text, "Set translate lang")
+            user.WriteBotLog("pm_to_lang", msg.Text)
             return
         }
     }
@@ -122,7 +139,9 @@ func handleMessage(message tgbotapi.Message) {
             warn(err)
             return
         }
-        bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Всего " + strconv.Itoa(users) + " юзеров"))
+        msg := tgbotapi.NewMessage(message.Chat.ID, "Всего " + strconv.Itoa(users) + " юзеров")
+        bot.Send(msg)
+        user.WriteBotLog("pm_stats", msg.Text)
     case "/users":
         if message.From.ID != AdminID {
             return
@@ -146,8 +165,11 @@ func handleMessage(message tgbotapi.Message) {
         doc := tgbotapi.NewInputMediaDocument("users.txt")
         group := tgbotapi.NewMediaGroup(message.From.ID, []interface{}{doc})
         bot.Send(group)
+        user.WriteBotLog("pm_users", "{document was sended}")
     case "/id":
-        bot.Send(tgbotapi.NewMessage(message.From.ID, strconv.FormatInt(message.From.ID, 10)))
+        msg := tgbotapi.NewMessage(message.From.ID, strconv.FormatInt(message.From.ID, 10))
+        bot.Send(msg)
+        user.WriteBotLog("pm_id", msg.Text)
     default: // Сообщение не является командой.
         if user.MyLang == user.ToLang {
             bot.Send(tgbotapi.NewMessage(message.From.ID, user.Localize("The original text language and the target language are the same, please set different")))
@@ -217,6 +239,7 @@ func handleMessage(message tgbotapi.Message) {
             tr = translate.GoogleHTMLTranslation{}
             single = translate.GoogleTranslateSingleResult{}
             samples = translate.ReversoQueryResponse{}
+            dict = translate.GoogleDictionaryResponse{}
             wg = sync.WaitGroup{}
             errs = make(chan error, 2)
         )
@@ -249,18 +272,29 @@ func handleMessage(message tgbotapi.Message) {
             }
         }()
 
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            dict, err = translate.GoogleDictionary(from, text)
+            if err != nil {
+                errs <- err
+            }
+        }()
+
         wg.Wait()
 
         if len(errs) > 0 {
-            WarnAdmin("Ошибка зафиксирована, но у пользователя всё ок", <-errs, "\n"+text, from, to)
+            err = <-errs
+            WarnAdmin("Ошибка зафиксирована, но у пользователя всё ок", err, "\n"+text, from, to)
+            logrus.Error(err)
         }
 
         close(errs)
 
         samples, err = translate.ReversoQueryService(text, from, tr.Text, to)
         if err != nil {
-            warn(err)
-            return
+            WarnAdmin("Ошибка зафиксирована, но у пользователя всё ок", err, "\n"+text, from, to)
+            logrus.Error(err)
         }
 
         otherLanguagesButton := tgbotapi.InlineKeyboardButton{
@@ -282,7 +316,12 @@ func handleMessage(message tgbotapi.Message) {
 
         if len(samples.Suggestions) > 0 || len(samples.List) > 0 {
             keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
-                tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("💬" + user.Localize("Examples"), "examples:"+from+":"+to+":"+text)))
+                tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("💬 " + user.Localize("Examples"), "examples:"+from+":"+to+":"+text)))
+        }
+
+        if dict.Status == 200 && dict.DictionaryData != nil {
+            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
+                tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("ℹ️" + user.Localize("Meaning"), "meaning:"+from+":"+text)))
         }
 
         edit := tgbotapi.NewEditMessageTextAndMarkup(message.From.ID, msg.MessageID, tr.Text, keyboard)
@@ -291,6 +330,6 @@ func handleMessage(message tgbotapi.Message) {
 
         analytics.Bot(user.ID, tr.Text, "Translated")
 
-        //user.WriteLog("pm_translate")
+        user.WriteBotLog("pm_translate", tr.Text)
     }
 }

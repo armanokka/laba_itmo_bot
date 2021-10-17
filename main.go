@@ -7,7 +7,7 @@ import (
 	"github.com/armanokka/translobot/dashbot"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/gorilla/mux"
-	"github.com/k0kubun/pp"
+	"github.com/robfig/cron"
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -26,10 +26,8 @@ import (
 func main() {
 	// Logging
 	logrus.SetFormatter(&logrus.TextFormatter{
-		DisableColors: false,
-		FullTimestamp: false,
+		ForceColors: true,
 	})
-
 	// Profiling
 	go func() {
 		r := mux.NewRouter()
@@ -56,6 +54,7 @@ func main() {
 	var err error
 	db, err = gorm.Open(mysql.Open("f0568401_user:NlEbEgda@tcp(141.8.193.236:3306)/f0568401_user?charset=utf8mb4&parseTime=True&loc=Local"), &gorm.Config{
 		SkipDefaultTransaction:                   true,
+		CreateBatchSize: 1000,
 	})
 	if err != nil {
 		panic(err)
@@ -71,7 +70,16 @@ func main() {
 
 	
 	analytics = dashbot.NewAPI(DashBotAPIKey, WarnErrorAdmin)
-	
+
+	cronjob := cron.New()
+	if err = cronjob.AddFunc("@daily", func() {
+		if err = db.Model(&UsersLogs{}).Exec("DELETE FROM users_logs WHERE date < (NOW() - INTERVAL 30 DAY)").Error; err != nil {
+			WarnAdmin(err)
+		}
+	}); err != nil {
+		panic(err)
+	}
+
 	// Initializing bot
 	api, err := tgbotapi.NewBotAPI(strings.TrimSpace(botToken))
 	if err != nil {
@@ -87,14 +95,19 @@ func main() {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, syscall.SIGQUIT, syscall.SIGHUP)
-	defer signal.Stop(c)
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, syscall.SIGQUIT, syscall.SIGHUP)
+	defer signal.Stop(stop)
 	go func() {
-		<-c
+		<-stop
 		// Write profile of mem and cpu
+		logrus.Info("Programm was stopped, cancelling context...")
+
 		cancel()
 	}()
+
+	go runLogger(logs, stop, 1 * time.Minute)
+
 
 	var wg sync.WaitGroup
 	go func() {
@@ -121,6 +134,7 @@ func main() {
 							return
 						}
 						WarnAdmin("panic:", err)
+						logrus.Panicln(err)
 					}
 				}()
 				start := time.Now()
@@ -133,11 +147,13 @@ func main() {
 				} else if update.MyChatMember != nil {
 					handleMyChatMember(*update.MyChatMember)
 				}
-				pp.Println(time.Since(start).String())
+				logrus.Print("Time spent ", time.Since(start).String())
 			}()
 		case <-ctx.Done():
+			logrus.Info("Context was stopped, waiting for goroutines...")
 			wg.Wait()
-			break
+			logrus.Info("Bot was disabled.")
+			return
 		}
 	}
 }

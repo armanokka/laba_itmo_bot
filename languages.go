@@ -592,6 +592,17 @@ var translations = map[string]map[string]string{
         "uk": "Приклади",
         "id": "Contoh",
     },
+    "Meaning": {
+        "en": "Meaning",
+        "uz": "Ma'nosi",
+        "de": "Bedeutung",
+        "es": "Sentido",
+        "uk": "Значення",
+        "id": "Arti",
+        "it": "Significato",
+        "ru": "Значение",
+        "pt": "Significado",
+    },
 }
 
 

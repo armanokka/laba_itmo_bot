@@ -1,7 +1,7 @@
 package main
 
 import (
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"database/sql"
 	"github.com/patrickmn/go-cache"
 	"time"
 )
@@ -60,19 +60,33 @@ func (u User) Localize(text string, placeholders ...interface{}) string {
 	return localize(text, u.Lang, placeholders...)
 }
 
-//func (u User) WriteLog(intent string) {
-//	var exists bool
-//	if err := db.Model(&UsersLogs{}).Raw("SELECT EXISTS(SELECT uid FROM users_logs WHERE intent=? AND id=? ORDER BY uid DESC LIMIT 1)", intent, u.ID).Find(&exists).Error; err != nil {
-//		u.error(err)
-//	}
-//	if !exists {
-//		err := db.Model(&UsersLogs{}).Raw("UPDATE users_logs SET times=times+1 WHERE id=? AND intent=? ORDER BY uid DESC LIMIT 1", u.ID, intent).Error
-//		if err != nil {
-//			u.error(err)
-//		}
-//		return
-//	}
-//}
+// WriteLog writes messages log of user and bot. For user intent mustn't be passed.
+func (u User) WriteBotLog(intent, text string) {
+	go func() {
+		logs <- UsersLogs{
+			ID:      u.ID,
+			Intent:  sql.NullString{
+				String: cutStringUTF16(intent, 25),
+				Valid:  true,
+			},
+			Text:    cutStringUTF16(text, 518),
+			FromBot: true,
+			Date:    time.Now(),
+		}
+	}()
+}
+
+func (u User) WriteUserLog(text string) {
+	go func() {
+		logs <- UsersLogs{
+			ID:      u.ID,
+			Intent:  sql.NullString{},
+			Text:    cutStringUTF16(text, 518),
+			FromBot: false,
+			Date:    time.Now(),
+		}
+	}()
+}
 
 func (u User) UpdateLastActivity() {
 	if err := db.Model(&Users{}).Where("id = ?", u.ID).Update("last_activity", time.Now()).Error; err != nil {
@@ -80,18 +94,3 @@ func (u User) UpdateLastActivity() {
 	}
 }
 
-func (u User) SendStart() {
-	msg := tgbotapi.NewMessage(u.ID, u.Localize("Just send me a text and I will translate it"))
-	keyboard := tgbotapi.NewReplyKeyboard(
-		tgbotapi.NewKeyboardButtonRow(
-			tgbotapi.NewKeyboardButton(u.Localize("My Language")),
-			tgbotapi.NewKeyboardButton(u.Localize("Translate Language")),
-		),
-	)
-
-	msg.ReplyMarkup = keyboard
-	msg.ParseMode = tgbotapi.ModeHTML
-	bot.Send(msg)
-
-	analytics.Bot(u.ID, msg.Text, "Start")
-}

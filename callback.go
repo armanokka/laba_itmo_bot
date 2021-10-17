@@ -24,12 +24,15 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
     switch callback.Data {
     case "none":
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
+        user.WriteBotLog("cb_none", "")
+        return
     case "delete":
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
         bot.Send(tgbotapi.DeleteMessageConfig{
             ChatID:          callback.From.ID,
             MessageID:       callback.Message.MessageID,
         })
+        user.WriteBotLog("cb_delete", "")
         return
     }
 
@@ -51,6 +54,30 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
             warn(err)
             return
         }
+        user.WriteUserLog("cb_voice")
+    case "meaning": // arr[1] - lang, arr[2] - text
+        meaning, err := translate.GoogleDictionary(arr[1], arr[2])
+        if err != nil {
+            warn(err)
+            return
+        }
+        text := ""
+        for _, data := range meaning.DictionaryData {
+            for _, entry := range data.Entries {
+                for _, family := range entry.SenseFamilies {
+                    for _, sense := range family.Senses {
+                        text += "\n✅ " + sense.Definition.Text
+                    }
+                }
+            }
+        }
+        msg := tgbotapi.NewMessage(callback.From.ID, text)
+        msg.ReplyToMessageID = callback.Message.MessageID
+        keyboard := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
+        msg.ReplyMarkup = keyboard
+        bot.Send(msg)
+        bot.Send(tgbotapi.NewCallback(callback.ID, ""))
+        user.WriteBotLog("cb_meaning", text)
     case "examples": // arr[1], arr[2], arr[3] = from, to, source text. Target text in replied message
         samples, err := translate.ReversoQueryService(arr[3], arr[1], callback.Message.ReplyToMessage.Text, arr[2])
         if err != nil {
@@ -74,6 +101,7 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
         }
         msg := tgbotapi.NewMessage(callback.From.ID, text)
         msg.ParseMode = tgbotapi.ModeHTML
+        msg.ReplyToMessageID = callback.Message.MessageID
         keyboard := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
         msg.ReplyMarkup = keyboard
         if _, err = bot.Send(msg); err != nil {
@@ -81,6 +109,7 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
         }
 
         bot.Send(tgbotapi.NewCallback(callback.ID, ""))
+        user.WriteBotLog("cb_exmp", text)
     case "dictionary": // arr[1], arr[2] = from, to (in iso6391)
         callback.Message.ReplyToMessage.Text = strings.ToLower(callback.Message.ReplyToMessage.Text)
 
@@ -118,11 +147,13 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
         message.ParseMode = tgbotapi.ModeHTML
         keyboard := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
         message.ReplyMarkup = keyboard
+        message.ReplyToMessageID = callback.Message.MessageID
 
         if _, err = bot.Send(message); err != nil {
             pp.Println(err)
         }
         bot.Send(tgbotapi.NewCallback(callback.ID, ""))
+        user.WriteBotLog("cb_dict", text)
     case "set_my_lang_by_callback": // arr[1] - lang
         user.Update(Users{MyLang: arr[1]})
 
@@ -133,6 +164,7 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
         bot.AnswerCallbackQuery(call)
 
         analytics.Bot(callback.From.ID, "callback answered", "My language detected by callback")
+        user.WriteBotLog("cb_set_my_lang", call.Text)
     case "set_translate_lang_by_callback": // arr[1] - lang
         user.Update(Users{ToLang: arr[1]})
 
@@ -143,7 +175,7 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
         bot.AnswerCallbackQuery(call)
     
         analytics.Bot(callback.From.ID, "callback answered", "Translate language detected by callback")
-
+        user.WriteBotLog("cb_set_to_lang", call.Text)
     case "set_translate_lang_pagination": // arr[1] - offset
         offset, err := strconv.Atoi(arr[1])
         if err != nil {
@@ -167,24 +199,20 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
                 keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_translate_lang_by_callback:"  + code))
             }
         }
-        if offset == 0 {
-            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-                tgbotapi.NewInlineKeyboardButtonData("◀", "set_translate_lang_pagination:0"),
-                tgbotapi.NewInlineKeyboardButtonData(arr[1] + "/"+strconv.Itoa(len(codes)), "none"),
-                tgbotapi.NewInlineKeyboardButtonData("▶", "set_translate_lang_pagination:"+strconv.Itoa(offset+LanguagesPaginationLimit))))
-        } else if offset + LanguagesPaginationLimit < len(codes) {
-            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-                tgbotapi.NewInlineKeyboardButtonData("◀", "set_translate_lang_pagination:"+strconv.Itoa(offset-LanguagesPaginationLimit)),
-                tgbotapi.NewInlineKeyboardButtonData(arr[1] + "/"+strconv.Itoa(len(codes)), "none"),
-                tgbotapi.NewInlineKeyboardButtonData("▶", "set_translate_lang_pagination:"+strconv.Itoa(offset+LanguagesPaginationLimit))))
-        } else {
-            langsLen := strconv.Itoa(len(codes))
-            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-                tgbotapi.NewInlineKeyboardButtonData("◀", "set_translate_lang_pagination:"+strconv.Itoa(offset-LanguagesPaginationLimit)),
-                tgbotapi.NewInlineKeyboardButtonData(langsLen+"/"+langsLen, "none"),
-                tgbotapi.NewInlineKeyboardButtonData("▶", "set_translate_lang_pagination:"+strconv.Itoa(offset)),
-                ))
+        current := offset
+        prev := "0"
+        if offset > 0 {
+            prev = strconv.Itoa(offset - LanguagesPaginationLimit)
         }
+        next := strconv.Itoa(offset + LanguagesPaginationLimit)
+        if offset + LanguagesPaginationLimit > len(codes) {
+            next = strconv.Itoa(offset)
+            current = len(codes)
+        }
+        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData("◀", "set_translate_lang_pagination:" + prev),
+            tgbotapi.NewInlineKeyboardButtonData(strconv.Itoa(current) + "/"+strconv.Itoa(len(codes)), "none"),
+            tgbotapi.NewInlineKeyboardButtonData("▶", "set_translate_lang_pagination:" + next)))
 
         bot.Send(tgbotapi.NewEditMessageReplyMarkup(callback.From.ID, callback.Message.MessageID, keyboard))
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
@@ -211,25 +239,21 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
                 keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_my_lang_by_callback:"  + code))
             }
         }
-        if offset <= 0 {
-            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-                tgbotapi.NewInlineKeyboardButtonData("◀", "set_my_lang_pagination:0"),
-                tgbotapi.NewInlineKeyboardButtonData(arr[1] + "/"+strconv.Itoa(len(codes)), "none"),
-                tgbotapi.NewInlineKeyboardButtonData("▶", "set_my_lang_pagination:"+strconv.Itoa(LanguagesPaginationLimit))))
-        } else if offset + LanguagesPaginationLimit < len(codes) {
-            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-                tgbotapi.NewInlineKeyboardButtonData("◀", "set_my_lang_pagination:"+strconv.Itoa(offset-LanguagesPaginationLimit)),
-                tgbotapi.NewInlineKeyboardButtonData(arr[1] + "/"+strconv.Itoa(len(codes)), "none"),
-                tgbotapi.NewInlineKeyboardButtonData("▶", "set_my_lang_pagination:"+strconv.Itoa(offset+LanguagesPaginationLimit))))
-        } else {
-            langsLen := strconv.Itoa(len(codes))
-            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-                tgbotapi.NewInlineKeyboardButtonData("◀", "set_my_lang_pagination:"+strconv.Itoa(offset-LanguagesPaginationLimit)),
-                tgbotapi.NewInlineKeyboardButtonData(langsLen+"/"+langsLen, "none"),
-                tgbotapi.NewInlineKeyboardButtonData("▶", "set_my_lang_pagination:"+strconv.Itoa(offset))),
-            )
+        current := offset
+        prev := "0"
+        if offset > 0 {
+            prev = strconv.Itoa(offset - LanguagesPaginationLimit)
         }
-        
+        next := strconv.Itoa(offset + LanguagesPaginationLimit)
+        if offset + LanguagesPaginationLimit > len(codes) {
+            next = strconv.Itoa(offset)
+            current = len(codes)
+        }
+        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData("◀", "set_my_lang_pagination:" + prev),
+            tgbotapi.NewInlineKeyboardButtonData(strconv.Itoa(current) + "/"+strconv.Itoa(len(codes)), "none"),
+            tgbotapi.NewInlineKeyboardButtonData("▶", "set_my_lang_pagination:" + next)))
+
         bot.Send(tgbotapi.NewEditMessageReplyMarkup(callback.From.ID, callback.Message.MessageID, keyboard))
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
     }
