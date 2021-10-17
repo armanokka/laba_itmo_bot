@@ -475,9 +475,6 @@ func GoogleDictionary(lang, text string) (GoogleDictionaryResponse, error) {
 			break
 		}
 	}
-	if res.StatusCode != 200 {
-		return GoogleDictionaryResponse{}, errors.New("non 200 http code from GoogleDictionary:" + lang + " "+ text)
-	}
 	var result GoogleDictionaryResponse
 	if err = json.NewDecoder(res.Body).Decode(&result); err != nil {
 		return GoogleDictionaryResponse{}, err

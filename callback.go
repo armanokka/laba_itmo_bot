@@ -99,6 +99,7 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
         for _, suggestion := range samples.Suggestions {
             text += "\n>" + suggestion.Suggestion
         }
+        text = strings.NewReplacer("<em>", "<b>", "</em>", "</b>").Replace(text)
         msg := tgbotapi.NewMessage(callback.From.ID, text)
         msg.ParseMode = tgbotapi.ModeHTML
         msg.ReplyToMessageID = callback.Message.MessageID
