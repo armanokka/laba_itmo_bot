@@ -308,7 +308,6 @@ func sendSpeech(lang, text string, callbackID string, user User) error {
     }
     audio := tgbotapi.NewAudio(user.ID, f.Name())
     audio.Title = text
-    audio.Performer = "@TransloBot"
     kb := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
     audio.ReplyMarkup = kb
     bot.Send(audio)

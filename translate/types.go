@@ -314,3 +314,105 @@ type Samples struct {
     FavoriteID interface{} `json:"favoriteId"`
     IsGood bool `json:"isGood"`
 }
+
+type GoogleDictionaryResponse struct {
+    DictionaryData []DictionaryData `json:"dictionaryData"`
+    Status int `json:"status"`
+}
+type Desktop struct {
+    Width int `json:"width"`
+    Height int `json:"height"`
+    URL string `json:"url"`
+}
+type Mobile struct {
+    Width int `json:"width"`
+    Height int `json:"height"`
+    URL string `json:"url"`
+}
+type Tablet struct {
+    Width int `json:"width"`
+    Height int `json:"height"`
+    URL string `json:"url"`
+}
+type Images struct {
+    Desktop Desktop `json:"desktop"`
+    Mobile Mobile `json:"mobile"`
+    Tablet Tablet `json:"tablet"`
+}
+type Fragments struct {
+    Text string `json:"text"`
+}
+type DeepEtymology struct {
+    Fragments []Fragments `json:"fragments"`
+    Text string `json:"text"`
+}
+type Etymology struct {
+    Images Images `json:"images"`
+    Etymology DeepEtymology `json:"etymology"`
+}
+type Phonetics struct {
+    Text string `json:"text"`
+    OxfordAudio string `json:"oxfordAudio"`
+}
+type FormType struct {
+    PosTag string `json:"posTag"`
+    Description string `json:"description"`
+}
+type MorphUnits struct {
+    FormType FormType `json:"formType"`
+    WordForm string `json:"wordForm"`
+}
+type ExampleGroups struct {
+    Examples []string `json:"examples"`
+}
+type Definition struct {
+    Fragments []Fragments `json:"fragments"`
+    Text string `json:"text"`
+}
+type RelevantTopics struct {
+    Name string `json:"name"`
+    ClusterName string `json:"clusterName"`
+}
+type Senses struct {
+    ConciseDefinition string `json:"conciseDefinition"`
+    DomainClasses []string `json:"domainClasses"`
+    ExampleGroups []ExampleGroups `json:"exampleGroups"`
+    Definition Definition `json:"definition"`
+    SourceID string `json:"sourceId"`
+    RelevantTopics []RelevantTopics `json:"relevantTopics"`
+    WsdSenseIds []string `json:"wsdSenseIds"`
+    AdditionalExamples []string `json:"additionalExamples"`
+}
+type PartsOfSpeech struct {
+    Value string `json:"value"`
+}
+type SenseFamilies struct {
+    MorphUnits []MorphUnits `json:"morphUnits"`
+    Senses []Senses `json:"senses"`
+    PartsOfSpeech []PartsOfSpeech `json:"partsOfSpeech"`
+}
+type Corpus struct {
+    Name string `json:"name"`
+    Language string `json:"language"`
+}
+type Entries struct {
+    Headword string `json:"headword"`
+    Etymology Etymology `json:"etymology"`
+    Phonetics []Phonetics `json:"phonetics"`
+    SenseFamilies []SenseFamilies `json:"senseFamilies"`
+    Locale string `json:"locale"`
+    HeadwordMatchesUserQuery bool `json:"headwordMatchesUserQuery"`
+    EntrySeqNo int `json:"entrySeqNo"`
+    SourceID string `json:"sourceId"`
+    Corpus Corpus `json:"corpus"`
+}
+type UsageOverTimeImage struct {
+    Desktop Desktop `json:"desktop"`
+    Mobile Mobile `json:"mobile"`
+    Tablet Tablet `json:"tablet"`
+}
+type DictionaryData struct {
+    Entries []Entries `json:"entries"`
+    QueryTerm string `json:"queryTerm"`
+    UsageOverTimeImage UsageOverTimeImage `json:"usageOverTimeImage"`
+}

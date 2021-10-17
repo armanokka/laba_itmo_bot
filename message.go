@@ -214,10 +214,10 @@ func handleMessage(message tgbotapi.Message) {
         text = strings.ReplaceAll(text, "\n", "<br>")
 
         var (
-            tr translate.GoogleHTMLTranslation
-            single translate.GoogleTranslateSingleResult
-            samples translate.ReversoQueryResponse
-            wg sync.WaitGroup
+            tr = translate.GoogleHTMLTranslation{}
+            single = translate.GoogleTranslateSingleResult{}
+            samples = translate.ReversoQueryResponse{}
+            wg = sync.WaitGroup{}
             errs = make(chan error, 2)
         )
 
@@ -252,8 +252,7 @@ func handleMessage(message tgbotapi.Message) {
         wg.Wait()
 
         if len(errs) > 0 {
-            warn(<-errs)
-            return
+            WarnAdmin("Ошибка зафиксирована, но у пользователя всё ок", <-errs, "\n"+text, from, to)
         }
 
         close(errs)
@@ -265,7 +264,7 @@ func handleMessage(message tgbotapi.Message) {
         }
 
         otherLanguagesButton := tgbotapi.InlineKeyboardButton{
-            Text:                         "🔀",
+            Text:                         "🔀 " + user.Localize("Другие языки"),
             SwitchInlineQueryCurrentChat: &text,
         }
         From := langs[from]
@@ -273,21 +272,17 @@ func handleMessage(message tgbotapi.Message) {
             tgbotapi.NewInlineKeyboardRow(
                 tgbotapi.NewInlineKeyboardButtonData("From " + From.Emoji + " " + From.Name, "none")),
             tgbotapi.NewInlineKeyboardRow(
-                tgbotapi.NewInlineKeyboardButtonData("🎙",  "speech_this_message_and_replied_one:"+from+":"+to),
-                otherLanguagesButton,
-            ),
-        )
+                tgbotapi.NewInlineKeyboardButtonData("🔊 " + user.Localize("To voice"),  "speech_this_message_and_replied_one:"+from+":"+to)),
+            tgbotapi.NewInlineKeyboardRow(otherLanguagesButton))
 
         if len(single.Dict) > 0 {
-            l := len(keyboard.InlineKeyboard) - 1
-            keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l],
-                tgbotapi.NewInlineKeyboardButtonData("📚", "dictionary:"+from+":"+to))
+            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
+                tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("📚 " + user.Localize("Dictionary"), "dictionary:"+from+":"+to)))
         }
 
         if len(samples.Suggestions) > 0 || len(samples.List) > 0 {
-            l := len(keyboard.InlineKeyboard) - 1
-            keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l],
-                tgbotapi.NewInlineKeyboardButtonData("💬", "examples:"+from+":"+to+":"+text))
+            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
+                tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("💬" + user.Localize("Examples"), "examples:"+from+":"+to+":"+text)))
         }
 
         edit := tgbotapi.NewEditMessageTextAndMarkup(message.From.ID, msg.MessageID, tr.Text, keyboard)

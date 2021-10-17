@@ -433,24 +433,17 @@ func GetSamples(from, to, source, translation string) (GetSamplesResponse, error
 	}
 
 	buf := bytes.NewBuffer(j)
-
-	request := func() (*http.Response, error) {
-		req, err := http.NewRequest("POST", "https://cps.reverso.net/api2/GetSamples", buf)
-		if err != nil {
-			return nil, err
-		}
-		req.Header.Add("Content-Type", "application/json; charset=UTF-8")
-		req.Header.Add("Accept-Language", "en-US,en;q=0.8")
-		req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36")
-		//req.Header["accept-language"] = []string{"en-US,en;q=0.8"}
-		//req.Header["content-type"] = []string{"application/json; charset=UTF-8"}
-		//req.Header["user-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36"}
-		return http.DefaultClient.Do(req)
+	req, err := http.NewRequest("POST", "https://cps.reverso.net/api2/GetSamples", buf)
+	if err != nil {
+		return GetSamplesResponse{}, err
 	}
+	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Add("Accept-Language", "en-US,en;q=0.8")
+	req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36")
 
 	var res *http.Response
 	for i:=0;i<3;i++ {
-		res, err = request()
+		res, err = http.DefaultClient.Do(req)
 		//body, err := ioutil.ReadAll(res.Body)
 		//pp.Println(string(body))
 		if err == nil {
@@ -460,6 +453,31 @@ func GetSamples(from, to, source, translation string) (GetSamplesResponse, error
 	var result GetSamplesResponse
 	if err = json.NewDecoder(res.Body).Decode(&result); err != nil {
 		return GetSamplesResponse{}, err
+	}
+	return result, nil
+}
+
+
+func GoogleDictionary(lang, text string) (GoogleDictionaryResponse, error) {
+	req, err := http.NewRequest("GET", "https://content-dictionaryextension-pa.googleapis.com/v1/dictionaryExtensionData?term=" + url.PathEscape(text) + "&corpus=" + url.PathEscape(lang) + "&key=AIzaSyA6EEtrDCfBkHV8uU2lgGY-N383ZgAOo7Y", nil)
+	if err != nil {
+		return GoogleDictionaryResponse{}, err
+	}
+	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
+	req.Header["x-origin"] = []string{"en-US,en;q=0.8"}
+
+	var res *http.Response
+	for i:=0;i<3;i++ {
+		res, err = http.DefaultClient.Do(req)
+		//body, err := ioutil.ReadAll(res.Body)
+		//pp.Println(string(body))
+		if err == nil {
+			break
+		}
+	}
+	var result GoogleDictionaryResponse
+	if err = json.NewDecoder(res.Body).Decode(&result); err != nil {
+		return GoogleDictionaryResponse{}, err
 	}
 	return result, nil
 }
