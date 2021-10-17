@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/k0kubun/pp"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -480,4 +481,55 @@ func GoogleDictionary(lang, text string) (GoogleDictionaryResponse, error) {
 		return GoogleDictionaryResponse{}, err
 	}
 	return result, err
+}
+
+func YandexTranscription(from, to, text string) (YandexTranscriptionResponse, error) {
+	fromto := url.PathEscape(from) + "-" + url.PathEscape(to)
+	req, err := http.NewRequest("GET", "https://dictionary.yandex.net/dicservice.json/lookupMultiple?ui=en&srv=tr-text&text=" + url.PathEscape(text) + "&type=regular,syn,ant,deriv&lang=" + fromto + "&flags=7591&dict=" + fromto, nil)
+	if err != nil {
+		return YandexTranscriptionResponse{}, err
+	}
+	req.Header.Add("Content-Type", "text/html")
+
+	var res *http.Response
+	for i:=0;i<3;i++ {
+		res, err = http.DefaultClient.Do(req)
+		if err == nil {
+			break
+		}
+	}
+	var result = make(map[string]interface{})
+	if err = json.NewDecoder(res.Body).Decode(&result); err != nil {
+		return YandexTranscriptionResponse{}, err
+	}
+
+	if code, ok := result["code"]; ok {
+		pp.Println(result)
+		return YandexTranscriptionResponse{
+			StatusCode:    code.(float64),
+		}, nil
+	}
+
+	if _, ok := result[fromto]; !ok {
+		return YandexTranscriptionResponse{
+			StatusCode:    -2,
+		}, nil
+	}
+	data, _ := json.Marshal(result[fromto])
+
+	var out yandexTranscriptionResponse
+	if err = json.Unmarshal(data, &out); err != nil {
+		return YandexTranscriptionResponse{}, err
+	}
+	if len(out.Regular) == 0 {
+		return YandexTranscriptionResponse{
+			StatusCode:    -1,
+		}, nil
+	}
+
+	return YandexTranscriptionResponse{
+		StatusCode:    200,
+		Transcription: out.Regular[0].Ts,
+		Pos:           out.Regular[0].Pos.Tooltip,
+	}, nil
 }

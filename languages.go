@@ -603,6 +603,17 @@ var translations = map[string]map[string]string{
         "ru": "Значение",
         "pt": "Significado",
     },
+    "Translations": {
+        "es": "Traducciones",
+        "uk": "Переклади",
+        "pt": "Traduções",
+        "en": "Translations",
+        "it": "Traduzioni",
+        "uz": "Tarjimalar",
+        "de": "Übersetzungen",
+        "ru": "Переводы",
+        "id": "Terjemahan",
+    },
 }
 
 

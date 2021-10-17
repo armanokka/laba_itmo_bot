@@ -311,7 +311,7 @@ func handleMessage(message tgbotapi.Message) {
 
         if len(single.Dict) > 0 {
             keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
-                tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("📚 " + user.Localize("Dictionary"), "dictionary:"+from+":"+to)))
+                tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("📚 " + user.Localize("Translations"), "translations:"+from+":"+to)))
         }
 
         if len(samples.Suggestions) > 0 || len(samples.List) > 0 {
@@ -321,7 +321,7 @@ func handleMessage(message tgbotapi.Message) {
 
         if dict.Status == 200 && dict.DictionaryData != nil {
             keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
-                tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("ℹ️" + user.Localize("Meaning"), "meaning:"+from+":"+text)))
+                tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("ℹ️" + user.Localize("Dictionary"), "dictonary:"+from+":"+text)))
         }
 
         edit := tgbotapi.NewEditMessageTextAndMarkup(message.From.ID, msg.MessageID, tr.Text, keyboard)

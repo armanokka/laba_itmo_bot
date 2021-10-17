@@ -9,6 +9,7 @@ import (
     "github.com/sirupsen/logrus"
     "strconv"
     "strings"
+    "sync"
 )
 
 func handleCallback(callback tgbotapi.CallbackQuery) {
@@ -55,7 +56,7 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
             return
         }
         user.WriteUserLog("cb_voice")
-    case "meaning": // arr[1] - lang, arr[2] - text
+    case "dictonary": // arr[1] - lang, arr[2] - text
         meaning, err := translate.GoogleDictionary(arr[1], arr[2])
         if err != nil {
             warn(err)
@@ -111,17 +112,46 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
 
         bot.Send(tgbotapi.NewCallback(callback.ID, ""))
         user.WriteBotLog("cb_exmp", text)
-    case "dictionary": // arr[1], arr[2] = from, to (in iso6391)
+    case "translations": // arr[1], arr[2] = from, to (in iso6391)
         callback.Message.ReplyToMessage.Text = strings.ToLower(callback.Message.ReplyToMessage.Text)
 
-        tr, err := translate.GoogleTranslateSingle(arr[1], arr[2], callback.Message.ReplyToMessage.Text)
-        if err != nil {
-            warn(err)
-            return
+        var (
+            tr translate.GoogleTranslateSingleResult
+            trscript translate.YandexTranscriptionResponse
+            wg sync.WaitGroup
+            err error
+            errs = make(chan error, 2)
+        )
+
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            tr, err = translate.GoogleTranslateSingle(arr[1], arr[2], callback.Message.ReplyToMessage.Text)
+            if err != nil {
+                errs <- err
+            }
+        }()
+
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            trscript, err = translate.YandexTranscription(arr[1], arr[2], callback.Message.ReplyToMessage.Text)
+            if err != nil {
+                errs <- err
+            }
+        }()
+
+        wg.Wait()
+        if len(errs) > 0 {
+            err = <-errs
+            WarnAdmin("ошибка, но юзер не узнал", err, arr[1], arr[2], callback.Message.ReplyToMessage.Text)
         }
 
+        var text string = callback.Message.ReplyToMessage.Text
+        if trscript.StatusCode == 200 {
+            text += " <b>" + trscript.Transcription + "</b> <i>" + trscript.Pos + "</i>"
+        }
 
-        var text string
 
         for _, dict := range tr.Dict {
             text += "\n"

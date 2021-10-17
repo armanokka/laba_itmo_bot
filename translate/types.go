@@ -416,3 +416,57 @@ type DictionaryData struct {
     QueryTerm string `json:"queryTerm"`
     UsageOverTimeImage UsageOverTimeImage `json:"usageOverTimeImage"`
 }
+
+type YandexTranscriptionResponse struct {
+    StatusCode float64
+    Transcription string
+    Pos string // noun, verb...
+}
+
+type Pos struct {
+    Code string `json:"code"`
+    Text string `json:"text"`
+    Tooltip string `json:"tooltip"`
+}
+type Syn struct {
+    Text string `json:"text"`
+    Pos Pos `json:"pos"`
+    Fr int `json:"fr"`
+}
+type Mean struct {
+    Text string `json:"text"`
+}
+
+type Ex struct {
+    Text string `json:"text"`
+    Tr []Tr `json:"tr"`
+}
+type Tr struct {
+    Text string `json:"text"`
+    Pos Pos `json:"pos"`
+    Fr int `json:"fr"`
+    Syn []Syn `json:"syn,omitempty"`
+    Mean []Mean `json:"mean"`
+    Ex []Ex `json:"ex,omitempty"`
+}
+type Tables struct {
+    Headers []string `json:"headers"`
+    Rows [][]string `json:"rows"`
+}
+type Data struct {
+    Tables []Tables `json:"tables"`
+}
+type Prdg struct {
+    Irreg bool `json:"irreg"`
+    Data []Data `json:"data"`
+}
+type Regular struct {
+    Text string `json:"text"`
+    Pos Pos `json:"pos"`
+    Ts string `json:"ts"`
+    Tr []Tr `json:"tr"`
+    Prdg Prdg `json:"prdg,omitempty"`
+}
+type yandexTranscriptionResponse struct {
+    Regular []Regular `json:"regular"`
+}
