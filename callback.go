@@ -158,6 +158,9 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
             for i, term := range dict.Terms {
                 text += "\n<b>" + term + "\n└</b>"
                 //l := len(dict.Entry[i].ReverseTranslation) - 1
+                if i > len(dict.Entry) - 1 {
+                    continue
+                }
                 for idx, entry := range dict.Entry[i].ReverseTranslation {
                     if idx > 0 {
                         text += ", "
