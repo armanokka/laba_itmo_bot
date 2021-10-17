@@ -20,12 +20,12 @@ func handleMyChatMember(update tgbotapi.ChatMemberUpdated) {
 		db.Model(&Users{}).Where("id = ?", update.From.ID).Update("blocked", false)
 		bot.Send(tgbotapi.NewMessage(update.From.ID, user.Localize("Welcome. We are glad that you are with us again. ✋")))
 
-		//user.WriteLog("bot_unblocked")
+		user.WriteBotLog("bot_was_unblocked", "")
 	case "kicked":
 		analytics.User("{bot_was_blocked}", &update.From)
 		analytics.Bot(update.From.ID, "{bot_was_blocked}", "bot_blocked")
 		db.Model(&Users{}).Where("id = ?", update.From.ID).Update("blocked", true)
 
-		//user.WriteLog("bot_blocked")
+		user.WriteBotLog("bot_was_blocked", "")
 	}
 }
