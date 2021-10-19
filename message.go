@@ -58,6 +58,15 @@ func handleMessage(message tgbotapi.Message) {
         msg.ReplyMarkup = keyboard
         msg.ParseMode = tgbotapi.ModeHTML
         bot.Send(msg)
+        
+        msg = tgbotapi.NewMessage(message.From.ID, user.Localize("Try built-in mode"))
+        query := "пишите сюда"
+        replyMarkup := tgbotapi.NewInlineKeyboardMarkup([]tgbotapi.InlineKeyboardButton{{
+            Text:                         user.Localize("try"),
+            SwitchInlineQuery:            &query,
+        }})
+        msg.ReplyMarkup = replyMarkup
+        bot.Send(msg)
 
         analytics.Bot(user.ID, msg.Text, "Start")
         user.WriteUserLog(message.Text)
@@ -261,7 +270,6 @@ func handleMessage(message tgbotapi.Message) {
         var (
             tr = translate.GoogleHTMLTranslation{}
             single = translate.GoogleTranslateSingleResult{}
-            samples = translate.ReversoQueryResponse{}
             rev translate.ReversoTranslation
             dict = translate.GoogleDictionaryResponse{}
             wg = sync.WaitGroup{}
@@ -308,13 +316,16 @@ func handleMessage(message tgbotapi.Message) {
         wg.Add(1)
         go func() {
             defer wg.Done()
-            rev, err = translate.ReversoTranslate(translate.ReversoIso6392(from), translate.ReversoIso6392(to), text)
-            if err != nil {
-                errs <- err
+            if inMapValues(translate.ReversoSupportedLangs(), from, to) {
+                rev, err = translate.ReversoTranslate(translate.ReversoIso6392(from), translate.ReversoIso6392(to), text)
+                if err != nil {
+                    errs <- err
+                }
             }
         }()
 
         wg.Wait()
+        close(errs)
 
         if len(errs) > 0 {
             err = <-errs
@@ -322,26 +333,21 @@ func handleMessage(message tgbotapi.Message) {
             logrus.Error(err)
         }
 
-        close(errs)
 
-        otherLanguagesButton := tgbotapi.InlineKeyboardButton{
-            Text:                         "🔀 " + user.Localize("Другие языки"),
-            SwitchInlineQueryCurrentChat: &text,
-        }
         From := langs[from]
         keyboard := tgbotapi.NewInlineKeyboardMarkup(
             tgbotapi.NewInlineKeyboardRow(
                 tgbotapi.NewInlineKeyboardButtonData("From " + From.Emoji + " " + From.Name, "none")),
             tgbotapi.NewInlineKeyboardRow(
                 tgbotapi.NewInlineKeyboardButtonData("🔊 " + user.Localize("To voice"),  "speech_this_message_and_replied_one:"+from+":"+to)),
-            tgbotapi.NewInlineKeyboardRow(otherLanguagesButton))
+        )
 
         if len(single.Dict) > 0 {
             keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
                 tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("📚 " + user.Localize("Translations"), "translations:"+from+":"+to)))
         }
 
-        if len(samples.Suggestions) > 0 || len(rev.ContextResults.Results) > 0 && len(rev.ContextResults.Results[0].SourceExamples) > 0 {
+        if len(rev.ContextResults.Results) > 0 && len(rev.ContextResults.Results[0].SourceExamples) > 0 {
             keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
                 tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("💬 " + user.Localize("Examples"), "examples:"+from+":"+to)))
         }

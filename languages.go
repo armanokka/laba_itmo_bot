@@ -618,6 +618,28 @@ var translations = map[string]map[string]string{
         "ru": "Переводы",
         "id": "Terjemahan",
     },
+    "Try built-in mode": {
+        "uz": "O'rnatilgan rejimni sinab ko'ring",
+        "uk": "Спробуйте вбудований режим",
+        "pt": "Experimente o modo integrado",
+        "id": "Coba mode bawaan",
+        "es": "Prueba el modo integrado",
+        "en": "Try built-in mode",
+        "it": "Prova la modalità integrata",
+        "de": "Probieren Sie den integrierten Modus aus",
+        "ru": "Попробуйте встроенный режим",
+    },
+    "try": {
+        "uz": "harakat qilib ko'ring",
+        "ru": "пытаться",
+        "uk": "спробуйте",
+        "pt": "Experimente",
+        "it": "Tentativo",
+        "de": "Versuchen",
+        "es": "tratar",
+        "id": "mencoba",
+        "en": "try",
+    },
 }
 
 

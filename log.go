@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"github.com/sirupsen/logrus"
 	"os"
 	"time"
@@ -28,7 +29,27 @@ func runLogger(chanLogs chan UsersLogs, stop chan os.Signal, interval time.Durat
 			}
 			if err := db.Create(inserts).Error; err != nil {
 				WarnAdmin(err)
-				break
+
+				for _, insert := range inserts {
+					user := NewUser(insert.ID, func(err error) {
+						WarnAdmin(err)
+					})
+					if !user.Exists() {
+						if err = db.Create(&Users{
+							ID:         insert.ID,
+							MyLang:     "en",
+							ToLang:     "es",
+							Act:        sql.NullString{},
+							Mailing:    true,
+							Usings:     0,
+							Lang:       "en",
+							ReferrerID: 0,
+							Blocked:    false,
+						}).Error; err != nil {
+							WarnAdmin(err)
+						}
+					}
+				}
 			}
 			inserts = nil
 			logrus.Info("message logs were saved")

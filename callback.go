@@ -64,11 +64,22 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
             return
         }
         text := ""
-        for i1, data := range meaning.DictionaryData {
-            for i2, entry := range data.Entries {
-                for i3, family := range entry.SenseFamilies {
-                    for i4, sense := range family.Senses {
-                        text += "\n\n" + strconv.Itoa(i1+i2+i3+i4+1) + ". " + sense.Definition.Text
+        var i int
+        for _, data := range meaning.DictionaryData {
+            i += 1 // тут i+1 без проверки индекса
+            for idx, entry := range data.Entries {
+                if idx > 0 {
+                    i += 1
+                }
+                for idx, family := range entry.SenseFamilies {
+                    if idx > 0 {
+                        i += 1
+                    }
+                    for idx, sense := range family.Senses {
+                        if idx > 0 {
+                            i += 1
+                        }
+                        text += "\n\n" + strconv.Itoa(i) + ". " + sense.Definition.Text
                     }
                 }
             }
@@ -83,7 +94,6 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
     case "examples": // arr[1] - from, arr[2] - to. Target text in replied message
         var (
             tr translate.ReversoTranslation
-            suggestions translate.ReversoSuggestionsResponse
             wg sync.WaitGroup
             errs = make(chan error, 2)
             err error
@@ -98,16 +108,9 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
             }
         }()
 
-        wg.Add(1)
-        go func() {
-            defer wg.Done()
-            suggestions, err = translate.ReversoSuggestions(arr[1], arr[2], callback.Message.ReplyToMessage.Text)
-            if err != nil {
-                errs <- err
-            }
-        }()
-
         wg.Wait()
+        close(errs)
+
         if len(errs) > 0 {
             warn(<-errs)
             return
@@ -120,12 +123,7 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
                 text += "\n\n" + context.SourceExamples[i] + "\n<b>└</b>" + context.TargetExamples[i]
             }
         }
-        for i, sug := range suggestions.Suggestions {
-            if i == 0 {
-                text += "\n"
-            }
-            text += "\n>"+sug.Suggestion + " " + langs[sug.Lang].Emoji
-        }
+
         text = strings.NewReplacer("<em>", "<b>", "</em>", "</b>").Replace(text)
         msg := tgbotapi.NewMessage(callback.From.ID, text)
         msg.ParseMode = tgbotapi.ModeHTML
@@ -168,6 +166,7 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
         }()
 
         wg.Wait()
+        close(errs)
         if len(errs) > 0 {
             err = <-errs
             WarnAdmin("ошибка, но юзер не узнал", err, arr[1], arr[2], callback.Message.ReplyToMessage.Text)
