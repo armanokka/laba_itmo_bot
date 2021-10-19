@@ -30,6 +30,10 @@ var commandTranslations = map[string][]string{
     },
 }
 
+var botLangs = []string{
+    "en", "ru", "de", "es", "uk", "uz", "id", "it", "pt",
+}
+
 var translations = map[string]map[string]string{
     "Сейчас бот переводит на %s. Выберите язык для перевода": map[string]string{
         "de": "Der Bot übersetzt derzeit in %s. Wählen Sie die Sprache für die Übersetzung aus",

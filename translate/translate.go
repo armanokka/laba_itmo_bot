@@ -533,3 +533,32 @@ func YandexTranscription(from, to, text string) (YandexTranscriptionResponse, er
 		Pos:           out.Regular[0].Pos.Tooltip,
 	}, nil
 }
+
+func ReversoSuggestions(from, to, text string) (ReversoSuggestionsResponse, error) {
+	data, err := json.Marshal(reversoSuggestionRequest{
+		Search:     text,
+		SourceLang: from,
+		TargetLang: to,
+	})
+	if err != nil {
+		return ReversoSuggestionsResponse{}, err
+	}
+	req, err := http.NewRequest("POST", "https://context.reverso.net/bst-suggest-service", bytes.NewBuffer(data))
+	if err != nil {
+		return ReversoSuggestionsResponse{}, err
+	}
+	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36")
+	var res *http.Response
+	for i:=0;i<3;i++ {
+		res, err = http.DefaultClient.Do(req)
+		if err == nil {
+			break
+		}
+	}
+	var result ReversoSuggestionsResponse
+	if err = json.NewDecoder(res.Body).Decode(&result); err != nil {
+		return ReversoSuggestionsResponse{}, err
+	}
+	return result, err
+}

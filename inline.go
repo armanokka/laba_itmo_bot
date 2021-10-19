@@ -16,7 +16,7 @@ import (
 
 func handleInline(update tgbotapi.InlineQuery) {
     analytics.User(update.Query, update.From)
-    
+
     warn := func(err error) {
         bot.AnswerInlineQuery(tgbotapi.InlineConfig{
             InlineQueryID:     update.ID,
@@ -26,6 +26,16 @@ func handleInline(update tgbotapi.InlineQuery) {
         WarnAdmin(err)
         logrus.Error(err)
     }
+
+    defer func() {
+        user := NewUser(update.From.ID, warn)
+        if !user.Exists() {
+            return
+        }
+        user.UpdateLastActivity()
+        user.WriteUserLog(update.Query)
+        user.WriteBotLog("inline_succeeded", "")
+    }()
 
     if update.Query == "" {
         bot.AnswerInlineQuery(

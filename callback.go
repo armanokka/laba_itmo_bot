@@ -21,7 +21,8 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
 
     user := NewUser(callback.From.ID, warn)
     user.Fill()
-    
+    defer user.UpdateLastActivity()
+
     switch callback.Data {
     case "none":
         bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
@@ -63,11 +64,11 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
             return
         }
         text := ""
-        for _, data := range meaning.DictionaryData {
-            for _, entry := range data.Entries {
-                for _, family := range entry.SenseFamilies {
-                    for _, sense := range family.Senses {
-                        text += "\n✅ " + sense.Definition.Text
+        for i1, data := range meaning.DictionaryData {
+            for i2, entry := range data.Entries {
+                for i3, family := range entry.SenseFamilies {
+                    for i4, sense := range family.Senses {
+                        text += "\n\n" + strconv.Itoa(i1+i2+i3+i4+1) + ". " + sense.Definition.Text
                     }
                 }
             }
@@ -79,26 +80,51 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
         bot.Send(msg)
         bot.Send(tgbotapi.NewCallback(callback.ID, ""))
         user.WriteBotLog("cb_meaning", text)
-    case "examples": // arr[1], arr[2], arr[3] = from, to, source text. Target text in replied message
-        samples, err := translate.ReversoQueryService(arr[3], arr[1], callback.Message.ReplyToMessage.Text, arr[2])
-        if err != nil {
-            warn(err)
+    case "examples": // arr[1] - from, arr[2] - to. Target text in replied message
+        var (
+            tr translate.ReversoTranslation
+            suggestions translate.ReversoSuggestionsResponse
+            wg sync.WaitGroup
+            errs = make(chan error, 2)
+            err error
+        )
+
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            tr, err = translate.ReversoTranslate(translate.ReversoIso6392(arr[1]), translate.ReversoIso6392(arr[2]), callback.Message.ReplyToMessage.Text)
+            if err != nil {
+                errs <- err
+            }
+        }()
+
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            suggestions, err = translate.ReversoSuggestions(arr[1], arr[2], callback.Message.ReplyToMessage.Text)
+            if err != nil {
+                errs <- err
+            }
+        }()
+
+        wg.Wait()
+        if len(errs) > 0 {
+            warn(<-errs)
             return
         }
 
         var text string
 
-        if len(samples.List) > 10 {
-            samples.List = samples.List[:10]
+        for _, context := range tr.ContextResults.Results {
+            for i := 0; i < len(context.SourceExamples) && i < 3; i++ {
+                text += "\n\n" + context.SourceExamples[i] + "\n<b>└</b>" + context.TargetExamples[i]
+            }
         }
-
-        for i, sample := range samples.List {
-            sample.TText = strings.ReplaceAll(sample.TText, ` class="both"`, "")
-            text += "\n\n<b>" + strconv.Itoa(i+1) + ".</b> " + sample.TText + "\n└" + sample.SText
-        }
-        text += "\n"
-        for _, suggestion := range samples.Suggestions {
-            text += "\n>" + suggestion.Suggestion
+        for i, sug := range suggestions.Suggestions {
+            if i == 0 {
+                text += "\n"
+            }
+            text += "\n>"+sug.Suggestion + " " + langs[sug.Lang].Emoji
         }
         text = strings.NewReplacer("<em>", "<b>", "</em>", "</b>").Replace(text)
         msg := tgbotapi.NewMessage(callback.From.ID, text)
@@ -149,7 +175,7 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
 
         var text string = callback.Message.ReplyToMessage.Text
         if trscript.StatusCode == 200 {
-            text += " <b>" + trscript.Transcription + "</b> <i>" + trscript.Pos + "</i>"
+            text += " <b>/" + trscript.Transcription + "/</b> <i>" + trscript.Pos + "</i>"
         }
 
 
@@ -184,9 +210,12 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
         message.ReplyToMessageID = callback.Message.MessageID
 
         if _, err = bot.Send(message); err != nil {
-            pp.Println(err)
+            call := tgbotapi.NewCallback(callback.ID, user.Localize("Available only for idioms, nouns, verbs and adjectives"))
+            call.ShowAlert = true
+            bot.Send(call)
+        } else {
+            bot.Send(tgbotapi.NewCallback(callback.ID, ""))
         }
-        bot.Send(tgbotapi.NewCallback(callback.ID, ""))
         user.WriteBotLog("cb_dict", text)
     case "set_my_lang_by_callback": // arr[1] - lang
         user.Update(Users{MyLang: arr[1]})

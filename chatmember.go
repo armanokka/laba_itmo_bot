@@ -12,7 +12,7 @@ func handleMyChatMember(update tgbotapi.ChatMemberUpdated) {
 		logrus.Error(err)
 	}
 	user := NewUser(update.Chat.ID, warn)
-
+	defer user.UpdateLastActivity()
 	switch update.NewChatMember.Status {
 	case "member": // юзер разбанил бота
 		analytics.User("{bot_was_UNblocked}", &update.From)

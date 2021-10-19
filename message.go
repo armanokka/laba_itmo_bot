@@ -28,20 +28,21 @@ func handleMessage(message tgbotapi.Message) {
 
     var user = NewUser(message.From.ID, warn)
     if message.Text == "/start" {
-        user = NewUser(message.From.ID, warn)
         if !user.Exists() {
             if message.From.LanguageCode == "" {
                 message.From.LanguageCode = "en"
             }
-            err := db.Create(&Users{
+            if !in(botLangs, message.From.LanguageCode) {
+                message.From.LanguageCode = "en"
+            }
+            if err := db.Create(&Users{
                 ID:         message.From.ID,
                 MyLang:     message.From.LanguageCode,
                 ToLang:     "en",
                 Act:        sql.NullString{},
                 Mailing:    true,
                 Lang:       message.From.LanguageCode,
-            }).Error
-            if err != nil {
+            }).Error; err != nil {
                 warn(err)
             }
         }
@@ -64,6 +65,7 @@ func handleMessage(message tgbotapi.Message) {
         return
     }
     user.Fill()
+    defer user.UpdateLastActivity()
 
     user.WriteUserLog(message.Text)
 
@@ -228,6 +230,27 @@ func handleMessage(message tgbotapi.Message) {
             to = user.MyLang
         }
 
+        //suggestions, err := translate.ReversoSuggestions(from, to, text)
+        //if err == nil && len(suggestions.Suggestions) > 0 {
+        //    replacer := strings.NewReplacer("<b>", "", "</b>", "")
+        //    var exists bool
+        //    for _, sug := range suggestions.Suggestions {
+        //        if replacer.Replace(sug.Suggestion) == text {
+        //            exists = true
+        //        }
+        //    }
+        //   if !exists { // прове
+        //       keyboard := tgbotapi.NewInlineKeyboardMarkup()
+        //       for _, suggestion := range suggestions.Suggestions {
+        //           suggestion.Suggestion = replacer.Replace(suggestion.Suggestion)
+        //           keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+        //               tgbotapi.NewInlineKeyboardButtonData(suggestion.Suggestion + " " + langs[suggestion.Lang].Emoji, "translate:"+from+":"+to)))
+        //       }
+        //       bot.Send(tgbotapi.NewEditMessageTextAndMarkup(message.From.ID, msg.MessageID, text, keyboard))
+        //       return
+        //   }
+        //}
+
         if len(message.Entities) > 0 {
             text = applyEntitiesHtml(text, message.Entities)
         } else if len(message.CaptionEntities) > 0 {
@@ -239,6 +262,7 @@ func handleMessage(message tgbotapi.Message) {
             tr = translate.GoogleHTMLTranslation{}
             single = translate.GoogleTranslateSingleResult{}
             samples = translate.ReversoQueryResponse{}
+            rev translate.ReversoTranslation
             dict = translate.GoogleDictionaryResponse{}
             wg = sync.WaitGroup{}
             errs = make(chan error, 2)
@@ -281,6 +305,15 @@ func handleMessage(message tgbotapi.Message) {
             }
         }()
 
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            rev, err = translate.ReversoTranslate(translate.ReversoIso6392(from), translate.ReversoIso6392(to), text)
+            if err != nil {
+                errs <- err
+            }
+        }()
+
         wg.Wait()
 
         if len(errs) > 0 {
@@ -290,12 +323,6 @@ func handleMessage(message tgbotapi.Message) {
         }
 
         close(errs)
-
-        samples, err = translate.ReversoQueryService(text, from, tr.Text, to)
-        if err != nil {
-            WarnAdmin("Ошибка зафиксирована, но у пользователя всё ок", err, "\n"+text, from, to)
-            logrus.Error(err)
-        }
 
         otherLanguagesButton := tgbotapi.InlineKeyboardButton{
             Text:                         "🔀 " + user.Localize("Другие языки"),
@@ -314,9 +341,9 @@ func handleMessage(message tgbotapi.Message) {
                 tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("📚 " + user.Localize("Translations"), "translations:"+from+":"+to)))
         }
 
-        if len(samples.Suggestions) > 0 || len(samples.List) > 0 {
+        if len(samples.Suggestions) > 0 || len(rev.ContextResults.Results) > 0 && len(rev.ContextResults.Results[0].SourceExamples) > 0 {
             keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
-                tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("💬 " + user.Localize("Examples"), "examples:"+from+":"+to+":"+text)))
+                tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("💬 " + user.Localize("Examples"), "examples:"+from+":"+to)))
         }
 
         if dict.Status == 200 && dict.DictionaryData != nil {

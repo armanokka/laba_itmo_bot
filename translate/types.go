@@ -470,3 +470,37 @@ type Regular struct {
 type yandexTranscriptionResponse struct {
     Regular []Regular `json:"regular"`
 }
+
+type ReversoSuggestionsResponse struct {
+    Suggestions []ReversoSuggestion `json:"suggestions"`
+    Fuzzy1 []ReversoFuzzy  `json:"fuzzy1"`
+    Fuzzy2 []ReversoFuzzy `json:"fuzzy2"`
+    Request struct {
+        Search     string `json:"search"`
+        SourceLang string `json:"source_lang"`
+        TargetLang string `json:"target_lang"`
+        MaxResults int    `json:"max_results"`
+        Mode       int    `json:"mode"`
+    } `json:"request"`
+    TimeMs int `json:"time_ms"`
+}
+
+type ReversoSuggestion struct {
+    Lang       string `json:"lang"`
+    Suggestion string `json:"suggestion"`
+    Weight     int    `json:"weight"`
+    IsFromDict bool   `json:"isFromDict"`
+}
+
+type ReversoFuzzy struct {
+    Lang       string `json:"lang"`
+    Suggestion string `json:"suggestion"`
+    Weight     int    `json:"weight"`
+    IsFromDict bool   `json:"isFromDict"`
+}
+
+type reversoSuggestionRequest struct {
+    Search     string `json:"search"`
+    SourceLang string `json:"source_lang"`
+    TargetLang string `json:"target_lang"`
+}
