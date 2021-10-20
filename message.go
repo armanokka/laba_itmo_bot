@@ -2,7 +2,7 @@ package main
 
 import (
     "database/sql"
-    "errors"
+    "github.com/go-errors/errors"
     "github.com/armanokka/translobot/translate"
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -273,7 +273,7 @@ func handleMessage(message tgbotapi.Message) {
             rev translate.ReversoTranslation
             dict = translate.GoogleDictionaryResponse{}
             wg = sync.WaitGroup{}
-            errs = make(chan error, 2)
+            errs = make(chan *errors.Error, 5)
         )
 
         // Переводим в гугле, как обычно
@@ -282,11 +282,11 @@ func handleMessage(message tgbotapi.Message) {
             defer wg.Done()
             tr, err = translate.GoogleHTMLTranslate(from, to, text)
             if err != nil {
-                errs <- err
+                errs <- errors.New(err)
             }
             if tr.Text == "" && text != "" {
                 WarnAdmin("короче на " + to + " не переводит")
-                errs <- err
+                errs <- errors.New(err)
                 return
             }
 
@@ -300,7 +300,7 @@ func handleMessage(message tgbotapi.Message) {
             defer wg.Done()
             single, err = translate.GoogleTranslateSingle(from, to, text)
             if err != nil {
-                errs <- err
+                errs <- errors.New(err)
             }
         }()
 
@@ -309,7 +309,7 @@ func handleMessage(message tgbotapi.Message) {
             defer wg.Done()
             dict, err = translate.GoogleDictionary(from, text)
             if err != nil {
-                errs <- err
+                errs <- errors.New(err)
             }
         }()
 
@@ -319,7 +319,7 @@ func handleMessage(message tgbotapi.Message) {
             if inMapValues(translate.ReversoSupportedLangs(), from, to) {
                 rev, err = translate.ReversoTranslate(translate.ReversoIso6392(from), translate.ReversoIso6392(to), text)
                 if err != nil {
-                    errs <- err
+                    errs <- errors.New(err)
                 }
             }
         }()
@@ -329,7 +329,7 @@ func handleMessage(message tgbotapi.Message) {
 
         if len(errs) > 0 {
             err = <-errs
-            WarnAdmin("Ошибка зафиксирована, но у пользователя всё ок", err, "\n"+text, from, to)
+            WarnAdmin("Ошибка зафиксирована, но у пользователя всё ок", err.(*errors.Error).ErrorStack(), "\n"+text, from, to)
             logrus.Error(err)
         }
 
