@@ -260,40 +260,14 @@ func handleMessage(message tgbotapi.Message) {
         //   }
         //}
 
-        if len(message.Entities) > 0 {
-            text = applyEntitiesHtml(text, message.Entities)
-        } else if len(message.CaptionEntities) > 0 {
-            text = applyEntitiesHtml(text, message.CaptionEntities)
-        }
-        text = strings.ReplaceAll(text, "\n", "<br>")
-
         var (
             tr = translate.GoogleHTMLTranslation{}
             single = translate.GoogleTranslateSingleResult{}
             rev translate.ReversoTranslation
             dict = translate.GoogleDictionaryResponse{}
             wg = sync.WaitGroup{}
-            errs = make(chan *errors.Error, 5)
+            errs = make(chan *errors.Error, 4)
         )
-
-        // Переводим в гугле, как обычно
-        wg.Add(1)
-        go func() {
-            defer wg.Done()
-            tr, err = translate.GoogleHTMLTranslate(from, to, text)
-            if err != nil {
-                errs <- errors.New(err)
-            }
-            if tr.Text == "" && text != "" {
-                WarnAdmin("короче на " + to + " не переводит")
-                errs <- errors.New(err)
-                return
-            }
-
-            tr.Text = strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "").Replace(tr.Text)
-            tr.Text = strings.ReplaceAll(tr.Text, `<br>`, "\n")
-
-        }()
 
         wg.Add(1)
         go func() {
@@ -316,12 +290,37 @@ func handleMessage(message tgbotapi.Message) {
         wg.Add(1)
         go func() {
             defer wg.Done()
-            if inMapValues(translate.ReversoSupportedLangs(), from, to) {
+            if inMapValues(translate.ReversoSupportedLangs(), from, to) && from != to {
                 rev, err = translate.ReversoTranslate(translate.ReversoIso6392(from), translate.ReversoIso6392(to), text)
                 if err != nil {
                     errs <- errors.New(err)
                 }
             }
+        }()
+
+        if len(message.Entities) > 0 {
+            text = applyEntitiesHtml(text, message.Entities)
+        } else if len(message.CaptionEntities) > 0 {
+            text = applyEntitiesHtml(text, message.CaptionEntities)
+        }
+        text = strings.ReplaceAll(text, "\n", "<br>")
+
+        // Переводим в гугле, как обычно
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            tr, err = translate.GoogleHTMLTranslate(from, to, text)
+            if err != nil {
+                errs <- errors.New(err)
+            }
+            if tr.Text == "" && text != "" {
+                WarnAdmin("короче на " + to + " не переводит")
+                errs <- errors.New(err)
+                return
+            }
+
+            tr.Text = strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "").Replace(tr.Text)
+            tr.Text = strings.ReplaceAll(tr.Text, `<br>`, "\n")
         }()
 
         wg.Wait()
