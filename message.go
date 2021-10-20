@@ -315,7 +315,7 @@ func handleMessage(message tgbotapi.Message) {
             }
             if tr.Text == "" && text != "" {
                 WarnAdmin("короче на " + to + " не переводит")
-                errs <- errors.New(err)
+                errs <- errors.New("короче на " + to + " не переводит")
                 return
             }
 
