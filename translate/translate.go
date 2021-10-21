@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/go-errors/errors"
 	"github.com/k0kubun/pp"
 	"io/ioutil"
 	"net/http"
@@ -102,7 +102,7 @@ func DetectLanguageGoogle(text string) (string, error) {
 	for i:=0;i<3;i++ {
 		var err error
 		res, err = request()
-		if err == nil {
+		if err == nil && res.StatusCode == 200 {
 			break
 		}
 	}
@@ -121,30 +121,30 @@ func DetectLanguageGoogle(text string) (string, error) {
 }
 
 func TTS(lang, text string) ([]byte, error) {
+	params := url.Values{}
+	params.Add("ei", "-4vsYPWwArKWjgahzpfACw")
+	params.Add("yv", "3")
+	params.Add("ttsp", "tl:" + url.QueryEscape(lang) + ",txt:" + url.QueryEscape(text) + ",spd:1")
+	params.Add("async", "_fmt:jspb")
+
+	req, err := http.NewRequest("GET", "https://www.google.com/async/translate_tts?" + params.Encode(), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header["content-type"] = []string{"application/x-www-form-urlencoded;charset=UTF-8"}
+	req.Header["cookie"] = []string{"NID=217=mKKVUv88-BW4Vouxnh-qItLKFt7zm0Gj3yDLC8oDKb_PuLIb-p6fcPVcsXZWeNwkjDSFfypZ8BKqy27dcJH-vFliM4dKaiKdFrm7CherEXVt-u_DPr9Yecyv_tZRSDU7E52n5PWwOkaN2I0-naa85Tb9-uTjaKjO0gmdbShqba5MqKxuTLY; 1P_JAR=2021-06-18-16; DV=A3qPWv6ELckmsH4dFRGdR1fe4Gj-oRcZWqaFSPtAjwAAAAA"}
+	req.Header["origin"] = []string{"https://www.google.com"}
+	req.Header["referer"] = []string{"https://www.google.com/"}
+	req.Header["sec-fetch-site"] = []string{"cross-site"}
+	req.Header["sec-fetch-mode"] = []string{"cors"}
+	req.Header["sec-fetch-dest"] = []string{"empty"}
+	req.Header["sec-ch-ua-mobile"] = []string{"?0"}
+	req.Header["sec-ch-ua"] = []string{`" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"`}
+	req.Header["user-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.101 Safari/537.36"}
+
 
 	tts := func(text string) ([]byte, error) {
-		params := url.Values{}
-		params.Add("ei", "-4vsYPWwArKWjgahzpfACw")
-		params.Add("yv", "3")
-		params.Add("ttsp", "tl:" + url.QueryEscape(lang) + ",txt:" + url.QueryEscape(text) + ",spd:1")
-		params.Add("async", "_fmt:jspb")
-
-		req, err := http.NewRequest("GET", "https://www.google.com/async/translate_tts?" + params.Encode(), nil)
-		if err != nil {
-			return nil, err
-		}
-		req.Header["content-type"] = []string{"application/x-www-form-urlencoded;charset=UTF-8"}
-		req.Header["cookie"] = []string{"NID=217=mKKVUv88-BW4Vouxnh-qItLKFt7zm0Gj3yDLC8oDKb_PuLIb-p6fcPVcsXZWeNwkjDSFfypZ8BKqy27dcJH-vFliM4dKaiKdFrm7CherEXVt-u_DPr9Yecyv_tZRSDU7E52n5PWwOkaN2I0-naa85Tb9-uTjaKjO0gmdbShqba5MqKxuTLY; 1P_JAR=2021-06-18-16; DV=A3qPWv6ELckmsH4dFRGdR1fe4Gj-oRcZWqaFSPtAjwAAAAA"}
-		req.Header["origin"] = []string{"https://www.google.com"}
-		req.Header["referer"] = []string{"https://www.google.com/"}
-		req.Header["sec-fetch-site"] = []string{"cross-site"}
-		req.Header["sec-fetch-mode"] = []string{"cors"}
-		req.Header["sec-fetch-dest"] = []string{"empty"}
-		req.Header["sec-ch-ua-mobile"] = []string{"?0"}
-		req.Header["sec-ch-ua"] = []string{`" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"`}
-		req.Header["user-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.101 Safari/537.36"}
-
-		res, err := http.DefaultClient.Do(req)
+		res, err := HTTPClient.Do(req)
 		if err != nil {
 			return nil, err
 		}
@@ -250,16 +250,21 @@ func GoogleHTMLTranslate(from, to, text string) (GoogleHTMLTranslation, error) {
 	for i:=0;i<3;i++ {
 		var err error
 		res, err = request()
-		if err == nil {
+		if err == nil && res.StatusCode == 200 {
 			break
 		}
 	}
 
 
 	if from == "auto" { // придёт два значения
-		var out []string
-		if err := json.NewDecoder(res.Body).Decode(&out); err != nil {
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
 			return GoogleHTMLTranslation{}, err
+		}
+
+		var out []string
+		if err = json.Unmarshal(body, &out); err != nil {
+			return GoogleHTMLTranslation{}, errors.WrapPrefix(err, string(body), 0)
 		}
 		if len(out) != 2 {
 			return GoogleHTMLTranslation{}, errors.New("пришло не два значения от переводчика, разделитель \"|\":" + strings.Join(out, "|"))
@@ -269,9 +274,14 @@ func GoogleHTMLTranslate(from, to, text string) (GoogleHTMLTranslation, error) {
 			From: out[1],
 		}, nil
 	} else {
-		var out string
-		if err := json.NewDecoder(res.Body).Decode(&out); err != nil {
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
 			return GoogleHTMLTranslation{}, err
+		}
+
+		var out string
+		if err = json.Unmarshal(body, &out); err != nil {
+			return GoogleHTMLTranslation{}, errors.WrapPrefix(body, string(body), 0)
 		}
 		return GoogleHTMLTranslation{
 			Text: out,
@@ -324,7 +334,7 @@ func ReversoTranslate(from, to, text string) (ReversoTranslation, error) {
 	var res *http.Response
 	for i:=0;i<3;i++ {
 		res, err = request()
-		if err == nil {
+		if err == nil && res.StatusCode == 200 {
 			break
 		}
 	}
@@ -336,7 +346,7 @@ func ReversoTranslate(from, to, text string) (ReversoTranslation, error) {
 
 	var ret ReversoTranslation
 	if err = json.Unmarshal(body, &ret); err != nil {
-		return ReversoTranslation{}, err
+		return ReversoTranslation{}, errors.WrapPrefix(err, string(body), 0)
 	}
 	return ret, nil
 }
@@ -401,25 +411,33 @@ func ReversoQueryService(sourceText, sourceLang, targetText, targetLang string) 
 }
 
 
-func GoogleTranslateSingle(from, to, text string, possibleLangs ...string) (GoogleTranslateSingleResult, error) {
+
+
+func GoogleTranslateSingle(from, to, text string) (GoogleTranslateSingleResult, error) {
 	var res *http.Response
 	var err error
-	var hl string
-	if possibleLangs != nil {
-		hl = strings.Join(possibleLangs, ",")
-	}
+	req, err := http.NewRequest("POST", "https://translate.googleapis.com/translate_a/single?dt=t&dt=bd&dt=qc&dt=rm&dt=ex&client=gtx&sl=" + url.PathEscape(from) + "&tl=" + url.PathEscape(to) + "&q=" + url.PathEscape(text) + "&dj=1&dt=at&ie=UTF-16&oe=UTF-16&otf=2&srcrom=1&ssel=0&tsel=0", nil)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header["user-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36"}
+	req.Header["accept"] = []string{"application/json"}
+	req.Header["accept-language"] = []string{"en-GB, en;q=0.5"}
 	for i:=0;i<3;i++ {
-		res, err = http.Get("https://translate.googleapis.com/translate_a/single?dt=t&dt=bd&dt=qc&dt=rm&dt=ex&client=gtx&hl=" + url.PathEscape(hl) + "&sl=" + url.PathEscape(from) + "&tl=" + url.PathEscape(to) + "&q=" + url.PathEscape(text) + "&dj=1&tk=607955.607955")
-		if err == nil {
+		res, err = HTTPClient.Do(req)
+		if err == nil && res.StatusCode == 200 {
 			break
 		}
 	}
 
-	var out GoogleTranslateSingleResult
-	if err = json.NewDecoder(res.Body).Decode(&out); err != nil {
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
 		return GoogleTranslateSingleResult{}, err
 	}
-	return out, err
+
+	var result GoogleTranslateSingleResult
+	if err = json.Unmarshal(body, &result); err != nil {
+		return GoogleTranslateSingleResult{}, errors.WrapPrefix(err, string(body), 0)
+	}
+	return result, err
 }
 
 func GetSamples(from, to, source, translation string) (GetSamplesResponse, error) {
@@ -447,13 +465,18 @@ func GetSamples(from, to, source, translation string) (GetSamplesResponse, error
 		res, err = http.DefaultClient.Do(req)
 		//body, err := ioutil.ReadAll(res.Body)
 		//pp.Println(string(body))
-		if err == nil {
+		if err == nil && res.StatusCode == 200 {
 			break
 		}
 	}
-	var result GetSamplesResponse
-	if err = json.NewDecoder(res.Body).Decode(&result); err != nil {
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
 		return GetSamplesResponse{}, err
+	}
+
+	var result GetSamplesResponse
+	if err = json.Unmarshal(body, &result); err != nil {
+		return GetSamplesResponse{}, errors.WrapPrefix(err, string(body), 0)
 	}
 	return result, nil
 }

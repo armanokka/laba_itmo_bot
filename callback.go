@@ -84,6 +84,16 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
                 }
             }
         }
+        text = strings.ReplaceAll(text, "\n", "<br>")
+        if arr[1] != user.MyLang {
+            tr, err := translate.GoogleHTMLTranslate(arr[1], user.MyLang, text)
+            if err != nil {
+                warn(err)
+                return
+            }
+            text = tr.Text
+        }
+        text = strings.ReplaceAll(text, "<br>", "\n")
         msg := tgbotapi.NewMessage(callback.From.ID, text)
         msg.ReplyToMessageID = callback.Message.MessageID
         keyboard := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
@@ -92,39 +102,35 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
         bot.Send(tgbotapi.NewCallback(callback.ID, ""))
         user.WriteBotLog("cb_meaning", text)
     case "examples": // arr[1] - from, arr[2] - to. Target text in replied message
+        tr, err := translate.GoogleTranslateSingle(arr[1], arr[2], callback.Message.ReplyToMessage.Text)
+        if err != nil {
+            warn(err)
+        }
+
         var (
-            tr translate.ReversoTranslation
-            wg sync.WaitGroup
-            errs = make(chan error, 2)
-            err error
+        	  wg sync.WaitGroup
+            text string
         )
 
-        wg.Add(1)
-        go func() {
-            defer wg.Done()
-            tr, err = translate.ReversoTranslate(translate.ReversoIso6392(arr[1]), translate.ReversoIso6392(arr[2]), callback.Message.ReplyToMessage.Text)
-            if err != nil {
-                errs <- err
-            }
-        }()
+        if len(tr.Examples.Example) > 10 {
+            tr.Examples.Example = tr.Examples.Example[:10]
+        }
 
+        for _, example := range tr.Examples.Example {
+            wg.Add(1)
+            example := example
+            go func() {
+                defer wg.Done()
+                tr, err := translate.GoogleHTMLTranslate(arr[1], arr[2], example.Text)
+                if err != nil {
+                    warn(err)
+                }
+                text += "\n\n" + example.Text + "\n<b>└</b>" + tr.Text
+            }()
+
+        }
         wg.Wait()
-        close(errs)
 
-        if len(errs) > 0 {
-            warn(<-errs)
-            return
-        }
-
-        var text string
-
-        for _, context := range tr.ContextResults.Results {
-            for i := 0; i < len(context.SourceExamples) && i < 3; i++ {
-                text += "\n\n" + context.SourceExamples[i] + "\n<b>└</b>" + context.TargetExamples[i]
-            }
-        }
-
-        text = strings.NewReplacer("<em>", "<b>", "</em>", "</b>").Replace(text)
         msg := tgbotapi.NewMessage(callback.From.ID, text)
         msg.ParseMode = tgbotapi.ModeHTML
         msg.ReplyToMessageID = callback.Message.MessageID

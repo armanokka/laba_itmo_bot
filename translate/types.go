@@ -251,6 +251,7 @@ type GoogleTranslateSingleResult struct {
     Sentences []Sentences `json:"sentences"`
     Dict []Dict `json:"dict"`
     Src string `json:"src"`
+    AlternativeTranslations []AlternativeTranslations `json:"alternative_translations"`
     Confidence float64 `json:"confidence"`
     Spell Spell `json:"spell"`
     LdResult LdResult `json:"ld_result"`
@@ -267,7 +268,6 @@ type Entry struct {
     Word string `json:"word"`
     ReverseTranslation []string `json:"reverse_translation"`
     Score float64 `json:"score"`
-    Gender int `json:"gender,omitempty"`
 }
 type Dict struct {
     Pos string `json:"pos"`
@@ -275,6 +275,25 @@ type Dict struct {
     Entry []Entry `json:"entry"`
     BaseForm string `json:"base_form"`
     PosEnum int `json:"pos_enum"`
+}
+type Alternative struct {
+    WordPostproc string `json:"word_postproc"`
+    Score int `json:"score"`
+    HasPrecedingSpace bool `json:"has_preceding_space"`
+    AttachToNextToken bool `json:"attach_to_next_token"`
+    Backends []int `json:"backends"`
+}
+type Srcunicodeoffsets struct {
+    Begin int `json:"begin"`
+    End int `json:"end"`
+}
+type AlternativeTranslations struct {
+    SrcPhrase string `json:"src_phrase"`
+    Alternative []Alternative `json:"alternative"`
+    Srcunicodeoffsets []Srcunicodeoffsets `json:"srcunicodeoffsets"`
+    RawSrcSegment string `json:"raw_src_segment"`
+    StartPos int `json:"start_pos"`
+    EndPos int `json:"end_pos"`
 }
 type Spell struct {
 }

@@ -2,9 +2,9 @@ package main
 
 import (
     "database/sql"
-    "github.com/go-errors/errors"
     "github.com/armanokka/translobot/translate"
     iso6391 "github.com/emvi/iso-639-1"
+    "github.com/go-errors/errors"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "github.com/k0kubun/pp"
     "github.com/sirupsen/logrus"
@@ -101,7 +101,7 @@ func handleMessage(message tgbotapi.Message) {
             keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
                 tgbotapi.NewInlineKeyboardButtonData("◀", "set_my_lang_pagination:0"),
                 tgbotapi.NewInlineKeyboardButtonData("0/"+strconv.Itoa(len(codes)), "none"),
-                tgbotapi.NewInlineKeyboardButtonData("▶", "set_my_lang_pagination:20")))
+                tgbotapi.NewInlineKeyboardButtonData("▶", "set_my_lang_pagination:" + strconv.Itoa(LanguagesPaginationLimit))))
             msg := tgbotapi.NewMessage(message.Chat.ID, user.Localize("Ваш язык %s. Выберите Ваш язык.", iso6391.Name(user.MyLang)))
             msg.ReplyMarkup = keyboard
             bot.Send(msg)
@@ -131,7 +131,7 @@ func handleMessage(message tgbotapi.Message) {
             keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
                 tgbotapi.NewInlineKeyboardButtonData("◀", "set_translate_lang_pagination:0"),
                 tgbotapi.NewInlineKeyboardButtonData("0/"+strconv.Itoa(len(codes)), "none"),
-                tgbotapi.NewInlineKeyboardButtonData("▶", "set_translate_lang_pagination:20")))
+                tgbotapi.NewInlineKeyboardButtonData("▶", "set_translate_lang_pagination:" + strconv.Itoa(LanguagesPaginationLimit))))
             msg := tgbotapi.NewMessage(message.Chat.ID, user.Localize("Сейчас бот переводит на %s. Выберите язык для перевода", iso6391.Name(user.ToLang)))
             msg.ReplyMarkup = keyboard
             bot.Send(msg)
@@ -263,7 +263,6 @@ func handleMessage(message tgbotapi.Message) {
         var (
             tr = translate.GoogleHTMLTranslation{}
             single = translate.GoogleTranslateSingleResult{}
-            rev translate.ReversoTranslation
             dict = translate.GoogleDictionaryResponse{}
             wg = sync.WaitGroup{}
             errs = make(chan *errors.Error, 4)
@@ -276,6 +275,7 @@ func handleMessage(message tgbotapi.Message) {
             if err != nil {
                 errs <- errors.New(err)
             }
+            pp.Println(single)
         }()
 
         wg.Add(1)
@@ -284,17 +284,6 @@ func handleMessage(message tgbotapi.Message) {
             dict, err = translate.GoogleDictionary(from, text)
             if err != nil {
                 errs <- errors.New(err)
-            }
-        }()
-
-        wg.Add(1)
-        go func() {
-            defer wg.Done()
-            if inMapValues(translate.ReversoSupportedLangs(), from, to) && from != to {
-                rev, err = translate.ReversoTranslate(translate.ReversoIso6392(from), translate.ReversoIso6392(to), text)
-                if err != nil {
-                    errs <- errors.New(err)
-                }
             }
         }()
 
@@ -346,7 +335,7 @@ func handleMessage(message tgbotapi.Message) {
                 tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("📚 " + user.Localize("Translations"), "translations:"+from+":"+to)))
         }
 
-        if len(rev.ContextResults.Results) > 0 && len(rev.ContextResults.Results[0].SourceExamples) > 0 {
+        if len(single.Examples.Example) > 0 {
             keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
                 tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("💬 " + user.Localize("Examples"), "examples:"+from+":"+to)))
         }
