@@ -1,9 +1,9 @@
 package main
 
 import (
-    "errors"
     "github.com/armanokka/translobot/translate"
     iso6391 "github.com/emvi/iso-639-1"
+    "github.com/go-errors/errors"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "github.com/k0kubun/pp"
     "github.com/sirupsen/logrus"
@@ -156,26 +156,52 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
         callback.Message.ReplyToMessage.Text = strings.ToLower(callback.Message.ReplyToMessage.Text)
 
         var (
-            tr translate.GoogleTranslateSingleResult
             trscript translate.YandexTranscriptionResponse
             wg sync.WaitGroup
-            err error
             errs = make(chan error, 2)
         )
+        from := translate.ReversoIso6392(arr[1])
+        to := translate.ReversoIso6392(arr[2])
 
-        wg.Add(1)
-        go func() {
-            defer wg.Done()
-            tr, err = translate.GoogleTranslateSingle(arr[1], arr[2], callback.Message.ReplyToMessage.Text)
-            if err != nil {
-                errs <- err
+        rev, err := translate.ReversoTranslate(from, to, callback.Message.ReplyToMessage.Text)
+        if err != nil {
+            warn(errors.New(err))
+            return
+        }
+
+        var text string
+
+        for i, result := range rev.ContextResults.Results {
+            if result.Translation == "" {
+                continue
             }
-        }()
+            result := result
+            i := i
+            wg.Add(1)
+            go func() {
+                defer wg.Done()
+                tr, err := translate.ReversoTranslate(to, from, result.Translation)
+                if err != nil {
+                    errs <- errors.New(err)
+                }
+                text += "\n\n<b>" + result.Translation + "</b> <i>" + user.Localize(rev.ContextResults.Results[i].PartOfSpeech) + "</i>\n<b>└</b>"
+
+                for i, result := range tr.ContextResults.Results {
+                    if result.Translation == "" {
+                        continue
+                    }
+                    if i > 0 {
+                        text += ", "
+                    }
+                    text += result.Translation
+                }
+            }()
+        }
 
         wg.Add(1)
         go func() {
             defer wg.Done()
-            trscript, err = translate.YandexTranscription(arr[1], arr[2], callback.Message.ReplyToMessage.Text)
+            trscript, err = translate.YandexTranscription(translate.ReversoIso6391(from), translate.ReversoIso6391(to), callback.Message.ReplyToMessage.Text)
             if err != nil {
                 errs <- err
             }
@@ -183,32 +209,25 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
 
         wg.Wait()
         close(errs)
+
         if len(errs) > 0 {
             err = <-errs
-            WarnAdmin("ошибка, но юзер не узнал", err, arr[1], arr[2], callback.Message.ReplyToMessage.Text)
+            WarnAdmin("ошибка, но юзер не узнал", err.(*errors.Error), arr[1], arr[2], callback.Message.ReplyToMessage.Text)
         }
 
-        var text string = callback.Message.ReplyToMessage.Text
+        //var text string = callback.Message.ReplyToMessage.Text
+        pp.Println(trscript)
         if trscript.StatusCode == 200 {
-            text += " <b>/" + trscript.Transcription + "/</b> <i>" + trscript.Pos + "</i>"
-        }
-
-
-        for _, dict := range tr.Dict {
-            text += "\n"
-            for i, term := range dict.Terms {
-                text += "\n<b>" + term + "\n└</b>"
-                //l := len(dict.Entry[i].ReverseTranslation) - 1
-                if i > len(dict.Entry) - 1 {
-                    continue
-                }
-                for idx, entry := range dict.Entry[i].ReverseTranslation {
-                    if idx > 0 {
-                        text += ", "
-                    }
-                    text += entry
-                }
+            addition := ""
+            if trscript.Transcription != "" {
+                addition += " <b>/" + trscript.Transcription + "/</b>"
             }
+            if trscript.Pos != "" {
+                addition += " <i>" + trscript.Pos + "</i>"
+            }
+            text = callback.Message.ReplyToMessage.Text + addition + text
+        } else {
+            text = callback.Message.ReplyToMessage.Text + "\n" + text
         }
 
         if text == "" {

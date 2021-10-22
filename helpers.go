@@ -245,15 +245,6 @@ func makeArticle(id string, title, description string) tgbotapi.InlineQueryResul
     }
 }
 
-func inMap(m map[string]string, keys ...string) bool {
-    for _, key := range keys {
-        if _, ok := m[key]; !ok {
-            return false
-        }
-    }
-    return true
-}
-
 func inMapValues(m map[string]string, values ...string) bool {
     for _, v := range values {
         var ok bool
@@ -312,41 +303,4 @@ func sendSpeech(lang, text string, callbackID string, user User) error {
     audio.ReplyMarkup = kb
     bot.Send(audio)
     return nil
-}
-
-func numToEmoji(n int) string {
-    var out string
-    ret := strconv.Itoa(n)
-    // 1️⃣2️⃣3️⃣4️⃣5️⃣6️⃣7️⃣8️⃣9️⃣🔟
-    for _, ch := range ret {
-        out += string(ch) + "⃣"
-    }
-    return out
-}
-
-func prefix(i, last int) string {
-    if last == 0 { // всего 1 результат
-        return "─"
-    } else if i == 0 {
-        return "┌"
-    } else if i == last {
-        return "└"
-    } else {
-        return "├"
-    }
-}
-
-func buildLines(arr []interface{}, g func(i int, s string)) {
-   last := len(arr) - 1
-   for i, _ := range arr {
-       if last == 0 {
-           g(i, "─")
-       } else if i == 0 {
-           g(i, "┌")
-       } else if i <= last {
-           g(i, "├")
-       } else {
-           g(i, "└")
-       }
-   }
 }

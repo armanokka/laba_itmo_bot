@@ -142,18 +142,71 @@ func handleMessage(message tgbotapi.Message) {
         }
     }
 
-    switch message.Text {
-    case "/stats":
+    if message.Command() != "" {
+        pp.Println(message.Command())
+    }
+
+    switch message.Command() {
+    case "get":
+        arg := message.CommandArguments()
+        var id int64
+        if strings.HasPrefix(arg, "@") {
+            user, err := bot.GetChat(tgbotapi.ChatInfoConfig{tgbotapi.ChatConfig{
+                SuperGroupUsername: strings.TrimPrefix(arg, "@"),
+            }})
+            if err != nil {
+                warn(err)
+                return
+            }
+            id = user.ID
+        } else {
+            v, err := strconv.ParseInt(arg, 10, 32)
+            if err != nil {
+                warn(err)
+            }
+            id = v
+        }
+        var logs []UsersLogs
+        if err := db.Model(&UsersLogs{}).Where("id = ?", id).Order("date DESC").Limit(20).Find(&logs).Error; err != nil {
+            warn(err)
+            return
+        }
+        text := ""
+        for _, log := range logs {
+            if log.FromBot {
+                text += "\n<b>Bot:</b> <i>[" + log.Intent.String + "]</i> "
+            } else {
+                text += "\n<b>User:</b> "
+            }
+            text += log.Text
+        }
+        bot.Send(tgbotapi.MessageConfig{
+            BaseChat:              tgbotapi.BaseChat{
+                ChatID:                   message.From.ID,
+            },
+            ParseMode: tgbotapi.ModeHTML,
+            Text:                  text,
+        })
+    case "stats":
         var users int
         err := db.Model(&Users{}).Raw("SELECT COUNT(*) FROM users").Find(&users).Error
         if err != nil {
             warn(err)
             return
         }
-        msg := tgbotapi.NewMessage(message.Chat.ID, "Всего " + strconv.Itoa(users) + " юзеров")
+        var stats = make(map[string]string, 20)
+        if err = db.Model(&UsersLogs{}).Raw("SELECT intent, COUNT(*) FROM users_logs GROUP BY intent ORDER BY count(*) DESC").Find(&stats).Error; err != nil {
+            warn(err)
+        }
+        text := "Всего " + strconv.Itoa(users) + " юзеров"
+        for name, count := range stats {
+            text += "\n" + name + ": " + count
+        }
+        msg := tgbotapi.NewMessage(message.Chat.ID, text)
         bot.Send(msg)
         user.WriteBotLog("pm_stats", msg.Text)
-    case "/users":
+        return
+    case "users":
         if message.From.ID != AdminID {
             return
         }
@@ -177,192 +230,165 @@ func handleMessage(message tgbotapi.Message) {
         group := tgbotapi.NewMediaGroup(message.From.ID, []interface{}{doc})
         bot.Send(group)
         user.WriteBotLog("pm_users", "{document was sended}")
-    case "/id":
+        return
+    case "id":
         msg := tgbotapi.NewMessage(message.From.ID, strconv.FormatInt(message.From.ID, 10))
         bot.Send(msg)
         user.WriteBotLog("pm_id", msg.Text)
-    default: // Сообщение не является командой.
-        if user.MyLang == user.ToLang {
-            bot.Send(tgbotapi.NewMessage(message.From.ID, user.Localize("The original text language and the target language are the same, please set different")))
-            return
-        }
+        return
+    }
 
-        if user.Usings == 20 || user.Usings == 50 || user.Usings == 100 || (user.Usings > 100 && user.Usings % 50 == 0) {
-            defer func() {
-                photo := tgbotapi.NewPhoto(message.Chat.ID, "logo.jpg")
-                photo.Caption = user.Localize("bot_advertise")
-                photo.ParseMode = tgbotapi.ModeHTML
-                if _, err := bot.Send(photo); err != nil {
-                    pp.Println(err)
-                }
-            }()
-        }
+    if user.MyLang == user.ToLang {
+        bot.Send(tgbotapi.NewMessage(message.From.ID, user.Localize("The original text language and the target language are the same, please set different")))
+        return
+    }
 
-        msg, err := bot.Send(tgbotapi.MessageConfig{
-            BaseChat:              tgbotapi.BaseChat{
-                ChatID:                   message.Chat.ID,
-                ReplyToMessageID: message.MessageID, // very important to "dictionary" callback
-            },
-            Text:                  user.Localize("⏳ Translating..."),
-        })
+    if user.Usings == 20 || user.Usings == 50 || user.Usings == 100 || (user.Usings > 100 && user.Usings % 50 == 0) {
+        defer func() {
+            photo := tgbotapi.NewPhoto(message.Chat.ID, "logo.jpg")
+            photo.Caption = user.Localize("bot_advertise")
+            photo.ParseMode = tgbotapi.ModeHTML
+            if _, err := bot.Send(photo); err != nil {
+                pp.Println(err)
+            }
+        }()
+    }
+
+    msg, err := bot.Send(tgbotapi.MessageConfig{
+        BaseChat:              tgbotapi.BaseChat{
+            ChatID:                   message.Chat.ID,
+            ReplyToMessageID: message.MessageID, // very important to "dictionary" callback
+        },
+        Text:                  user.Localize("⏳ Translating..."),
+    })
+    if err != nil {
+        return
+    }
+
+    var text = message.Text
+    if message.Caption != "" {
+        text = message.Caption
+    }
+
+    if text == "" {
+        bot.Send(tgbotapi.NewEditMessageText(message.Chat.ID, msg.MessageID, user.Localize("Please, send text message")))
+        analytics.Bot(message.Chat.ID, msg.Text, "Message is not text message")
+        return
+    }
+
+    from, err := translate.DetectLanguageGoogle(cutStringUTF16(text, 100))
+    if err != nil {
+        warn(err)
+        return
+    }
+
+    if from == "" {
+        from = "auto"
+    }
+
+    var to string // language into need to translate
+    if from == user.ToLang {
+        to = user.MyLang
+    } else if from == user.MyLang {
+        to = user.ToLang
+    } else { // никакой из
+        to = user.MyLang
+    }
+
+    var (
+        tr = translate.GoogleHTMLTranslation{}
+        rev = translate.ReversoTranslation{}
+        dict = translate.GoogleDictionaryResponse{}
+        wg = sync.WaitGroup{}
+        errs = make(chan *errors.Error, 4)
+    )
+
+    wg.Add(1)
+    go func() {
+        defer wg.Done()
+        dict, err = translate.GoogleDictionary(from, text)
         if err != nil {
-            return
+            errs <- errors.New(err)
         }
+    }()
 
-        var text = message.Text
-        if message.Caption != "" {
-            text = message.Caption
+    wg.Add(1)
+    go func() {
+        defer wg.Done()
+        if inMapValues(translate.ReversoSupportedLangs(), from, to) && from != to {
+            rev, err = translate.ReversoTranslate(translate.ReversoIso6392(from), translate.ReversoIso6392(to), strings.ToLower(text))
+            if err != nil {
+                errs <- errors.New(err)
+            }
         }
+    }()
 
-        if text == "" {
-            bot.Send(tgbotapi.NewEditMessageText(message.Chat.ID, msg.MessageID, user.Localize("Please, send text message")))
-            analytics.Bot(message.Chat.ID, msg.Text, "Message is not text message")
-            return
-        }
+    if len(message.Entities) > 0 {
+        text = applyEntitiesHtml(text, message.Entities)
+    } else if len(message.CaptionEntities) > 0 {
+        text = applyEntitiesHtml(text, message.CaptionEntities)
+    }
+    text = strings.ReplaceAll(text, "\n", "<br>")
 
-        from, err := translate.DetectLanguageGoogle(cutStringUTF16(text, 100))
+    // Переводим в гугле, как обычно
+    wg.Add(1)
+    go func() {
+        defer wg.Done()
+        tr, err = translate.GoogleHTMLTranslate(from, to, text)
         if err != nil {
-            warn(err)
+            errs <- errors.New(err)
+        }
+        if tr.Text == "" && text != "" {
+            WarnAdmin("короче на " + to + " не переводит")
+            errs <- errors.New("короче на " + to + " не переводит")
             return
         }
 
-        if from == "" {
-            from = "auto"
-        }
+        tr.Text = strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "").Replace(tr.Text)
+        tr.Text = strings.ReplaceAll(tr.Text, `<br>`, "\n")
+    }()
 
-        var to string // language into need to translate
-        if from == user.ToLang {
-            to = user.MyLang
-        } else if from == user.MyLang {
-            to = user.ToLang
-        } else { // никакой из
-            to = user.MyLang
-        }
+    wg.Wait()
+    close(errs)
 
-        //suggestions, err := translate.ReversoSuggestions(from, to, text)
-        //if err == nil && len(suggestions.Suggestions) > 0 {
-        //    replacer := strings.NewReplacer("<b>", "", "</b>", "")
-        //    var exists bool
-        //    for _, sug := range suggestions.Suggestions {
-        //        if replacer.Replace(sug.Suggestion) == text {
-        //            exists = true
-        //        }
-        //    }
-        //   if !exists { // прове
-        //       keyboard := tgbotapi.NewInlineKeyboardMarkup()
-        //       for _, suggestion := range suggestions.Suggestions {
-        //           suggestion.Suggestion = replacer.Replace(suggestion.Suggestion)
-        //           keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-        //               tgbotapi.NewInlineKeyboardButtonData(suggestion.Suggestion + " " + langs[suggestion.Lang].Emoji, "translate:"+from+":"+to)))
-        //       }
-        //       bot.Send(tgbotapi.NewEditMessageTextAndMarkup(message.From.ID, msg.MessageID, text, keyboard))
-        //       return
-        //   }
-        //}
-
-        var (
-            tr = translate.GoogleHTMLTranslation{}
-            single = translate.GoogleTranslateSingleResult{}
-            rev = translate.ReversoTranslation{}
-            dict = translate.GoogleDictionaryResponse{}
-            wg = sync.WaitGroup{}
-            errs = make(chan *errors.Error, 4)
-        )
-
-        wg.Add(1)
-        go func() {
-            defer wg.Done()
-            single, err = translate.GoogleTranslateSingle(from, to, text)
-            if err != nil {
-                errs <- errors.New(err)
-            }
-            pp.Println(single)
-        }()
-
-        wg.Add(1)
-        go func() {
-            defer wg.Done()
-            dict, err = translate.GoogleDictionary(from, text)
-            if err != nil {
-                errs <- errors.New(err)
-            }
-        }()
-
-        wg.Add(1)
-        go func() {
-            defer wg.Done()
-            if inMapValues(translate.ReversoSupportedLangs(), from, to) && from != to {
-                rev, err = translate.ReversoTranslate(translate.ReversoIso6392(from), translate.ReversoIso6392(to), strings.ToLower(text))
-                if err != nil {
-                    errs <- errors.New(err)
-                }
-            }
-        }()
-
-        if len(message.Entities) > 0 {
-            text = applyEntitiesHtml(text, message.Entities)
-        } else if len(message.CaptionEntities) > 0 {
-            text = applyEntitiesHtml(text, message.CaptionEntities)
-        }
-        text = strings.ReplaceAll(text, "\n", "<br>")
-
-        // Переводим в гугле, как обычно
-        wg.Add(1)
-        go func() {
-            defer wg.Done()
-            tr, err = translate.GoogleHTMLTranslate(from, to, text)
-            if err != nil {
-                errs <- errors.New(err)
-            }
-            if tr.Text == "" && text != "" {
-                WarnAdmin("короче на " + to + " не переводит")
-                errs <- errors.New("короче на " + to + " не переводит")
-                return
-            }
-
-            tr.Text = strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "").Replace(tr.Text)
-            tr.Text = strings.ReplaceAll(tr.Text, `<br>`, "\n")
-        }()
-
-        wg.Wait()
-        close(errs)
-
-        if len(errs) > 0 {
-            err = <-errs
-            WarnAdmin("Ошибка зафиксирована, но у пользователя всё ок", err.(*errors.Error).ErrorStack(), "\n"+text, from, to)
-            logrus.Error(err)
-        }
+    if len(errs) > 0 {
+        err = <-errs
+        WarnAdmin("Ошибка зафиксирована, но у пользователя всё ок", err.(*errors.Error).ErrorStack(), "\n"+text, from, to)
+        logrus.Error(err)
+    }
 
 
-        From := langs[from]
-        keyboard := tgbotapi.NewInlineKeyboardMarkup(
-            tgbotapi.NewInlineKeyboardRow(
-                tgbotapi.NewInlineKeyboardButtonData("From " + From.Emoji + " " + From.Name, "none")),
-            tgbotapi.NewInlineKeyboardRow(
-                tgbotapi.NewInlineKeyboardButtonData("🔊 " + user.Localize("To voice"),  "speech_this_message_and_replied_one:"+from+":"+to)),
-        )
+    From := langs[from]
+    keyboard := tgbotapi.NewInlineKeyboardMarkup(
+        tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData("From " + From.Emoji + " " + From.Name, "none")),
+        tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData("🔊 " + user.Localize("To voice"),  "speech_this_message_and_replied_one:"+from+":"+to)),
+    )
 
-        if len(single.Dict) > 0 {
-            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
-                tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("📚 " + user.Localize("Translations"), "translations:"+from+":"+to)))
-        }
 
-        if len(rev.ContextResults.Results) > 0 && len(rev.ContextResults.Results[0].SourceExamples) > 0 {
+    if len(rev.ContextResults.Results) > 0 {
+        if len(rev.ContextResults.Results[0].SourceExamples) > 0 {
             keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
                 tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("💬 " + user.Localize("Examples"), "examples:"+from+":"+to)))
         }
-
-        if dict.Status == 200 && dict.DictionaryData != nil {
+        if rev.ContextResults.Results[0].Translation != "" {
             keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
-                tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("ℹ️" + user.Localize("Dictionary"), "dictonary:"+from+":"+text)))
+                tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("📚 " + user.Localize("Translations"), "translations:"+from+":"+to)))
+
         }
-
-        edit := tgbotapi.NewEditMessageTextAndMarkup(message.From.ID, msg.MessageID, tr.Text, keyboard)
-        edit.ParseMode = tgbotapi.ModeHTML
-        bot.Send(edit)
-
-        analytics.Bot(user.ID, tr.Text, "Translated")
-
-        user.WriteBotLog("pm_translate", tr.Text)
     }
+
+    if dict.Status == 200 && dict.DictionaryData != nil {
+        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
+            tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("ℹ️" + user.Localize("Dictionary"), "dictonary:"+from+":"+text)))
+    }
+
+    edit := tgbotapi.NewEditMessageTextAndMarkup(message.From.ID, msg.MessageID, tr.Text, keyboard)
+    edit.ParseMode = tgbotapi.ModeHTML
+    bot.Send(edit)
+
+    analytics.Bot(user.ID, tr.Text, "Translated")
+
+    user.WriteBotLog("pm_translate", tr.Text)
 }
