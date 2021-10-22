@@ -417,10 +417,16 @@ func GoogleTranslateSingle(from, to, text string) (GoogleTranslateSingleResult, 
 	var res *http.Response
 	var err error
 	req, err := http.NewRequest("POST", "https://translate.googleapis.com/translate_a/single?dt=t&dt=bd&dt=qc&dt=rm&dt=ex&client=gtx&sl=" + url.PathEscape(from) + "&tl=" + url.PathEscape(to) + "&q=" + url.PathEscape(text) + "&dj=1&dt=at&ie=UTF-16&oe=UTF-16&otf=2&srcrom=1&ssel=0&tsel=0", nil)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header["user-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36"}
-	req.Header["accept"] = []string{"application/json"}
-	req.Header["accept-language"] = []string{"en-GB, en;q=0.5"}
+	req.Header["host"] = []string{"translate.googleapis.com"}
+	req.Header["content-type"] = []string{"application/json; charset=UTF-8"}
+	req.Header["sec-fetch-site"] = []string{"cross-site"}
+	req.Header["sec-fetch-mode"] = []string{"cors"}
+	req.Header["sec-fetch-dest"] = []string{"empty"}
+	req.Header["sec-ch-ua-mobile"] = []string{"?0"}
+	req.Header["sec-ch-ua"] = []string{`" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"`}
+	req.Header["user-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36"}
+	req.Header["x-client-data"] = []string{"CI+2yQEIpLbJAQjBtskBCKmdygEIq9HKAQjv8ssBCJ75ywEItP/LAQjnhMwBCLWFzAEI2IXMAQjLicwB"}
+	req.Header["connection"] = []string{"keep-alive"}
 	for i:=0;i<3;i++ {
 		res, err = HTTPClient.Do(req)
 		if err == nil && res.StatusCode == 200 {
@@ -512,7 +518,18 @@ func YandexTranscription(from, to, text string) (YandexTranscriptionResponse, er
 	if err != nil {
 		return YandexTranscriptionResponse{}, err
 	}
-	req.Header.Add("Content-Type", "text/html")
+	req.Header["authority"] = []string{"mc.yandex.ru"}
+	req.Header["cookie"] = []string{""}
+	req.Header["origin"] = []string{"https://translate.yandex.ru"}
+	req.Header["referrer"] = []string{"https://translate.yandex.ru/?lang=ru-en"}
+	req.Header["content-type"] = []string{"application/x-www-form-urlencoded; charset=UTF-8"}
+	req.Header["sec-fetch-site"] = []string{"cross-site"}
+	req.Header["sec-fetch-mode"] = []string{"cors"}
+	req.Header["sec-fetch-dest"] = []string{"empty"}
+	req.Header["sec-ch-ua-mobile"] = []string{"?0"}
+	req.Header["accept"] = []string{"*/*"}
+	req.Header["sec-ch-ua"] = []string{`" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"`}
+	req.Header["user-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36"}
 
 	var res *http.Response
 	for i:=0;i<3;i++ {
