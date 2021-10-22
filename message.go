@@ -263,6 +263,7 @@ func handleMessage(message tgbotapi.Message) {
         var (
             tr = translate.GoogleHTMLTranslation{}
             single = translate.GoogleTranslateSingleResult{}
+            rev = translate.ReversoTranslation{}
             dict = translate.GoogleDictionaryResponse{}
             wg = sync.WaitGroup{}
             errs = make(chan *errors.Error, 4)
@@ -284,6 +285,17 @@ func handleMessage(message tgbotapi.Message) {
             dict, err = translate.GoogleDictionary(from, text)
             if err != nil {
                 errs <- errors.New(err)
+            }
+        }()
+
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            if inMapValues(translate.ReversoSupportedLangs(), from, to) && from != to {
+                rev, err = translate.ReversoTranslate(translate.ReversoIso6392(from), translate.ReversoIso6392(to), strings.ToLower(text))
+                if err != nil {
+                    errs <- errors.New(err)
+                }
             }
         }()
 
@@ -335,7 +347,7 @@ func handleMessage(message tgbotapi.Message) {
                 tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("📚 " + user.Localize("Translations"), "translations:"+from+":"+to)))
         }
 
-        if len(single.Examples.Example) > 0 {
+        if len(rev.ContextResults.Results) > 0 && len(rev.ContextResults.Results[0].SourceExamples) > 0 {
             keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
                 tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("💬 " + user.Localize("Examples"), "examples:"+from+":"+to)))
         }
