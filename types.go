@@ -3,6 +3,7 @@ package main
 import (
     "database/sql"
     "github.com/armanokka/translobot/dashbot"
+    tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     cache "github.com/patrickmn/go-cache"
     "gorm.io/gorm"
     "time"
@@ -15,7 +16,16 @@ const (
     LanguagesPaginationLimit int = 20
 )
 
-
+var WitAPIKeys = map[string]string{
+    "en": "6X4I6P3TLPAW7EBOQKOIET7NHJYJ3TQ3",
+    "ru": "XARRYZ2OGP7UPXZJG5MJOL2FTJMHFW74",
+    "es": "KQIFMTDYRPS3POH3J5QK2AK3E4GDCEHB",
+    "uk": "X3YGCUD5TKZMJYLD3JG7SMF2HYIHDQAW",
+    "pt": "4ID2IR4RTLFRBUSPGTVHDMDIEBRESLRA",
+    "uz": "BBGPN3S6RF6LTK4Y4UW46D4IGISJSKHW", // beta
+    "id": "5M22F2VA4Z5HKA336VRT5EUETLWLHETV", // beta
+    "it": "PVN465FPYP5BHUFD3DCSUR7EGNBYG57J", // beta
+}
 
 var (
     db  *gorm.DB
@@ -50,6 +60,11 @@ type UsersLogs struct {
 type Lang struct {
     Name string
     Emoji string
+}
+
+type Message struct {
+    Text string
+    Keyboard tgbotapi.ReplyKeyboardMarkup
 }
 
 // type Referrers struct {

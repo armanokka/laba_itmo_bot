@@ -1,6 +1,7 @@
 package main
 
 import (
+    "database/sql"
     "github.com/armanokka/translobot/translate"
     iso6391 "github.com/emvi/iso-639-1"
     "github.com/go-errors/errors"
@@ -43,6 +44,34 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
         return
     }
     switch arr[0] {
+    case "register": // arr[1] - bot lang
+        if err := db.Create(&Users{
+            ID:         callback.From.ID,
+            MyLang:     arr[1],
+            ToLang:     "en",
+            Act:        sql.NullString{},
+            Mailing:    true,
+            Usings:     0,
+            Lang:       arr[1],
+            ReferrerID: 0,
+            Blocked:    false,
+        }).Error; err != nil {
+            warn(err)
+        }
+        user.Fill()
+
+        bot.Send(tgbotapi.NewDeleteMessage(callback.From.ID, callback.Message.MessageID))
+        msg := user.StartMessage()
+
+        bot.Send(tgbotapi.MessageConfig{
+            BaseChat:              tgbotapi.BaseChat{
+                ChatID:                   callback.From.ID,
+                ReplyMarkup:              msg.Keyboard,
+                DisableNotification:      true,
+                AllowSendingWithoutReply: true,
+            },
+            Text:                  msg.Text,
+        })
     case "speech_this_message_and_replied_one": // arr[1] - from, arr[2] - to
         text := callback.Message.Text
         if callback.Message.Caption != "" {
@@ -112,8 +141,8 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
             text string
         )
 
-        if len(tr.ContextResults.Results) > 10 {
-            tr.ContextResults.Results = tr.ContextResults.Results[:10]
+        if len(tr.ContextResults.Results) > 3 {
+            tr.ContextResults.Results = tr.ContextResults.Results[:3]
         }
         var firstlySourceExamples bool
         if arr[1] == user.MyLang {
@@ -122,12 +151,14 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
             firstlySourceExamples = false
         }
         idx := 0
+        count := 0
+
         for _, result := range tr.ContextResults.Results {
             idx++
             if len(result.SourceExamples) == 0 {
                 continue
             }
-            for i := 0; i < len(result.SourceExamples); i++ {
+            for i := 0; i < len(result.SourceExamples) && count < 3; i++ {
                 if i > 0 {
                     idx++
                 }
@@ -137,6 +168,7 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
                 } else {
                     text += result.TargetExamples[i] + "\n<b>└</b>" + result.SourceExamples[i]
                 }
+                count++
             }
         }
         text = strings.NewReplacer("<em>","<b>", "</em>", "</b>").Replace(text)
@@ -184,8 +216,10 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
                 if err != nil {
                     errs <- errors.New(err)
                 }
-                text += "\n\n<b>" + result.Translation + "</b> <i>" + user.Localize(rev.ContextResults.Results[i].PartOfSpeech) + "</i>\n<b>└</b>"
-
+                text += "\n<b>" + result.Translation + "</b> <i>" + user.Localize(rev.ContextResults.Results[i].PartOfSpeech) + "</i>\n<b>└</b>"
+                if len(tr.ContextResults.Results) > 4 {
+                    tr.ContextResults.Results = tr.ContextResults.Results[:4]
+                }
                 for i, result := range tr.ContextResults.Results {
                     if result.Translation == "" {
                         continue

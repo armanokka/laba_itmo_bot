@@ -7,8 +7,12 @@ import (
     "encoding/json"
     "github.com/armanokka/translobot/translate"
     iso6391 "github.com/emvi/iso-639-1"
+    "github.com/go-errors/errors"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "github.com/k0kubun/pp"
+    "io"
+    "io/ioutil"
+    "net/http"
     "os"
     "runtime/debug"
     "strconv"
@@ -224,12 +228,12 @@ func setMyCommands(langs []string, commands []tgbotapi.BotCommand) error {
 }
 
 func makeArticle(id string, title, description string) tgbotapi.InlineQueryResultArticle {
-    keyboard := tgbotapi.NewInlineKeyboardMarkup(
-        tgbotapi.NewInlineKeyboardRow(
-            tgbotapi.InlineKeyboardButton{
-                Text:                         "translate",
-                SwitchInlineQueryCurrentChat: &description,
-            }))
+    //keyboard := tgbotapi.NewInlineKeyboardMarkup(
+    //    tgbotapi.NewInlineKeyboardRow(
+    //        tgbotapi.InlineKeyboardButton{
+    //            Text:                         "translate",
+    //            SwitchInlineQueryCurrentChat: &description,
+    //        }))
     return tgbotapi.InlineQueryResultArticle{
         Type:                "article",
         ID:                  id,
@@ -238,7 +242,7 @@ func makeArticle(id string, title, description string) tgbotapi.InlineQueryResul
             "message_text": description,
             "disable_web_page_preview":false,
         },
-        ReplyMarkup: &keyboard,
+        //ReplyMarkup: &keyboard,
         URL:                 "https://t.me/TransloBot?start=from_inline",
         HideURL:             true,
         Description:         description,
@@ -303,4 +307,62 @@ func sendSpeech(lang, text string, callbackID string, user User) error {
     audio.ReplyMarkup = kb
     bot.Send(audio)
     return nil
+}
+
+
+func WitAiSpeech(wav io.Reader, lang string, bits int) (string, error) {
+    var key, ok = WitAPIKeys[lang]
+    if !ok {
+        return "", errors.New("no wit.ai key for lang " + lang)
+    }
+    req, err := http.NewRequest("POST", "https://api.wit.ai/speech?v=20210928&bits=" + strconv.Itoa(bits), wav)
+    if err != nil {
+        panic(err)
+    }
+    req.Header.Set("Authorization", "Bearer " + key)
+    req.Header.Set("Content-Type", "audio/wave")
+    resp, err := http.DefaultClient.Do(req)
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+
+    body, err := ioutil.ReadAll(resp.Body)
+    if err != nil {
+        panic(err)
+    }
+    parts := strings.Split(string(body), "\r\n")
+    if len(parts) == 0 {
+        return "", errors.New("empty parts: " + string(body))
+    }
+    var result struct{
+        Text string `json:"text"`
+        Error string `json:"error"`
+        Code string `json:"code"`
+    }
+    if err = json.Unmarshal([]byte(parts[len(parts)-1]), &result); err != nil {
+        return "", errors.WrapPrefix(err, string(body), 0)
+    }
+    if result.Error != "" {
+        return "", errors.New(result.Error)
+    }
+    return result.Text, nil
+}
+
+func BuildSupportedLanguagesKeyboard(callbackData string) (tgbotapi.InlineKeyboardMarkup, error) {
+    keyboard := tgbotapi.NewInlineKeyboardMarkup()
+    for i, code := range BotLocalizedLangs {
+        lang, ok := langs[code]
+        if !ok {
+            return tgbotapi.InlineKeyboardMarkup{}, errors.New("no such code "+ code + " in langs")
+        }
+
+        if i % 2 == 0 {
+            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  callbackData + ":"  + code)))
+        } else {
+            l := len(keyboard.InlineKeyboard)-1
+            keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  callbackData + ":"  + code))
+        }
+    }
+    return keyboard, nil
 }

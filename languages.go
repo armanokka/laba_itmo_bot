@@ -30,7 +30,7 @@ var commandTranslations = map[string][]string{
     },
 }
 
-var botLangs = []string{
+var BotLocalizedLangs = []string{
     "en", "ru", "de", "es", "uk", "uz", "id", "it", "pt",
 }
 
@@ -311,17 +311,6 @@ var translations = map[string]map[string]string{
         "uk": "Тепер натисніть /start 👈",
         "it": "Ora premi /start 👈",
         "id": "Sekarang tekan /start 👈",
-    },
-    "/help": map[string]string{
-        "es": "Solo envíame un mensaje de texto y lo traduciré.\n\n Prueba también nuestro modo integrado 👇",
-        "uk": "Просто надішліть мені текст, і я його перекладу\n\n Також спробуйте наш вбудований режим 👇",
-        "uz": "Menga faqat matn yuboring, men uni tarjima qilaman\n\n Bizning o'rnatilgan rejimimizni ham ko'ring 👇",
-        "de": "Schicken Sie mir einfach einen Text und ich übersetze ihn\n\n Probiere auch unseren eingebauten Modus 👇",
-        "ru": "Просто пришлите мне текст и я его переведу\n\n Также попробуйте наш инлайн режим 👇",
-        "pt": "Basta me enviar um texto e eu irei traduzi-lo\n\n Experimente também o nosso modo integrado 👇",
-        "id": "Kirimkan saja saya teks dan saya akan menerjemahkannya\n\n Coba juga mode bawaan kami 👇",
-        "en": "Just send me a text and I will translate it\n\nAlso try our built-in mode 👇",
-        "it": "Mandami un messaggio e lo traduco\n\n Prova anche la nostra modalità integrata 👇",
     },
     "Just send me a text and I will translate it": {
         "en": "Just send me a text and I will translate it",

@@ -1,13 +1,13 @@
 package main
 
 import (
-    "database/sql"
     "github.com/armanokka/translobot/translate"
     iso6391 "github.com/emvi/iso-639-1"
     "github.com/go-errors/errors"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "github.com/k0kubun/pp"
     "github.com/sirupsen/logrus"
+    "html"
     "os"
     "strconv"
     "strings"
@@ -29,48 +29,31 @@ func handleMessage(message tgbotapi.Message) {
     var user = NewUser(message.From.ID, warn)
     if message.Text == "/start" {
         if !user.Exists() {
-            if message.From.LanguageCode == "" {
+            if message.From.LanguageCode == "" || !in(BotLocalizedLangs, message.From.LanguageCode) {
                 message.From.LanguageCode = "en"
             }
-            if !in(botLangs, message.From.LanguageCode) {
-                message.From.LanguageCode = "en"
-            }
-            if err := db.Create(&Users{
-                ID:         message.From.ID,
-                MyLang:     message.From.LanguageCode,
-                ToLang:     "en",
-                Act:        sql.NullString{},
-                Mailing:    true,
-                Lang:       message.From.LanguageCode,
-            }).Error; err != nil {
+            kb, err := BuildSupportedLanguagesKeyboard("register")
+            if err  != nil {
                 warn(err)
+                return
             }
+            bot.Send(tgbotapi.MessageConfig{
+                BaseChat:              tgbotapi.BaseChat{
+                    ChatID:                   message.From.ID,
+                    ReplyMarkup:              kb,
+                },
+                Text:                  user.Localize("Choose bot language"),
+            })
+            return
         }
-
-        msg := tgbotapi.NewMessage(message.From.ID, user.Localize("Just send me a text and I will translate it"))
-        keyboard := tgbotapi.NewReplyKeyboard(
-            tgbotapi.NewKeyboardButtonRow(
-                tgbotapi.NewKeyboardButton(user.Localize("My Language")),
-                tgbotapi.NewKeyboardButton(user.Localize("Translate Language")),
-            ),
-        )
-
-        msg.ReplyMarkup = keyboard
-        msg.ParseMode = tgbotapi.ModeHTML
-        bot.Send(msg)
-        
-        msg = tgbotapi.NewMessage(message.From.ID, user.Localize("Try built-in mode"))
-        query := "пишите сюда"
-        replyMarkup := tgbotapi.NewInlineKeyboardMarkup([]tgbotapi.InlineKeyboardButton{{
-            Text:                         user.Localize("try"),
-            SwitchInlineQuery:            &query,
-        }})
-        msg.ReplyMarkup = replyMarkup
-        bot.Send(msg)
-
-        analytics.Bot(user.ID, msg.Text, "Start")
-        user.WriteUserLog(message.Text)
-        user.WriteBotLog("pm_start", msg.Text)
+        bot.Send(tgbotapi.MessageConfig{
+            BaseChat:              tgbotapi.BaseChat{
+                ChatID:                   message.From.ID,
+                DisableNotification:      true,
+                AllowSendingWithoutReply: true,
+            },
+            Text:                  user.Localize("Just send me a text and I will translate it"),
+        })
         return
     }
     user.Fill()
@@ -255,11 +238,18 @@ func handleMessage(message tgbotapi.Message) {
     }
 
     msg, err := bot.Send(tgbotapi.MessageConfig{
-        BaseChat:              tgbotapi.BaseChat{
+        BaseChat: tgbotapi.BaseChat{
             ChatID:                   message.Chat.ID,
-            ReplyToMessageID: message.MessageID, // very important to "dictionary" callback
+            ChannelUsername:          "",
+            ReplyToMessageID:         message.MessageID, // very important to "dictionary" callback
+            ReplyMarkup:              nil,
+            DisableNotification:      true,
+            AllowSendingWithoutReply: true,
         },
         Text:                  user.Localize("⏳ Translating..."),
+        ParseMode:             "",
+        Entities:              nil,
+        DisableWebPagePreview: false,
     })
     if err != nil {
         return
@@ -269,6 +259,7 @@ func handleMessage(message tgbotapi.Message) {
     if message.Caption != "" {
         text = message.Caption
     }
+    text = html.EscapeString(text)
 
     if text == "" {
         bot.Send(tgbotapi.NewEditMessageText(message.Chat.ID, msg.MessageID, user.Localize("Please, send text message")))
@@ -384,9 +375,19 @@ func handleMessage(message tgbotapi.Message) {
             tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("ℹ️" + user.Localize("Dictionary"), "dictonary:"+from+":"+text)))
     }
 
-    edit := tgbotapi.NewEditMessageTextAndMarkup(message.From.ID, msg.MessageID, tr.Text, keyboard)
-    edit.ParseMode = tgbotapi.ModeHTML
-    bot.Send(edit)
+    if _, err = bot.Send(tgbotapi.EditMessageTextConfig{
+        BaseEdit:              tgbotapi.BaseEdit{
+            ChatID:          message.From.ID,
+            MessageID:       msg.MessageID,
+            ReplyMarkup:     &keyboard,
+        },
+        Text:                  tr.Text,
+        ParseMode:             tgbotapi.ModeHTML,
+        Entities:              nil,
+        DisableWebPagePreview: false,
+    }); err != nil {
+        pp.Println(err)
+    }
 
     analytics.Bot(user.ID, tr.Text, "Translated")
 

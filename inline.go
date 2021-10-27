@@ -27,16 +27,6 @@ func handleInline(update tgbotapi.InlineQuery) {
         logrus.Error(err)
     }
 
-    defer func() {
-        user := NewUser(update.From.ID, warn)
-        if !user.Exists() {
-            return
-        }
-        user.UpdateLastActivity()
-        user.WriteUserLog(update.Query)
-        user.WriteBotLog("inline_succeeded", "")
-    }()
-
     if update.Query == "" {
         bot.AnswerInlineQuery(
             tgbotapi.InlineConfig{
@@ -86,7 +76,7 @@ func handleInline(update tgbotapi.InlineQuery) {
 
     sortOffset := 0
 
-    if start == 0 {
+    if start == 0 && user.MyLang != "" && user.ToLang != "" {
         if from != user.MyLang {
             sortOffset++
             wg.Add(1)
@@ -177,4 +167,9 @@ func handleInline(update tgbotapi.InlineQuery) {
     
     analytics.Bot(update.From.ID, "Inline succeeded", "Inline succeeded")
 
+    if user.ID != 0 {
+        user.UpdateLastActivity()
+        user.WriteUserLog(update.Query)
+        user.WriteBotLog("inline_succeeded", "")
+    }
 }

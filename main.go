@@ -138,6 +138,9 @@ func main() {
 					}
 				}()
 				start := time.Now()
+				//if update.Message.Voice != nil {
+				//	handleVoice(*update.Message)
+				//}
 				if update.Message != nil {
 					handleMessage(*update.Message)
 				} else if update.CallbackQuery != nil {
@@ -150,6 +153,7 @@ func main() {
 				logrus.Print("Time spent ", time.Since(start).String())
 			}()
 		case <-ctx.Done():
+			bot.StopReceivingUpdates()
 			logrus.Info("Context was stopped, waiting for goroutines...")
 			wg.Wait()
 			logrus.Info("Bot was disabled.")

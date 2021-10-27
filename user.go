@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/patrickmn/go-cache"
 	"time"
 )
@@ -94,3 +95,14 @@ func (u User) UpdateLastActivity() {
 	}
 }
 
+func (user User) StartMessage() Message {
+	return Message{
+		Text:     user.Localize("Just send me a text and I will translate it"),
+		Keyboard: tgbotapi.NewReplyKeyboard(
+			tgbotapi.NewKeyboardButtonRow(
+				tgbotapi.NewKeyboardButton(user.Localize("My Language")),
+				tgbotapi.NewKeyboardButton(user.Localize("Translate Language")),
+			),
+		),
+	}
+}

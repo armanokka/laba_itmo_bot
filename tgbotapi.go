@@ -8,8 +8,6 @@ type BotAPI struct {
     *tgbotapi.BotAPI
 }
 
-
-
 // func NewBotAPI(token string) (*BotAPI, error) {
 //     return NewBotAPIWithClient(token, "https://api.telegram.org/bot%s/%s", &http.Client{})
 // }
