@@ -45,16 +45,17 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
     }
     switch arr[0] {
     case "register": // arr[1] - bot lang
+        tolang := "en"
+        if arr[1] == tolang {
+            tolang = "ar"
+        }
         if err := db.Create(&Users{
             ID:         callback.From.ID,
             MyLang:     arr[1],
-            ToLang:     "en",
+            ToLang:     tolang,
             Act:        sql.NullString{},
             Mailing:    true,
-            Usings:     0,
             Lang:       arr[1],
-            ReferrerID: 0,
-            Blocked:    false,
         }).Error; err != nil {
             warn(err)
         }
@@ -72,6 +73,7 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
             },
             Text:                  msg.Text,
         })
+
     case "speech_this_message_and_replied_one": // arr[1] - from, arr[2] - to
         text := callback.Message.Text
         if callback.Message.Caption != "" {

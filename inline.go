@@ -1,12 +1,10 @@
 package main
 
 import (
-    "encoding/json"
     "errors"
     "github.com/armanokka/translobot/translate"
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-    "github.com/k0kubun/pp"
     "github.com/sirupsen/logrus"
     "html"
     "sort"
@@ -159,15 +157,12 @@ func handleInline(update tgbotapi.InlineQuery) {
         SwitchPMParameter: "from_inline",
     }); err != nil {
         warn(err)
-        WarnAdmin("из ошибки выше результат был таков:", results)
-        j, _ := json.Marshal(results)
-        WarnAdmin(string(j))
-        pp.Println(results)
+        logrus.Error(err)
     }
     
     analytics.Bot(update.From.ID, "Inline succeeded", "Inline succeeded")
 
-    if user.ID != 0 {
+    if user.MyLang != "" {
         user.UpdateLastActivity()
         user.WriteUserLog(update.Query)
         user.WriteBotLog("inline_succeeded", "")

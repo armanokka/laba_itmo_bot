@@ -5,28 +5,30 @@ import (
     "strings"
 )
 
+
 var commandTranslations = map[string][]string{
     "my language": {
-        "meine Sprache",
         "mi idioma",
-        "моя мова",
         "bahasaku",
         "my language",
-        "mio linguaggio",
         "mening tilim",
-        "мой язык",
+        "meine sprache",
         "minha língua",
+        "mio linguaggio",
+        "мой язык",
+        "моя мова",
     },
     "translate language": {
-        "lengua de llegada",
         "translate language",
+        "sprache übersetzen",
+        "traducir idioma",
+        "terjemahkan bahasa",
+        "traduzir idioma",
+        "tilni tarjima qilish",
         "язык перевода",
-        "Zielsprache",
         "мова перекладу",
-        "idioma de chegada",
-        "bahasa sasaran",
-        "lingua di destinazione",
-        "maqsadli til",
+        "traduzir linguagem",
+        "traduci lingua",
     },
 }
 
@@ -217,15 +219,15 @@ var translations = map[string]map[string]string{
         "pt": "Compartilhado",
     },
     "My Language": {
-        "it": "La mia lingua",
-        "uz": "Tilimni",
-        "de": "Meine Sprache",
-        "ru": "Мой Язык",
-        "es": "Mi Idioma",
-        "uk": "Моя Мова",
-        "pt": "A Minha Língua",
+        "ru": "Мой язык",
+        "es": "Mi idioma",
+        "pt": "Minha língua",
         "en": "My Language",
-        "id": "Bahasa Saya",
+        "it": "Mio linguaggio",
+        "uz": "Mening tilim",
+        "de": "Meine Sprache",
+        "uk": "Моя мова",
+        "id": "Bahasaku",
     },
     "Now translate language is %s": {
         "en": "Now translate language is %s",
@@ -313,7 +315,6 @@ var translations = map[string]map[string]string{
         "id": "Sekarang tekan /start 👈",
     },
     "Just send me a text and I will translate it": {
-        "en": "Just send me a text and I will translate it",
         "ru": "Просто пришлите мне текст, и я его переведу",
         "pt": "Basta me enviar um texto e eu irei traduzi-lo",
         "it": "Mandami un messaggio e lo traduco",
@@ -356,15 +357,15 @@ var translations = map[string]map[string]string{
         "it": "Impossibile rilevare la lingua. Per favore inserisci qualcos'altro",
     },
     "Translate Language": {
+        "id": "Terjemahkan Bahasa",
+        "de": "Sprache übersetzen",
+        "es": "Traducir idioma",
         "uk": "Мова перекладу",
-        "uz": "Tarjima qilish uchun til",
-        "de": "Sprache zum Übersetzen",
-        "en": "Translate Language",
-        "es": "Idioma para traducir",
-        "id": "Bahasa untuk menerjemahkan",
-        "it": "Lingua per tradurre",
-        "pt": "Língua para tradução",
         "ru": "Язык перевода",
+        "pt": "Traduzir idioma",
+        "en": "Translate Language",
+        "it": "Traduci lingua",
+        "uz": "Tilni tarjima qilish",
     },
     "To voice": {
         "uk": "озвучити",
@@ -642,8 +643,7 @@ func localize(text, code string, placeholders ...interface{}) string {
 }
 
 func command(intent string) []string {
-    intent = strings.ToLower(intent)
-    v, ok := commandTranslations[intent]
+    v, ok := commandTranslations[strings.ToLower(intent)]
     if !ok {
         return []string{}
     }

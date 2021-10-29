@@ -27,33 +27,42 @@ func handleMessage(message tgbotapi.Message) {
     }
 
     var user = NewUser(message.From.ID, warn)
-    if message.Text == "/start" {
-        if !user.Exists() {
-            if message.From.LanguageCode == "" || !in(BotLocalizedLangs, message.From.LanguageCode) {
-                message.From.LanguageCode = "en"
-            }
-            kb, err := BuildSupportedLanguagesKeyboard("register")
-            if err  != nil {
-                warn(err)
-                return
-            }
-            bot.Send(tgbotapi.MessageConfig{
-                BaseChat:              tgbotapi.BaseChat{
-                    ChatID:                   message.From.ID,
-                    ReplyMarkup:              kb,
-                },
-                Text:                  user.Localize("Choose bot language"),
-            })
+    if !user.Exists() {
+        if message.From.LanguageCode == "" || !in(BotLocalizedLangs, message.From.LanguageCode) {
+            message.From.LanguageCode = "en"
+        }
+        kb, err := BuildSupportedLanguagesKeyboard("register")
+        if err  != nil {
+            warn(err)
             return
         }
         bot.Send(tgbotapi.MessageConfig{
             BaseChat:              tgbotapi.BaseChat{
                 ChatID:                   message.From.ID,
+                ReplyMarkup:              kb,
+            },
+            Text:                  user.Localize("Choose bot language"),
+        })
+        return
+    }
+    user.Fill()
+
+    if strings.HasPrefix(message.Text, "/start") {
+        bot.Send(tgbotapi.MessageConfig{
+            BaseChat:              tgbotapi.BaseChat{
+                ChatID:                   message.From.ID,
                 DisableNotification:      true,
                 AllowSendingWithoutReply: true,
+                ReplyMarkup: tgbotapi.NewReplyKeyboard(
+                    tgbotapi.NewKeyboardButtonRow(
+                        tgbotapi.NewKeyboardButton(user.Localize("My Language")),
+                        tgbotapi.NewKeyboardButton(user.Localize("Translate Language")),
+                    ),
+                ),
             },
             Text:                  user.Localize("Just send me a text and I will translate it"),
         })
+
         return
     }
     user.Fill()
@@ -74,6 +83,7 @@ func handleMessage(message tgbotapi.Message) {
                     warn(errors.New("no such code "+ code + " in langs"))
                     return
                 }
+
                 if i % 2 == 0 {
                     keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_my_lang_by_callback:"  + code)))
                 } else {
@@ -90,7 +100,7 @@ func handleMessage(message tgbotapi.Message) {
             bot.Send(msg)
 
             analytics.Bot(message.Chat.ID, msg.Text, "Set my lang")
-            user.WriteBotLog("pm_my_lang", msg.Text)
+            user.WriteBotLog("pm_to_lang", msg.Text)
             return
         case in(command("translate language"), low):
             keyboard := tgbotapi.NewInlineKeyboardMarkup()
@@ -119,14 +129,10 @@ func handleMessage(message tgbotapi.Message) {
             msg.ReplyMarkup = keyboard
             bot.Send(msg)
 
-            analytics.Bot(message.Chat.ID, msg.Text, "Set translate lang")
+            analytics.Bot(message.Chat.ID, msg.Text, "Set my lang")
             user.WriteBotLog("pm_to_lang", msg.Text)
             return
         }
-    }
-
-    if message.Command() != "" {
-        pp.Println(message.Command())
     }
 
     switch message.Command() {

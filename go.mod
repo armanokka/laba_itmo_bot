@@ -18,6 +18,7 @@ require (
 	github.com/stretchr/testify v1.5.1 // indirect
 	golang.org/x/net v0.0.0-20210510120150-4163338589ed // indirect
 	golang.org/x/sys v0.0.0-20211001092434-39dca1131b70 // indirect
+	golang.org/x/text v0.3.7
 	gorm.io/driver/mysql v1.1.1
 	gorm.io/gorm v1.21.12
 )

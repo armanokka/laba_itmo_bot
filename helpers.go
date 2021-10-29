@@ -133,8 +133,8 @@ func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
     }
 
     encoded := utf16.Encode([]rune(text))
-    out := make([]uint16, 0, len(encoded))
-    pointers := make(map[int][]uint16)
+    pointers := make(map[int]string)
+
     for _, entity := range entities {
         var startTag string
         switch entity.Type {
@@ -155,10 +155,11 @@ func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
         case "text_mention":
             startTag = `<a href="tg://user?id=` + strconv.FormatInt(entity.User.ID, 10) + `">`
         }
-        pointers[entity.Offset] = append(pointers[entity.Offset], utf16.Encode([]rune(startTag))...)
+
+        pointers[entity.Offset] += startTag
 
 
-        startTag = strings.TrimPrefix(startTag, "<")
+        //startTag = strings.TrimPrefix(startTag, "<")
         var endTag string
         switch entity.Type {
         case "code", "pre":
@@ -176,24 +177,27 @@ func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
         case "text_link", "text_mention":
             endTag = `</a>`
         }
-        pointers[entity.Offset+entity.Length] = append(pointers[entity.Offset+entity.Length], utf16.Encode([]rune(endTag))...)
+        pointers[entity.Offset+entity.Length] += endTag
     }
 
-
+    var out = make([]uint16, 0, len(encoded))
 
     for i, ch := range encoded {
         if m, ok := pointers[i]; ok {
-            out = append(out, m...)
+            out = append(out, utf16.Encode([]rune(m))...)
         }
         out = append(out, ch)
 
         if i == len(encoded) - 1 {
             if m, ok := pointers[i+1]; ok {
-                out = append(out, m...)
+                out = append(out, utf16.Encode([]rune(m))...)
             }
         }
     }
-    return string(utf16.Decode(out))
+    ret := string(utf16.Decode(out))
+    ret = strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "").Replace(ret)
+    ret = strings.ReplaceAll(ret, `<br>`, "\n")
+    return ret
 }
 
 func setMyCommands(langs []string, commands []tgbotapi.BotCommand) error {
@@ -243,8 +247,8 @@ func makeArticle(id string, title, description string) tgbotapi.InlineQueryResul
             "disable_web_page_preview":false,
         },
         //ReplyMarkup: &keyboard,
-        URL:                 "https://t.me/TransloBot?start=from_inline",
-        HideURL:             true,
+        //URL:                 "https://t.me/TransloBot?start=from_inline",
+        //HideURL:             true,
         Description:         description,
     }
 }

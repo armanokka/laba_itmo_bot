@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/patrickmn/go-cache"
 	"time"
 )
 
@@ -37,24 +36,20 @@ func (u User) Create(user Users) {
 }
 
 func (u *User) Fill() {
-	if v, ok := c.Get(format(u.ID)); ok {
-		u.Users = v.(Users)
-		return
-	}
-	if err := db.Model(&Users{}).Where("id = ?", u.ID).Find(&u.Users).Error; err != nil {
+	if err := db.Model(&Users{}).Where("id = ?", u.ID).Find(&u).Error; err != nil {
 		u.error(err)
 	}
-	c.Set(format(u.ID), u.Users, cache.DefaultExpiration)
 }
 
 func (u *User) Update(user Users) {
-	if err := db.Model(&u.Users).Updates(user).Error; err != nil {
+	//if err := db.Model(&u.Users).Updates(user).Error; err != nil {
+	//	u.error(err)
+	//}
+	if err := db.Model(&Users{}).Where("id = ?", u.ID).Updates(user).Error; err != nil {
 		u.error(err)
 	}
-	if err := db.Model(&Users{}).Where("id = ?", u.ID).Find(&u.Users).Error; err != nil {
-		u.error(err)
-	}
-	c.Set(format(u.ID), u.Users, cache.DefaultExpiration)
+	u.Fill()
+	//c.Set(format(u.ID), u.Users, cache.DefaultExpiration)
 }
 
 func (u User) Localize(text string, placeholders ...interface{}) string {
@@ -95,13 +90,13 @@ func (u User) UpdateLastActivity() {
 	}
 }
 
-func (user User) StartMessage() Message {
+func (u User) StartMessage() Message {
 	return Message{
-		Text:     user.Localize("Just send me a text and I will translate it"),
+		Text:     u.Localize("Just send me a text and I will translate it"),
 		Keyboard: tgbotapi.NewReplyKeyboard(
 			tgbotapi.NewKeyboardButtonRow(
-				tgbotapi.NewKeyboardButton(user.Localize("My Language")),
-				tgbotapi.NewKeyboardButton(user.Localize("Translate Language")),
+				tgbotapi.NewKeyboardButton(u.Localize("My Language")),
+				tgbotapi.NewKeyboardButton(u.Localize("Translate Language")),
 			),
 		),
 	}
