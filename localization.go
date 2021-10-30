@@ -630,6 +630,28 @@ var translations = map[string]map[string]string{
         "id": "mencoba",
         "en": "try",
     },
+    "Did you like the bot?":{
+        "uz": "Sizga bot yoqdimi?",
+        "de": "Hat dir der Bot gefallen?",
+        "es": "¿Te gustó el bot?",
+        "uk": "Вам сподобався бот?",
+        "en": "Did you like the bot?",
+        "it": "Ti è piaciuto il bot?",
+        "ru": "Понравился бот?",
+        "pt": "Você gostou do bot?",
+        "id": "Apakah Anda menyukai botnya?",
+    },
+    "Donation": {
+        "it": "Se vuoi, dona qualche dollaro per lo sviluppo del progetto:\n Numero della carta: 9225-0699-9218-0658",
+        "de": "Wenn Sie möchten, spenden Sie ein paar Dollar für die Entwicklung des Projekts:\n Kartennummer: 9225-0699-9218-0658",
+        "es": "Si quieres, dona unos dólares para el desarrollo del proyecto:\n Número de tarjeta: 9225-0699-9218-0658",
+        "uk": "Якщо хочете, пожертвуйте кілька доларів на розвиток проекту:\n Номер картки: 9225-0699-9218-0658",
+        "id": "Jika Anda mau, sumbangkan beberapa dolar untuk pengembangan proyek:\n Nomor kartu: 9225-0699-9218-0658",
+        "en": "If you want, donate a few dollars for the development of the project:\nCard number: 9225-0699-9218-0658",
+        "uz": "Agar xohlasangiz, loyihani rivojlantirish uchun bir necha dollar xayriya qiling:\n Karta raqami: 9225-0699-9218-0658",
+        "ru": "Если хотите, пожертвуйте несколько долларов на развитие проекта:\n Номер карты: 9225-0699-9218-0658",
+        "pt": "Se quiser, doe alguns dólares para o desenvolvimento do projeto:\n Número do cartão: 9225-0699-9218-0658",
+    },
 }
 
 

@@ -88,6 +88,8 @@ func handleInline(update tgbotapi.InlineQuery) {
             toLang := translate.ReversoIso6392(user.MyLang)
 
             if fromLang != "" && toLang != "" {
+                sortOffset++
+
                 wg.Add(1)
                 go func() {
                     defer wg.Done()
@@ -96,13 +98,21 @@ func handleInline(update tgbotapi.InlineQuery) {
                         warn(err)
                         return
                     }
-                    for _, result := range tr.ContextResults.Results {
-                        atomic.AddInt64(&sortOffset, 1)
-                        results = append(results, makeArticle("my_lang-" + result.Translation, iso6391.Name(user.MyLang) + " 🔥", html.UnescapeString(result.Translation)))
+                    var description string
+                    for i, result := range tr.ContextResults.Results {
+                        if i > 0 {
+                            description += ", "
+                        }
+                        description += result.Translation
                     }
+
+                    if len(tr.Translation) == 0 {
+                        return
+                    }
+
+                    results = append(results, makeArticle("my_lang-" + tr.Translation[0], iso6391.Name(user.MyLang) + " 🔥", html.UnescapeString(description), html.UnescapeString(tr.Translation[0])))
                 }()
             } else {
-                sortOffset++
                 wg.Add(1)
                 go func() {
                     defer wg.Done()
@@ -111,12 +121,15 @@ func handleInline(update tgbotapi.InlineQuery) {
                         warn(err)
                         return
                     }
-                    results = append(results, makeArticle("my_lang", iso6391.Name(user.MyLang) + " 🔥", html.UnescapeString(myLangTr.Text)))
+                    html.UnescapeString(myLangTr.Text)
+                    results = append(results, makeArticle("my_lang", iso6391.Name(user.MyLang) + " 🔥", myLangTr.Text, myLangTr.Text))
                 }()
             }
 
         }
         if from != user.ToLang {
+
+            sortOffset++
             fromLang := translate.ReversoIso6392(from)
             toLang := translate.ReversoIso6392(user.ToLang)
 
@@ -129,13 +142,21 @@ func handleInline(update tgbotapi.InlineQuery) {
                         warn(err)
                         return
                     }
-                    for _, result := range tr.ContextResults.Results {
-                        atomic.AddInt64(&sortOffset, 1)
-                        results = append(results, makeArticle("to_lang-" + result.Translation, iso6391.Name(user.ToLang) + " 🔥", html.UnescapeString(result.Translation)))
+
+                    var description string
+                    for i, result := range tr.ContextResults.Results {
+                        if i > 0 {
+                            description += ", "
+                        }
+                        description += result.Translation
                     }
+
+                    if len(tr.Translation) == 0 {
+                        return
+                    }
+                    results = append(results, makeArticle("to_lang-" + tr.Translation[0], iso6391.Name(user.ToLang) + " 🔥", html.UnescapeString(description), html.UnescapeString(tr.Translation[0])))
                 }()
             } else {
-                sortOffset++
                 wg.Add(1)
                 go func() {
                     defer wg.Done()
@@ -144,7 +165,8 @@ func handleInline(update tgbotapi.InlineQuery) {
                         warn(err)
                         return
                     }
-                    results = append(results, makeArticle("to_lang", iso6391.Name(user.ToLang) + " 🔥", html.UnescapeString(toLangTr.Text)))
+                    toLangTr.Text = html.UnescapeString(toLangTr.Text)
+                    results = append(results, makeArticle("to_lang", iso6391.Name(user.ToLang) + " 🔥", toLangTr.Text, toLangTr.Text))
                 }()
             }
         }
@@ -167,11 +189,12 @@ func handleInline(update tgbotapi.InlineQuery) {
                 warn(err)
                 return
             }
+            tr.Text = html.UnescapeString(tr.Text)
+
             if tr.Text == "" {
                 return // ну не вышло, так не вышло, че бубнить-то
             }
-
-            results = append(results, makeArticle(strconv.Itoa(i), iso6391.Name(lang), html.UnescapeString(tr.Text)))
+            results = append(results, makeArticle(strconv.Itoa(i), iso6391.Name(lang), tr.Text, tr.Text))
         }()
     }
     wg.Wait()
@@ -192,6 +215,8 @@ func handleInline(update tgbotapi.InlineQuery) {
     if end >= l - 1 {
         nextoffset = ""
     }
+
+    pp.Println(results)
 
     if _, err := bot.AnswerInlineQuery(tgbotapi.InlineConfig{
         InlineQueryID:     update.ID,

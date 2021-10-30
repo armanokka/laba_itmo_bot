@@ -101,3 +101,8 @@ func (u User) StartMessage() Message {
 		),
 	}
 }
+
+func (u User) IncrUsings() {
+	if err := db.Model(&Users{}).Exec("UPDATE users SET usings=usings+1 WHERE id = ?", u.ID).Error; err != nil {
+		u.error(err)
+	}}

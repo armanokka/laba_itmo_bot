@@ -231,7 +231,7 @@ func setMyCommands(langs []string, commands []tgbotapi.BotCommand) error {
     return nil
 }
 
-func makeArticle(id string, title, description string) tgbotapi.InlineQueryResultArticle {
+func makeArticle(id string, title, description, messageText string) tgbotapi.InlineQueryResultArticle {
     //keyboard := tgbotapi.NewInlineKeyboardMarkup(
     //    tgbotapi.NewInlineKeyboardRow(
     //        tgbotapi.InlineKeyboardButton{
@@ -243,7 +243,7 @@ func makeArticle(id string, title, description string) tgbotapi.InlineQueryResul
         ID:                  id,
         Title:               title,
         InputMessageContent: map[string]interface{}{
-            "message_text": description,
+            "message_text": messageText,
             "disable_web_page_preview":false,
         },
         //ReplyMarkup: &keyboard,

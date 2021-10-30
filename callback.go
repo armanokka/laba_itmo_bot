@@ -37,6 +37,14 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
         })
         user.WriteBotLog("cb_delete", "")
         return
+    case "good_bot":
+        bot.Send(tgbotapi.EditMessageTextConfig{
+            BaseEdit:              tgbotapi.BaseEdit{
+                ChatID:          callback.From.ID,
+                MessageID:       callback.Message.MessageID,
+            },
+            Text:                  user.Localize("Donation"),
+        })
     }
 
     arr := strings.Split(callback.Data, ":")

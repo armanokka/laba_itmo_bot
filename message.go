@@ -233,14 +233,18 @@ func handleMessage(message tgbotapi.Message) {
     }
 
     if user.Usings == 20 || user.Usings == 50 || user.Usings == 100 || (user.Usings > 100 && user.Usings % 50 == 0) {
-        defer func() {
-            photo := tgbotapi.NewPhoto(message.Chat.ID, "logo.jpg")
-            photo.Caption = user.Localize("bot_advertise")
-            photo.ParseMode = tgbotapi.ModeHTML
-            if _, err := bot.Send(photo); err != nil {
-                pp.Println(err)
-            }
-        }()
+        bot.Send(tgbotapi.MessageConfig{
+            BaseChat:              tgbotapi.BaseChat{
+                ChatID:                   message.From.ID,
+                ReplyMarkup:              tgbotapi.NewInlineKeyboardMarkup(
+                    tgbotapi.NewInlineKeyboardRow(
+                        tgbotapi.NewInlineKeyboardButtonData("👍", "good_bot"),
+                        tgbotapi.NewInlineKeyboardButtonData("👎", "delete"))),
+                DisableNotification:      true,
+                AllowSendingWithoutReply: true,
+            },
+            Text:                  user.Localize("Did you like the bot?"),
+        })
     }
 
     msg, err := bot.Send(tgbotapi.MessageConfig{
@@ -396,6 +400,6 @@ func handleMessage(message tgbotapi.Message) {
     }
 
     analytics.Bot(user.ID, tr.Text, "Translated")
-
+    user.IncrUsings()
     user.WriteBotLog("pm_translate", tr.Text)
 }
