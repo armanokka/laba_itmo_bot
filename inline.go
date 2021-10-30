@@ -5,11 +5,13 @@ import (
     "github.com/armanokka/translobot/translate"
     iso6391 "github.com/emvi/iso-639-1"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+    "github.com/k0kubun/pp"
     "github.com/sirupsen/logrus"
     "html"
     "sort"
     "strconv"
     "sync"
+    "sync/atomic"
 )
 
 func handleInline(update tgbotapi.InlineQuery) {
@@ -62,7 +64,8 @@ func handleInline(update tgbotapi.InlineQuery) {
 
     var wg sync.WaitGroup
     var user = NewUser(update.From.ID, warn)
-    if user.Exists() {
+    userExists := user.Exists()
+    if userExists {
         user.Fill()
     }
 
@@ -70,36 +73,80 @@ func handleInline(update tgbotapi.InlineQuery) {
     if err != nil {
         warn(err)
     }
+
     from := tr.From
+    if from == "" {
+        from = user.MyLang
+    }
+    //sortOffset := int64(len(popular))
+    var sortOffset int64
 
-    sortOffset := 0
+    if start == 0 && userExists { // Юзер существует
 
-    if start == 0 && user.MyLang != "" && user.ToLang != "" {
         if from != user.MyLang {
-            sortOffset++
-            wg.Add(1)
-            go func() {
-                defer wg.Done()
-                myLangTr, err := translate.GoogleHTMLTranslate("auto", user.MyLang, update.Query)
-                if err != nil {
-                    warn(err)
-                    return
-                }
-                results = append(results, makeArticle("my_lang", iso6391.Name(user.MyLang) + " 🔥", html.UnescapeString(myLangTr.Text)))
-            }()
+            fromLang := translate.ReversoIso6392(from)
+            toLang := translate.ReversoIso6392(user.MyLang)
+
+            if fromLang != "" && toLang != "" {
+                wg.Add(1)
+                go func() {
+                    defer wg.Done()
+                    tr, err := translate.ReversoTranslate(fromLang, toLang, update.Query)
+                    if err != nil {
+                        warn(err)
+                        return
+                    }
+                    for _, result := range tr.ContextResults.Results {
+                        atomic.AddInt64(&sortOffset, 1)
+                        results = append(results, makeArticle("my_lang-" + result.Translation, iso6391.Name(user.MyLang) + " 🔥", html.UnescapeString(result.Translation)))
+                    }
+                }()
+            } else {
+                sortOffset++
+                wg.Add(1)
+                go func() {
+                    defer wg.Done()
+                    myLangTr, err := translate.GoogleHTMLTranslate(from, user.MyLang, update.Query)
+                    if err != nil {
+                        warn(err)
+                        return
+                    }
+                    results = append(results, makeArticle("my_lang", iso6391.Name(user.MyLang) + " 🔥", html.UnescapeString(myLangTr.Text)))
+                }()
+            }
+
         }
         if from != user.ToLang {
-            sortOffset++
-            wg.Add(1)
-            go func() {
-                defer wg.Done()
-                toLangTr, err := translate.GoogleHTMLTranslate("auto", user.ToLang, update.Query)
-                if err != nil {
-                    warn(err)
-                    return
-                }
-                results = append(results, makeArticle("to_lang", iso6391.Name(user.ToLang) + " 🔥", html.UnescapeString(toLangTr.Text)))
-            }()
+            fromLang := translate.ReversoIso6392(from)
+            toLang := translate.ReversoIso6392(user.ToLang)
+
+            if fromLang != "" && toLang != "" {
+                wg.Add(1)
+                go func() {
+                    defer wg.Done()
+                    tr, err := translate.ReversoTranslate(fromLang, toLang, update.Query)
+                    if err != nil {
+                        warn(err)
+                        return
+                    }
+                    for _, result := range tr.ContextResults.Results {
+                        atomic.AddInt64(&sortOffset, 1)
+                        results = append(results, makeArticle("to_lang-" + result.Translation, iso6391.Name(user.ToLang) + " 🔥", html.UnescapeString(result.Translation)))
+                    }
+                }()
+            } else {
+                sortOffset++
+                wg.Add(1)
+                go func() {
+                    defer wg.Done()
+                    toLangTr, err := translate.GoogleHTMLTranslate("auto", user.ToLang, update.Query)
+                    if err != nil {
+                        warn(err)
+                        return
+                    }
+                    results = append(results, makeArticle("to_lang", iso6391.Name(user.ToLang) + " 🔥", html.UnescapeString(toLangTr.Text)))
+                }()
+            }
         }
     }
 
@@ -128,13 +175,12 @@ func handleInline(update tgbotapi.InlineQuery) {
         }()
     }
     wg.Wait()
-
+    sortOffsetLoaded := int(atomic.LoadInt64(&sortOffset))
     sort.Slice(results[sortOffset:], func(i, j int) bool {
-       return results[i+sortOffset].(tgbotapi.InlineQueryResultArticle).Title < results[j+sortOffset].(tgbotapi.InlineQueryResultArticle).Title
+       return results[i+sortOffsetLoaded].(tgbotapi.InlineQueryResultArticle).Title < results[j+sortOffsetLoaded].(tgbotapi.InlineQueryResultArticle).Title
     })
 
-
-    pmtext := "From: " + iso6391.Name(from)
+    pmtext := "From: " + langs[from].Name
     if update.Query == "" {
         pmtext = "Enter text"
     }
@@ -158,6 +204,7 @@ func handleInline(update tgbotapi.InlineQuery) {
     }); err != nil {
         warn(err)
         logrus.Error(err)
+        pp.Println(results)
     }
     
     analytics.Bot(update.From.ID, "Inline succeeded", "Inline succeeded")

@@ -22,8 +22,9 @@ import (
 	"time"
 )
 
-
 func main() {
+	//codes = append(popular, codes...) // !
+
 	// Logging
 	logrus.SetFormatter(&logrus.TextFormatter{
 		ForceColors: true,
