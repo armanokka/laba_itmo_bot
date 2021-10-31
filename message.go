@@ -257,7 +257,7 @@ func handleMessage(message tgbotapi.Message) {
             AllowSendingWithoutReply: true,
         },
         Text:                  user.Localize("⏳ Translating..."),
-        ParseMode:             "",
+        ParseMode:             tgbotapi.ModeHTML,
         Entities:              nil,
         DisableWebPagePreview: false,
     })
@@ -304,9 +304,15 @@ func handleMessage(message tgbotapi.Message) {
         errs = make(chan *errors.Error, 4)
     )
 
+    l := len(text)
+
     wg.Add(1)
     go func() {
         defer wg.Done()
+
+        if l > 100 {
+            return
+        }
         dict, err = translate.GoogleDictionary(from, text)
         if err != nil {
             errs <- errors.New(err)
@@ -316,6 +322,10 @@ func handleMessage(message tgbotapi.Message) {
     wg.Add(1)
     go func() {
         defer wg.Done()
+
+        if l > 100 {
+            return
+        }
         if inMapValues(translate.ReversoSupportedLangs(), from, to) && from != to {
             rev, err = translate.ReversoTranslate(translate.ReversoIso6392(from), translate.ReversoIso6392(to), strings.ToLower(text))
             if err != nil {
@@ -339,14 +349,14 @@ func handleMessage(message tgbotapi.Message) {
         if err != nil {
             errs <- errors.New(err)
         }
+
         if tr.Text == "" && text != "" {
             WarnAdmin("короче на " + to + " не переводит")
             errs <- errors.New("короче на " + to + " не переводит")
             return
         }
 
-        tr.Text = strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "").Replace(tr.Text)
-        tr.Text = strings.ReplaceAll(tr.Text, `<br>`, "\n")
+        tr.Text = strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "", `<br>`, "\n").Replace(tr.Text)
     }()
 
     wg.Wait()
@@ -396,6 +406,7 @@ func handleMessage(message tgbotapi.Message) {
         Entities:              nil,
         DisableWebPagePreview: false,
     }); err != nil {
+        logrus.Error(err)
         pp.Println(err)
     }
 

@@ -4,7 +4,6 @@ import (
     "database/sql"
     "github.com/armanokka/translobot/dashbot"
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-    cache "github.com/patrickmn/go-cache"
     "gorm.io/gorm"
     "time"
 )
@@ -32,7 +31,7 @@ var (
     bot *BotAPI
     analytics dashbot.DashBot
     InlineCacheTime int = 864000
-    c = cache.New(6 * time.Hour, 12 * time.Hour)
+    //c = cache.New(6 * time.Hour, 12 * time.Hour)
     logs = make(chan UsersLogs, 10)
 )
 
