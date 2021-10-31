@@ -715,22 +715,36 @@ var langs = map[string]Lang{
 	},
 }
 
-//var popular = []string{
-//	"ru",
-//	"en",
-//	"es",
-//	"ar",
-//	"uz",
-//	"pt",
-//	"hi",
-//	"fr",
-//	"la",
-//	"ja",
-//	"ko",
-//	"tr",
-//}
+var popular = []string{
+	"ru",
+	"en",
+	"es",
+	"ar",
+	"uz",
+	"pt",
+	"hi",
+	"fr",
+	"la",
+	"ja",
+	"ko",
+	"tr",
+}
 
 var codes = []string{
+	//"ru",
+	//"en",
+	//"es",
+	//"ar",
+	//"uz",
+	//"pt",
+	//"hi",
+	//"fr",
+	//"la",
+	//"ja",
+	//"ko",
+	//"tr",
+
+
 	"af",
 	"am",
 	"ar",
