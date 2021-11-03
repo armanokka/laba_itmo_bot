@@ -84,90 +84,34 @@ func handleInline(update tgbotapi.InlineQuery) {
     if start == 0 && userExists { // Юзер существует
 
         if from != user.MyLang {
-            sortOffset++
-            //fromLang := translate.ReversoIso6392(from)
-            //toLang := translate.ReversoIso6392(user.MyLang)
-            //
-            //if fromLang != "" && toLang != "" {
-            //
-            //    wg.Add(1)
-            //    go func() {
-            //        defer wg.Done()
-            //        tr, err := translate.ReversoTranslate(fromLang, toLang, update.Query)
-            //        if err != nil {
-            //            warn(err)
-            //            return
-            //        }
-            //        var description string
-            //        for i, result := range tr.ContextResults.Results {
-            //            if i > 0 {
-            //                description += ", "
-            //            }
-            //            description += result.Translation
-            //        }
-            //
-            //        if len(tr.Translation) == 0 {
-            //            return
-            //        }
-            //
-            //        results = append(results, makeArticle("my_lang-" + tr.Translation[0], iso6391.Name(user.MyLang) + " 🔥", html.UnescapeString(description), html.UnescapeString(tr.Translation[0])))
-            //    }()
-            //} else {
-                wg.Add(1)
-                go func() {
-                    defer wg.Done()
-                    myLangTr, err := translate.GoogleHTMLTranslate(from, user.MyLang, update.Query)
-                    if err != nil {
-                        warn(err)
-                        return
-                    }
-                    html.UnescapeString(myLangTr.Text)
-                    results = append(results, makeArticle("my_lang", iso6391.Name(user.MyLang) + " 🔥", myLangTr.Text, myLangTr.Text))
-                }()
-            //}
+        sortOffset++
+            wg.Add(1)
+            go func() {
+                defer wg.Done()
+                myLangTr, err := translate.GoogleHTMLTranslate(from, user.MyLang, update.Query)
+                if err != nil {
+                    warn(err)
+                    return
+                }
+                myLangTr.Text = html.UnescapeString(myLangTr.Text)
+                results = append(results, makeArticle("my_lang", iso6391.Name(user.MyLang) + " 🔥", myLangTr.Text, myLangTr.Text))
+            }()
 
         }
         if from != user.ToLang {
-
             sortOffset++
-            //fromLang := translate.ReversoIso6392(from)
-            //toLang := translate.ReversoIso6392(user.ToLang)
-            //
-            //if fromLang != "" && toLang != "" {
-            //    wg.Add(1)
-            //    go func() {
-            //        defer wg.Done()
-            //        tr, err := translate.ReversoTranslate(fromLang, toLang, update.Query)
-            //        if err != nil {
-            //            warn(err)
-            //            return
-            //        }
-            //
-            //        var description string
-            //        for i, result := range tr.ContextResults.Results {
-            //            if i > 0 {
-            //                description += ", "
-            //            }
-            //            description += result.Translation
-            //        }
-            //
-            //        if len(tr.Translation) == 0 {
-            //            return
-            //        }
-            //        results = append(results, makeArticle("to_lang-" + tr.Translation[0], iso6391.Name(user.ToLang) + " 🔥", html.UnescapeString(description), html.UnescapeString(tr.Translation[0])))
-            //    }()
-            //} else {
-                wg.Add(1)
-                go func() {
-                    defer wg.Done()
-                    toLangTr, err := translate.GoogleHTMLTranslate("auto", user.ToLang, update.Query)
-                    if err != nil {
-                        warn(err)
-                        return
-                    }
-                    toLangTr.Text = html.UnescapeString(toLangTr.Text)
-                    results = append(results, makeArticle("to_lang", iso6391.Name(user.ToLang) + " 🔥", toLangTr.Text, toLangTr.Text))
-               }()
+            wg.Add(1)
+            go func() {
+                defer wg.Done()
+                toLangTr, err := translate.GoogleHTMLTranslate("auto", user.ToLang, update.Query)
+                if err != nil {
+                    warn(err)
+                    return
+                }
+                toLangTr.Text = html.UnescapeString(toLangTr.Text)
+
+                results = append(results, makeArticle("to_lang", iso6391.Name(user.ToLang) + " 🔥", toLangTr.Text, toLangTr.Text))
+           }()
             //}
         }
     }
