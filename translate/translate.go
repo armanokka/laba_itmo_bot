@@ -10,7 +10,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
+	"sync"
 )
 
 
@@ -121,15 +123,62 @@ func DetectLanguageGoogle(text string) (string, error) {
 }
 
 func TTS(lang, text string) ([]byte, error) {
+	parts := splitIntoChunks(text, 200)
+
+	type result struct {
+		idx int
+		s   string
+	}
+	var results = make([]result, len(parts))
+	var errs = make(chan error, len(parts))
+
+	var wg sync.WaitGroup
+	for i, part := range parts {
+		i := i
+		part := part
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			data, err := ttsRequest(lang, part)
+			if err != nil {
+				errs <- err
+				return
+			}
+			results = append(results, result{
+				idx: i,
+				s:   data,
+			})
+		}()
+	}
+	wg.Wait()
+	close(errs)
+
+	if len(errs) > 0 {
+		return nil, <-errs
+	}
+
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].idx < results[j].idx
+	})
+
+	var out string
+	for _, res := range results {
+		out += res.s
+	}
+
+	return base64.StdEncoding.DecodeString(out)
+}
+
+func ttsRequest(lang, text string) (string, error) {
 	params := url.Values{}
 	params.Add("ei", "-4vsYPWwArKWjgahzpfACw")
 	params.Add("yv", "3")
-	params.Add("ttsp", "tl:" + url.QueryEscape(lang) + ",txt:" + url.QueryEscape(text) + ",spd:1")
+	params.Add("ttsp", "tl:"+url.QueryEscape(lang)+",txt:"+url.QueryEscape(text)+",spd:1")
 	params.Add("async", "_fmt:jspb")
 
-	req, err := http.NewRequest("GET", "https://www.google.com/async/translate_tts?" + params.Encode(), nil)
+	req, err := http.NewRequest("GET", "https://www.google.com/async/translate_tts?"+params.Encode(), nil)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	req.Header["content-type"] = []string{"application/x-www-form-urlencoded;charset=UTF-8"}
 	req.Header["cookie"] = []string{"NID=217=mKKVUv88-BW4Vouxnh-qItLKFt7zm0Gj3yDLC8oDKb_PuLIb-p6fcPVcsXZWeNwkjDSFfypZ8BKqy27dcJH-vFliM4dKaiKdFrm7CherEXVt-u_DPr9Yecyv_tZRSDU7E52n5PWwOkaN2I0-naa85Tb9-uTjaKjO0gmdbShqba5MqKxuTLY; 1P_JAR=2021-06-18-16; DV=A3qPWv6ELckmsH4dFRGdR1fe4Gj-oRcZWqaFSPtAjwAAAAA"}
@@ -142,52 +191,43 @@ func TTS(lang, text string) ([]byte, error) {
 	req.Header["sec-ch-ua"] = []string{`" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"`}
 	req.Header["user-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.101 Safari/537.36"}
 
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
+	if res.StatusCode != 200 {
+		return "", HTTPError{
+			Code:        res.StatusCode,
+			Description: "Non 200 HTTP code",
+		}
+	}
+	idx := strings.IndexByte(string(body), '\'') + 1
+	if idx == 0 {
+		return "", errors.New("couldn't find \"'\"")
+	}
+	var out = struct {
+		TranslateTTS []string `json:"translate_tts"`
+	}{}
 
-	tts := func(text string) ([]byte, error) {
-		res, err := HTTPClient.Do(req)
-		if err != nil {
-			return nil, err
-		}
-		body, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			return nil, err
-		}
-		if res.StatusCode != 200 {
-			return nil, HTTPError{
-				Code:        res.StatusCode,
-				Description: "Non 200 HTTP code",
-			}
-		}
-		idx := strings.IndexByte(string(body), '\n') + 1
-		var out = struct {
-			TranslateTTS []string `json:"translate_tts"`
-		}{}
-		err = json.Unmarshal(body[idx:], &out)
-		if err != nil {
-			return nil, err
-		}
-		if len(out.TranslateTTS) == 0 {
-			return nil, errors.New("translateTTS js object not found")
-		}
-		if out.TranslateTTS[0] == "" {
-			return nil, ErrTTSLanguageNotSupported
-		}
-		sDec, err := base64.StdEncoding.DecodeString(out.TranslateTTS[0])
-		return sDec, err
+	err = json.Unmarshal(body[idx:], &out)
+	if err != nil {
+		return "", err
 	}
 
-	var inputs = splitIntoChunks(text, 200)
-
-	var out = make([]byte, 0)
-	for _, input := range inputs {
-		b, err := tts(input)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, b...)
+	if len(out.TranslateTTS) == 0 {
+		pp.Println("translateTTS js object not found")
+		return "", errors.New("translateTTS js object not found")
 	}
-	return out, nil
+	if out.TranslateTTS[0] == "" {
+		return "", ErrTTSLanguageNotSupported
+	}
+	return out.TranslateTTS[0], err
 }
+
 
 
 func splitIntoChunks(s string, chunkLength int) []string {
@@ -328,7 +368,7 @@ func ReversoTranslate(from, to, text string) (ReversoTranslation, error) {
 		req.Header.Add("accept-language", "en-US,en;q=0.8")
 		req.Header.Add("user-agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36")
 
-		return HTTPClient.Do(req)
+		return http.DefaultClient.Do(req)
 	}
 
 	var res *http.Response
@@ -428,7 +468,7 @@ func GoogleTranslateSingle(from, to, text string) (GoogleTranslateSingleResult, 
 	req.Header["x-client-data"] = []string{"CI+2yQEIpLbJAQjBtskBCKmdygEIq9HKAQjv8ssBCJ75ywEItP/LAQjnhMwBCLWFzAEI2IXMAQjLicwB"}
 	req.Header["connection"] = []string{"keep-alive"}
 	for i:=0;i<3;i++ {
-		res, err = HTTPClient.Do(req)
+		res, err = http.DefaultClient.Do(req)
 		if err == nil && res.StatusCode == 200 {
 			break
 		}

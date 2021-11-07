@@ -140,7 +140,7 @@ func handleMessage(message tgbotapi.Message) {
         arg := message.CommandArguments()
         var id int64
         if strings.HasPrefix(arg, "@") {
-            user, err := bot.GetChat(tgbotapi.ChatInfoConfig{tgbotapi.ChatConfig{
+            user, err := bot.GetChat(tgbotapi.ChatInfoConfig{ChatConfig: tgbotapi.ChatConfig{
                 SuperGroupUsername: strings.TrimPrefix(arg, "@"),
             }})
             if err != nil {
@@ -277,11 +277,12 @@ func handleMessage(message tgbotapi.Message) {
         return
     }
 
-    from, err := translate.DetectLanguageGoogle(cutStringUTF16(text, 100))
+    tr, err := translate.GoogleHTMLTranslate("auto", "en", cutStringUTF16(text, 100))
     if err != nil {
         warn(err)
         return
     }
+    from := tr.From
 
     if from == "" {
         from = "auto"
@@ -297,7 +298,6 @@ func handleMessage(message tgbotapi.Message) {
     }
 
     var (
-        tr = translate.GoogleHTMLTranslation{}
         rev = translate.ReversoTranslation{}
         dict = translate.GoogleDictionaryResponse{}
         wg = sync.WaitGroup{}

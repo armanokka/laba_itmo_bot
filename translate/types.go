@@ -3,11 +3,7 @@ package translate
 import (
     "errors"
     "fmt"
-    "net/http"
-    "time"
 )
-
-var HTTPClient http.Client = http.Client{Timeout: 2 * time.Second}
 
 type HTTPError struct {
     Code int

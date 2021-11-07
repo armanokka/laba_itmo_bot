@@ -57,16 +57,28 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
         if arr[1] == tolang {
             tolang = "ar"
         }
-        if err := db.Create(&Users{
-            ID:         callback.From.ID,
-            MyLang:     arr[1],
-            ToLang:     tolang,
-            Act:        sql.NullString{},
-            Mailing:    true,
-            Lang:       arr[1],
-        }).Error; err != nil {
-            warn(err)
+        var exists bool
+        if err := db.Model(&Users{}).
+            Raw("SELECT EXISTS(SELECT lang FROM users WHERE id=?)", callback.From.ID).
+            Find(&exists).Error; err != nil {
+                warn(err)
         }
+
+        if !exists {
+            if err := db.Create(&Users{
+                ID:         callback.From.ID,
+                MyLang:     arr[1],
+                ToLang:     tolang,
+                Act:        sql.NullString{},
+                Mailing:    true,
+                Lang:       arr[1],
+            }).Error; err != nil {
+                warn(err)
+            }
+        }
+
+
+
         user.Fill()
 
         bot.Send(tgbotapi.NewDeleteMessage(callback.From.ID, callback.Message.MessageID))
