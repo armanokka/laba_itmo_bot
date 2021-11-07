@@ -46,6 +46,7 @@ type Users struct {
     Lang string `gorm:"default:en"`
     ReferrerID int64 `gorm:"default:null"`
     Blocked bool `gorm:"default:false"`
+    IsDeveloper sql.NullBool
 }
 
 type UsersLogs struct {

@@ -37,6 +37,21 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
         })
         user.WriteBotLog("cb_delete", "")
         return
+    case "I'm developer":
+        bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
+        bot.Send(tgbotapi.EditMessageTextConfig{
+            BaseEdit:              tgbotapi.BaseEdit{
+                ChatID:          callback.From.ID,
+                ChannelUsername: "",
+                MessageID:       callback.Message.MessageID,
+                InlineMessageID: "",
+                ReplyMarkup:     nil,
+            },
+            Text:                  user.Localize("Advice Translo API"),
+            ParseMode:             tgbotapi.ModeHTML,
+            Entities:              nil,
+            DisableWebPagePreview: false,
+        })
     case "good_bot":
         bot.Send(tgbotapi.EditMessageTextConfig{
             BaseEdit:              tgbotapi.BaseEdit{

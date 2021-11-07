@@ -1,6 +1,7 @@
 package main
 
 import (
+    "database/sql"
     "github.com/armanokka/translobot/translate"
     iso6391 "github.com/emvi/iso-639-1"
     "github.com/go-errors/errors"
@@ -233,18 +234,36 @@ func handleMessage(message tgbotapi.Message) {
     }
 
     if user.Usings == 20 || user.Usings == 50 || user.Usings == 100 || (user.Usings > 100 && user.Usings % 50 == 0) {
-        bot.Send(tgbotapi.MessageConfig{
-            BaseChat:              tgbotapi.BaseChat{
-                ChatID:                   message.From.ID,
-                ReplyMarkup:              tgbotapi.NewInlineKeyboardMarkup(
-                    tgbotapi.NewInlineKeyboardRow(
-                        tgbotapi.NewInlineKeyboardButtonData("👍", "good_bot"),
-                        tgbotapi.NewInlineKeyboardButtonData("👎", "delete"))),
-                DisableNotification:      true,
-                AllowSendingWithoutReply: true,
-            },
-            Text:                  user.Localize("Did you like the bot?"),
-        })
+        // TODO: Donation advicing
+    }
+
+    if user.Usings > 15 && !user.IsDeveloper.Valid {
+        defer func() {
+            _, err := bot.Send(tgbotapi.MessageConfig{
+                BaseChat:              tgbotapi.BaseChat{
+                    ChatID:                   message.From.ID,
+                    ChannelUsername:          "",
+                    ReplyToMessageID:         message.MessageID,
+                    ReplyMarkup:              tgbotapi.NewInlineKeyboardMarkup(
+                        tgbotapi.NewInlineKeyboardRow(
+                            tgbotapi.NewInlineKeyboardButtonData(user.Localize("Yes"), "I'm developer"),
+                            tgbotapi.NewInlineKeyboardButtonData(user.Localize("No"), "delete"))),
+                    DisableNotification:      true,
+                    AllowSendingWithoutReply: false,
+                },
+                Text:                  user.Localize("Are you developer?"),
+                ParseMode:             "",
+                Entities:              nil,
+                DisableWebPagePreview: false,
+            })
+            if err != nil {
+                pp.Println(err)
+            }
+        }()
+        user.Update(Users{IsDeveloper: sql.NullBool{
+            Bool:  false,
+            Valid: true,
+        }})
     }
 
     msg, err := bot.Send(tgbotapi.MessageConfig{
