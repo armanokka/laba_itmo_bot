@@ -28,11 +28,17 @@ func handleMessage(message tgbotapi.Message) {
     }
 
     var user = NewUser(message.From.ID, warn)
-    if !user.Exists() {
-        if message.From.LanguageCode == "" || !in(BotLocalizedLangs, message.From.LanguageCode) {
-            message.From.LanguageCode = "en"
+
+    if strings.HasPrefix(message.Text, "/start") {
+        if !user.Exists() {
+            if message.From.LanguageCode == "" || !in(BotLocalizedLangs, message.From.LanguageCode) {
+                message.From.LanguageCode = "en"
+            }
+        } else {
+            user.Fill()
         }
-        kb, err := BuildSupportedLanguagesKeyboard("register")
+
+        kb, err := BuildSupportedLanguagesKeyboard()
         if err  != nil {
             warn(err)
             return
@@ -42,31 +48,13 @@ func handleMessage(message tgbotapi.Message) {
                 ChatID:                   message.From.ID,
                 ReplyMarkup:              kb,
             },
-            Text:                  user.Localize("Choose bot language"),
+            Text:                  user.Localize("Please, select bot language"),
         })
         return
     }
+
     user.Fill()
 
-    if strings.HasPrefix(message.Text, "/start") {
-        bot.Send(tgbotapi.MessageConfig{
-            BaseChat:              tgbotapi.BaseChat{
-                ChatID:                   message.From.ID,
-                DisableNotification:      true,
-                AllowSendingWithoutReply: true,
-                ReplyMarkup: tgbotapi.NewReplyKeyboard(
-                    tgbotapi.NewKeyboardButtonRow(
-                        tgbotapi.NewKeyboardButton(user.Localize("My Language")),
-                        tgbotapi.NewKeyboardButton(user.Localize("Translate Language")),
-                    ),
-                ),
-            },
-            Text:                  user.Localize("Just send me a text and I will translate it"),
-        })
-
-        return
-    }
-    user.Fill()
     defer user.UpdateLastActivity()
 
     user.WriteUserLog(message.Text)
@@ -289,6 +277,7 @@ func handleMessage(message tgbotapi.Message) {
         text = message.Caption
     }
     text = html.EscapeString(text)
+    var sourceText = text
 
     if text == "" {
         bot.Send(tgbotapi.NewEditMessageText(message.Chat.ID, msg.MessageID, user.Localize("Please, send text message")))
@@ -357,8 +346,9 @@ func handleMessage(message tgbotapi.Message) {
         text = applyEntitiesHtml(text, message.Entities)
     } else if len(message.CaptionEntities) > 0 {
         text = applyEntitiesHtml(text, message.CaptionEntities)
+    } else {
+        text = strings.ReplaceAll(text, "\n", "<br>")
     }
-    text = strings.ReplaceAll(text, "\n", "<br>")
 
     // Переводим в гугле, как обычно
     wg.Add(1)
@@ -375,7 +365,7 @@ func handleMessage(message tgbotapi.Message) {
             return
         }
 
-        tr.Text = strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "", `<br>`, "\n").Replace(tr.Text)
+        text = strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "",  `<br> `, "\n", `<br>`, "\n",).Replace(tr.Text)
     }()
 
     wg.Wait()
@@ -386,7 +376,6 @@ func handleMessage(message tgbotapi.Message) {
         WarnAdmin("Ошибка зафиксирована, но у пользователя всё ок", err.(*errors.Error).ErrorStack(), "\n"+text, from, to)
         logrus.Error(err)
     }
-
 
     From := langs[from]
     keyboard := tgbotapi.NewInlineKeyboardMarkup(
@@ -411,7 +400,7 @@ func handleMessage(message tgbotapi.Message) {
 
     if dict.Status == 200 && dict.DictionaryData != nil {
         keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
-            tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("ℹ️" + user.Localize("Dictionary"), "dictonary:"+from+":"+text)))
+            tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("ℹ️" + user.Localize("Dictionary"), "dictonary:"+from+":"+sourceText)))
     }
 
     if _, err = bot.Send(tgbotapi.EditMessageTextConfig{
@@ -420,7 +409,7 @@ func handleMessage(message tgbotapi.Message) {
             MessageID:       msg.MessageID,
             ReplyMarkup:     &keyboard,
         },
-        Text:                  tr.Text,
+        Text:                  text,
         ParseMode:             tgbotapi.ModeHTML,
         Entities:              nil,
         DisableWebPagePreview: false,

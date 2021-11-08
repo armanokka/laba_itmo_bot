@@ -67,10 +67,10 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
         return
     }
     switch arr[0] {
-    case "register": // arr[1] - bot lang
+    case "set_bot_lang_and_register": // arr[1] - bot lang
         tolang := "en"
         if arr[1] == tolang {
-            tolang = "ar"
+            tolang = "fr"
         }
         var exists bool
         if err := db.Model(&Users{}).
@@ -79,7 +79,11 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
                 warn(err)
         }
 
-        if !exists {
+        if exists {
+            user.Update(Users{Lang: arr[1]})
+        }
+
+        if !exists{
             if err := db.Create(&Users{
                 ID:         callback.From.ID,
                 MyLang:     arr[1],
@@ -92,11 +96,8 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
             }
         }
 
-
-
         user.Fill()
 
-        bot.Send(tgbotapi.NewDeleteMessage(callback.From.ID, callback.Message.MessageID))
         msg := user.StartMessage()
 
         bot.Send(tgbotapi.MessageConfig{
@@ -108,7 +109,7 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
             },
             Text:                  msg.Text,
         })
-
+        bot.Send(tgbotapi.NewCallback(callback.ID, ""))
     case "speech_this_message_and_replied_one": // arr[1] - from, arr[2] - to
         text := callback.Message.Text
         if callback.Message.Caption != "" {
@@ -131,6 +132,7 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
         }
         text := ""
         var i int
+
         for _, data := range meaning.DictionaryData {
             i += 1 // тут i+1 без проверки индекса
             for idx, entry := range data.Entries {
@@ -160,6 +162,18 @@ func handleCallback(callback tgbotapi.CallbackQuery) {
             text = tr.Text
         }
         text = strings.ReplaceAll(text, "<br>", "\n")
+
+        if len(strings.Fields(text)) == 0 {
+            bot.Send(tgbotapi.CallbackConfig{
+                CallbackQueryID: callback.ID,
+                Text:            "Error",
+                ShowAlert:       true,
+                URL:             "",
+                CacheTime:       0,
+            })
+            return
+        }
+        
         msg := tgbotapi.NewMessage(callback.From.ID, text)
         msg.ReplyToMessageID = callback.Message.MessageID
         msg.ParseMode = tgbotapi.ModeHTML

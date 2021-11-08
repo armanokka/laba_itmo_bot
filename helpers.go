@@ -127,6 +127,7 @@ func IsTicked(callback string, keyboard *tgbotapi.InlineKeyboardMarkup) bool {
 }
 
 func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
+    text = strings.ReplaceAll(text, "\n", "<br>")
 
     if len(entities) == 0 {
         return text
@@ -353,7 +354,7 @@ func WitAiSpeech(wav io.Reader, lang string, bits int) (string, error) {
     return result.Text, nil
 }
 
-func BuildSupportedLanguagesKeyboard(callbackData string) (tgbotapi.InlineKeyboardMarkup, error) {
+func BuildSupportedLanguagesKeyboard() (tgbotapi.InlineKeyboardMarkup, error) {
     keyboard := tgbotapi.NewInlineKeyboardMarkup()
     for i, code := range BotLocalizedLangs {
         lang, ok := langs[code]
@@ -362,10 +363,10 @@ func BuildSupportedLanguagesKeyboard(callbackData string) (tgbotapi.InlineKeyboa
         }
 
         if i % 2 == 0 {
-            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  callbackData + ":"  + code)))
+            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_bot_lang_and_register:"  + code)))
         } else {
             l := len(keyboard.InlineKeyboard)-1
-            keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  callbackData + ":"  + code))
+            keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name, "set_bot_lang_and_register:"  + code))
         }
     }
     return keyboard, nil
