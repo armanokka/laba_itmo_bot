@@ -1,6 +1,7 @@
 package main
 
 import (
+    "context"
     "database/sql"
     "github.com/armanokka/translobot/translate"
     iso6391 "github.com/emvi/iso-639-1"
@@ -8,11 +9,11 @@ import (
     tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
     "github.com/k0kubun/pp"
     "github.com/sirupsen/logrus"
+    "golang.org/x/sync/errgroup"
     "html"
     "os"
     "strconv"
     "strings"
-    "sync"
 )
 
 func handleMessage(message tgbotapi.Message) {
@@ -276,14 +277,14 @@ func handleMessage(message tgbotapi.Message) {
     if message.Caption != "" {
         text = message.Caption
     }
-    text = html.EscapeString(text)
-    var sourceText = text
 
     if text == "" {
         bot.Send(tgbotapi.NewEditMessageText(message.Chat.ID, msg.MessageID, user.Localize("Please, send text message")))
         analytics.Bot(message.Chat.ID, msg.Text, "Message is not text message")
         return
     }
+
+    text = html.EscapeString(text)
 
     tr, err := translate.GoogleHTMLTranslate("auto", "en", cutStringUTF16(text, 100))
     if err != nil {
@@ -308,73 +309,55 @@ func handleMessage(message tgbotapi.Message) {
     var (
         rev = translate.ReversoTranslation{}
         dict = translate.GoogleDictionaryResponse{}
-        wg = sync.WaitGroup{}
         errs = make(chan *errors.Error, 4)
     )
 
     l := len(text)
 
-    wg.Add(1)
-    go func() {
-        defer wg.Done()
+    g, _ := errgroup.WithContext(context.Background())
 
+    g.Go(func() error {
         if l > 100 {
-            return
+            return nil
         }
         dict, err = translate.GoogleDictionary(from, text)
-        if err != nil {
-            errs <- errors.New(err)
-        }
-    }()
+        return err
+    })
 
-    wg.Add(1)
-    go func() {
-        defer wg.Done()
-
+    g.Go(func() error {
         if l > 100 {
-            return
+            return nil
         }
         if inMapValues(translate.ReversoSupportedLangs(), from, to) && from != to {
             rev, err = translate.ReversoTranslate(translate.ReversoIso6392(from), translate.ReversoIso6392(to), strings.ToLower(text))
-            if err != nil {
-                errs <- errors.New(err)
-            }
         }
-    }()
+        return err
+    })
 
     if len(message.Entities) > 0 {
         text = applyEntitiesHtml(text, message.Entities)
     } else if len(message.CaptionEntities) > 0 {
         text = applyEntitiesHtml(text, message.CaptionEntities)
-    } else {
-        text = strings.ReplaceAll(text, "\n", "<br>")
     }
 
-    // Переводим в гугле, как обычно
-    wg.Add(1)
-    go func() {
-        defer wg.Done()
+    g.Go(func() error {
+        text = strings.ReplaceAll(text, "\n", "<br>")
         tr, err = translate.GoogleHTMLTranslate(from, to, text)
         if err != nil {
-            errs <- errors.New(err)
+            return err
         }
-
         if tr.Text == "" && text != "" {
             WarnAdmin("короче на " + to + " не переводит")
             errs <- errors.New("короче на " + to + " не переводит")
-            return
+            return err
         }
+        tr.Text = strings.NewReplacer("<br> ", "<br>").Replace(tr.Text)
+        tr.Text = strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "",  `<br>`, "\n").Replace(tr.Text)
+        return nil
+    })
 
-        text = strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "",  `<br> `, "\n", `<br>`, "\n",).Replace(tr.Text)
-    }()
-
-    wg.Wait()
-    close(errs)
-
-    if len(errs) > 0 {
-        err = <-errs
-        WarnAdmin("Ошибка зафиксирована, но у пользователя всё ок", err.(*errors.Error).ErrorStack(), "\n"+text, from, to)
-        logrus.Error(err)
+    if err = g.Wait(); err != nil {
+        WarnAdmin(err)
     }
 
     From := langs[from]
@@ -400,7 +383,7 @@ func handleMessage(message tgbotapi.Message) {
 
     if dict.Status == 200 && dict.DictionaryData != nil {
         keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
-            tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("ℹ️" + user.Localize("Dictionary"), "dictonary:"+from+":"+sourceText)))
+            tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("ℹ️" + user.Localize("Dictionary"), "dictonary:"+from+":"+text)))
     }
 
     if _, err = bot.Send(tgbotapi.EditMessageTextConfig{
@@ -409,7 +392,7 @@ func handleMessage(message tgbotapi.Message) {
             MessageID:       msg.MessageID,
             ReplyMarkup:     &keyboard,
         },
-        Text:                  text,
+        Text:                  tr.Text,
         ParseMode:             tgbotapi.ModeHTML,
         Entities:              nil,
         DisableWebPagePreview: false,

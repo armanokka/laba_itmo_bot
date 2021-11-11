@@ -127,8 +127,6 @@ func IsTicked(callback string, keyboard *tgbotapi.InlineKeyboardMarkup) bool {
 }
 
 func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
-    text = strings.ReplaceAll(text, "\n", "<br>")
-
     if len(entities) == 0 {
         return text
     }
