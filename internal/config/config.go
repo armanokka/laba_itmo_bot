@@ -20,7 +20,6 @@ const (
 	AdminID       = 579515224
 	botToken string = "1737819626:AAEJyD8fnSHdkh6VP3ePdwFkpEnrirLMHp4" //
 	LanguagesPaginationLimit int = 20
-	InlineCacheTime int = 864000
 )
 
 var (

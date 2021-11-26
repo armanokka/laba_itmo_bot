@@ -1,7 +1,6 @@
 package bot
 
 import (
-	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/pkg/translate"
 	iso6391 "github.com/emvi/iso-639-1"
 	"github.com/go-errors/errors"
@@ -166,7 +165,7 @@ func (app app) onInlineQuery(update tgbotapi.InlineQuery) {
 	if _, err := app.bot.AnswerInlineQuery(tgbotapi.InlineConfig{
 		InlineQueryID:     update.ID,
 		Results:           results,
-		CacheTime:         config.InlineCacheTime,
+		CacheTime:         0,
 		NextOffset: 	     nextoffset,
 		IsPersonal:        true,
 		SwitchPMText:      pmtext,
