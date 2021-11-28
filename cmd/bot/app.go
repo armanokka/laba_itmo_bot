@@ -17,6 +17,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"gorm.io/gorm"
 	"runtime/debug"
+	"sync"
 	"time"
 )
 
@@ -33,6 +34,7 @@ func (app app) Run(ctx context.Context) error {
 	updates := app.bot.GetUpdatesChan(tgbotapi.UpdateConfig{})
 	app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Bot have started"))
 	g, ctx := errgroup.WithContext(ctx)
+	wg := sync.WaitGroup{}
 	g.Go(func() error {
 		for {
 			defer func() {
@@ -43,19 +45,25 @@ func (app app) Run(ctx context.Context) error {
 			}()
 			select {
 			case <-ctx.Done():
+				wg.Wait()
 				return ctx.Err()
 			case update := <-updates:
-				start := time.Now()
-				if update.Message != nil {
-					app.onMessage(*update.Message)
-				} else if update.CallbackQuery != nil {
-					app.onCallbackQuery(*update.CallbackQuery)
-				} else if update.InlineQuery != nil {
-					app.onInlineQuery(*update.InlineQuery)
-				} else if update.MyChatMember != nil {
-					app.onMyChatMember(*update.MyChatMember)
-				}
-				pp.Println("Time spent:", start.String())
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					start := time.Now()
+					if update.Message != nil {
+						app.onMessage(*update.Message)
+					} else if update.CallbackQuery != nil {
+						app.onCallbackQuery(*update.CallbackQuery)
+					} else if update.InlineQuery != nil {
+						app.onInlineQuery(*update.InlineQuery)
+					} else if update.MyChatMember != nil {
+						app.onMyChatMember(*update.MyChatMember)
+					}
+					pp.Println("Time spent:", start.String())
+				}()
+
 			}
 		}
 	})
