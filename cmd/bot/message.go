@@ -226,7 +226,7 @@ func (app *app) onMessage(ctx context.Context, message tgbotapi.Message) {
 								DisableNotification:      false,
 								AllowSendingWithoutReply: false,
 							},
-							FromChatID:          message.From.ID,
+							FromChatID:          message.From.ID, 
 							FromChannelUsername: "",
 							MessageID:           message.MessageID,
 							Caption:             "",
