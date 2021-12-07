@@ -12,7 +12,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 )
 
 func (app *app) onMessage(ctx context.Context, message tgbotapi.Message) {
@@ -62,68 +61,46 @@ func (app *app) onMessage(ctx context.Context, message tgbotapi.Message) {
 	if low := strings.ToLower(message.Text); low != "" {
 		switch {
 		case in(command("my language"), low):
-			//kb := buildLangsPagination(0, "set_my_lang_by_callback:%s", "")
-			user.SendMyLangTab(0)
+			kb, err := buildLangsPagination(0, 18, "set_my_lang_by_callback:%s", "set_my_lang_pagination:0", "set_my_lang_pagination:18", "set_my_lang_by_callback:" + user.MyLang)
+			if err != nil {
+				warn(err)
+			}
+			app.bot.Send(tgbotapi.MessageConfig{
+				BaseChat:              tgbotapi.BaseChat{
+					ChatID:                   message.From.ID,
+					ChannelUsername:          "",
+					ReplyToMessageID:         0,
+					ReplyMarkup:              kb,
+					DisableNotification:      false,
+					AllowSendingWithoutReply: false,
+				},
+				Text:                  user.Localize("Ваш язык <b>%s</b>. Выберите Ваш язык.", langs[user.MyLang].Name),
+				ParseMode:             tgbotapi.ModeHTML,
+				Entities:              nil,
+				DisableWebPagePreview: false,
+			})
 			return
-			//for i, code := range codes {
-			//    if i >= 20 {
-			//        break
-			//    }
-			//    lang, ok := langs[code]
-			//    if !ok {
-			//        warn(errors.New("no such code "+ code + " in langs"))
-			//        return
-			//    }
-			//
-			//    if i % 2 == 0 {
-			//        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,  tgbotapi.NewInlineKeyboardRow( tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_my_lang_by_callback:"  + code)))
-			//    } else {
-			//        l := len(keyboard.InlineKeyboard)-1
-			//        keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l],  tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_my_lang_by_callback:"  + code))
-			//    }
-			//}
-			//keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,  tgbotapi.NewInlineKeyboardRow(
-			//     tgbotapi.NewInlineKeyboardButtonData("◀", "set_my_lang_pagination:0"),
-			//     tgbotapi.NewInlineKeyboardButtonData("0/"+strconv.Itoa(len(codes)), "none"),
-			//     tgbotapi.NewInlineKeyboardButtonData("▶", "set_my_lang_pagination:" + strconv.Itoa(LanguagesPaginationLimit))))
-			//msg :=  tgbotapi.NewMessage(message.Chat.ID, user.Localize("Ваш язык %s. Выберите Ваш язык.", iso6391.Name(user.MyLang)))
-			//msg.ReplyMarkup = keyboard
-			//app.bot.Send(msg)
-			//
-			//app.analytics.app.bot(message.Chat.ID, msg.Text, "Set my lang")
-			//user.Writeapp.botLog("pm_to_lang", msg.Text)
 		case in(command("translate language"), low):
-			user.SendToLangTab(0)
+			kb, err := buildLangsPagination(0, 18, "set_to_lang_by_callback:%s", "set_to_lang_pagination:0", "set_to_lang_pagination:18", "set_to_lang_by_callback:" + user.ToLang)
+			if err != nil {
+				warn(err)
+			}
+			app.bot.Send(tgbotapi.MessageConfig{
+				BaseChat:              tgbotapi.BaseChat{
+					ChatID:                   message.From.ID,
+					ChannelUsername:          "",
+					ReplyToMessageID:         0,
+					ReplyMarkup:              kb,
+					DisableNotification:      false,
+					AllowSendingWithoutReply: false,
+				},
+				Text:                  user.Localize("Сейчас бот переводит на <b>%s</b>. Выберите язык, на который хотите переводить", langs[user.ToLang].Name),
+				ParseMode:             tgbotapi.ModeHTML,
+				Entities:              nil,
+				DisableWebPagePreview: false,
+			})
 			return
-			//keyboard :=  tgbotapi.NewInlineKeyboardMarkup()
-			//for i, code := range codes {
-			//    if i >= 20 {
-			//        break
-			//    }
-			//    lang, ok := langs[code]
-			//    if !ok {
-			//        warn(errors.New("no such code "+ code + " in langs"))
-			//        return
-			//    }
-			//
-			//    if i % 2 == 0 {
-			//        keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,  tgbotapi.NewInlineKeyboardRow( tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_translate_lang_by_callback:"  + code)))
-			//    } else {
-			//        l := len(keyboard.InlineKeyboard)-1
-			//        keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l],  tgbotapi.NewInlineKeyboardButtonData(lang.Emoji + " " + lang.Name,  "set_translate_lang_by_callback:"  + code))
-			//    }
-			//}
-			//keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,  tgbotapi.NewInlineKeyboardRow(
-			//     tgbotapi.NewInlineKeyboardButtonData("◀", "set_translate_lang_pagination:0"),
-			//     tgbotapi.NewInlineKeyboardButtonData("0/"+strconv.Itoa(len(codes)), "none"),
-			//     tgbotapi.NewInlineKeyboardButtonData("▶", "set_translate_lang_pagination:" + strconv.Itoa(LanguagesPaginationLimit))))
-			//msg :=  tgbotapi.NewMessage(message.Chat.ID, user.Localize("Сейчас бот переводит на %s. Выберите язык для перевода", iso6391.Name(user.ToLang)))
-			//msg.ReplyMarkup = keyboard
-			//app.bot.Send(msg)
-			//
-			//app.analytics.app.bot(message.Chat.ID, msg.Text, "Set my lang")
-			//user.Writeapp.botLog("pm_to_lang", msg.Text)
-			//return
+			return
 		}
 	}
 
@@ -177,94 +154,15 @@ func (app *app) onMessage(ctx context.Context, message tgbotapi.Message) {
 		app.bot.Send(msg)
 		app.writeBotLog(message.From.ID, "pm_id", msg.Text)
 		return
-	case "mailing":
-		if message.From.ID != config.AdminID {
-			return
-		}
-		app.bot.Send(tgbotapi.NewMessage(message.From.ID, "Отправьте сообщение для рассылки"))
-		app.onNextUserMessage(message.From.ID, func(message tgbotapi.Message) {
-			ctx, cancel := context.WithCancel(ctx)
-			app.mailer = mailer{cancel}
-
-			go func() {
-				var users []tables.Users
-				err := app.db.Model(&tables.Users{}).Where("blocked = false").Find(&users).Error
-				if err != nil {
-					warn(err)
-					return
-				}
-				msg, _ := app.bot.Send(tgbotapi.NewMessage(message.From.ID, "0/" + strconv.Itoa(len(users))))
-				errs := 0
-				floodWait := time.NewTicker(time.Second / 20)
-				counterUpdater := time.NewTicker(time.Second)
-				for i, user := range users {
-					select {
-					case <-ctx.Done():
-						return
-					case <-counterUpdater.C:
-							app.bot.Send(tgbotapi.EditMessageTextConfig{
-								BaseEdit:              tgbotapi.BaseEdit{
-									ChatID:          message.From.ID,
-									ChannelUsername: "",
-									MessageID:       msg.MessageID,
-									InlineMessageID: "",
-									ReplyMarkup:     nil,
-								},
-								Text:                  "Отправлено: " +strconv.Itoa(i+1) + "/" + strconv.Itoa(len(users)) + "\nОшибок: " + strconv.Itoa(errs),
-								ParseMode:             "",
-								Entities:              nil,
-								DisableWebPagePreview: false,
-							})
-					case <-floodWait.C:
-						_, err = app.bot.CopyMessage(tgbotapi.CopyMessageConfig{
-							BaseChat:            tgbotapi.BaseChat{
-								ChatID:                   user.ID,
-								ChannelUsername:          "",
-								ReplyToMessageID:         0,
-								ReplyMarkup:              nil,
-								DisableNotification:      false,
-								AllowSendingWithoutReply: false,
-							},
-							FromChatID:          message.From.ID,
-							FromChannelUsername: "",
-							MessageID:           message.MessageID,
-							Caption:             "",
-							ParseMode:           "",
-							CaptionEntities:     nil,
-						})
-						if err != nil {
-							errs++
-						}
-						pp.Println("разослал", user.ID)
-
-					}
-				}
-			}()
-
-			app.bot.Send(tgbotapi.MessageConfig{
-				BaseChat:              tgbotapi.BaseChat{
-					ChatID:                   message.From.ID,
-					ChannelUsername:          "",
-					ReplyToMessageID:         0,
-					ReplyMarkup:              tgbotapi.NewInlineKeyboardMarkup(
-						tgbotapi.NewInlineKeyboardRow(
-							tgbotapi.NewInlineKeyboardButtonData("❌ Стоп", "stop_mailing"))),
-					DisableNotification:      false,
-					AllowSendingWithoutReply: false,
-				},
-				Text:                  "Рассылка начата.",
-				ParseMode:             "",
-				Entities:              nil,
-				DisableWebPagePreview: false,
-			})
-			app.stopUserConversation(message.From.ID)
-		})
-		return
 	}
 
 	if user.MyLang == user.ToLang {
 		app.bot.Send( tgbotapi.NewMessage(message.From.ID, user.Localize("The original text language and the target language are the same, please set different")))
 		return
+	}
+
+	if user.Usings == 5 || (user.Usings > 0 && user.Usings % 20 == 0) {
+		// tg://share...
 	}
 
 	if user.Usings > 15 && !user.IsDeveloper.Valid {

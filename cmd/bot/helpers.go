@@ -17,7 +17,9 @@ import (
 	"html"
 	"io"
 	"io/ioutil"
-	"net/http"
+    "log"
+    "math/rand"
+    "net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -179,27 +181,6 @@ func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
 
 
 
-func makeArticle(id string, title, description, messageText string) tgbotapi.InlineQueryResultArticle {
-    //keyboard := tgbotapi.NewInlineKeyboardMarkup(
-    //    tgbotapi.NewInlineKeyboardRow(
-    //        tgbotapi.InlineKeyboardButton{
-    //            Text:                         "translate",
-    //            SwitchInlineQueryCurrentChat: &description,
-    //        }))
-    return tgbotapi.InlineQueryResultArticle{
-        Type:                "article",
-        ID:                  id,
-        Title:               title,
-        InputMessageContent: map[string]interface{}{
-            "message_text": messageText,
-            "disable_web_page_preview":false,
-        },
-        //ReplyMarkup: &keyboard,
-        //URL:                 "https://t.me/TransloBot?start=from_inline",
-        //HideURL:             true,
-        Description:         description,
-    }
-}
 
 func inMapValues(m map[string]string, values ...string) bool {
     for _, v := range values {
@@ -431,17 +412,27 @@ func buildOneLetterKeyboard(letter, callbackData, backCallbackData string) tgbot
 
 // buildLangsPagination создает пагинацию как говорил F d
 // в калбак передайте что-то типа set_my_lang:%s, где %s станет код выбранного языка
-func buildLangsPagination(offset int, callback, back, next string) (tgbotapi.InlineKeyboardMarkup, error) {
+func buildLangsPagination(offset int, count int, buttonSelectLangCallback, buttonBackCallback, buttonNextCallback, tickedCallback string) (tgbotapi.InlineKeyboardMarkup, error) {
     if offset < 0 || offset > len(codes) - 1 {
         return tgbotapi.InlineKeyboardMarkup{}, nil
     }
     out := tgbotapi.NewInlineKeyboardMarkup()
-    for i, code := range codes[offset:offset+18] {
+    if count == 0 {
+        offset -= 18
+        count += 18
+    }
+    for i, code := range codes[offset:offset+count] {
         lang, ok := langs[code]
         if !ok {
             return tgbotapi.InlineKeyboardMarkup{}, fmt.Errorf("не нашел %s в langs", code)
         }
-        btn := tgbotapi.NewInlineKeyboardButtonData(lang.Name + " " + lang.Emoji, fmt.Sprintf(callback, code))
+
+        callback := fmt.Sprintf(buttonSelectLangCallback, code)
+        if callback == tickedCallback {
+            lang.Name = "👉" + lang.Name
+        }
+
+        btn := tgbotapi.NewInlineKeyboardButtonData(lang.Name, callback)
         if i % 3 == 0 {
             out.InlineKeyboard = append(out.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(btn))
         } else {
@@ -454,7 +445,37 @@ func buildLangsPagination(offset int, callback, back, next string) (tgbotapi.Inl
     }
 
     out.InlineKeyboard = append(out.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-        tgbotapi.NewInlineKeyboardButtonData("<--- Back", back),
-        tgbotapi.NewInlineKeyboardButtonData("Next --->", next)))
+        tgbotapi.NewInlineKeyboardButtonData("<--- Back", buttonBackCallback),
+        tgbotapi.NewInlineKeyboardButtonData("Next --->", buttonNextCallback)))
     return out, nil
+}
+
+
+func randid(seed int64) string {
+    rand.Seed(seed)
+    b := make([]byte, 16)
+    _, err := rand.Read(b)
+    if err != nil {
+        log.Fatal(err)
+    }
+    uuid := fmt.Sprintf("%x-%x-%x-%x-%x",
+        b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
+    return uuid
+}
+
+func tickUntick(keyboard tgbotapi.InlineKeyboardMarkup, tickCallback, untickCallback, prefix string) tgbotapi.InlineKeyboardMarkup {
+    for i1, row := range keyboard.InlineKeyboard {
+        for i2, btn := range row {
+            callback := *btn.CallbackData
+            if callback == tickCallback {
+                btn.Text = prefix + btn.Text
+                keyboard.InlineKeyboard[i1][i2] = btn
+            }
+            if callback == untickCallback {
+                btn.Text = strings.TrimPrefix(btn.Text, prefix)
+                keyboard.InlineKeyboard[i1][i2] = btn
+            }
+        }
+    }
+    return keyboard
 }

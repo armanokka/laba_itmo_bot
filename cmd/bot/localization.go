@@ -685,8 +685,8 @@ var translations = map[string]map[string]string{
         "uk": "Зараз бот перекладає на <b>%s</b> . Виберіть мову, на яку хочете перекладати",
     },
     // ----- my lang ----- //
-    "Ваш язык <b>%s</b>. Выберите Ваш язык.": map[string]string{
-        "id": "Bahasa Anda adalah <b> %s</b> . Pilih bahasamu.",
+    "": map[string]string{
+        "id": "Bahasa Anda adalah <b> %s</Ваш язык <b>%s</b>. Выберите Ваш язык.b> . Pilih bahasamu.",
         "en": "Your language is <b> %s</b> . Choose your language.",
         "de": "Ihre Sprache ist <b> %s</b> . Wähle deine Sprache.",
         "uk": "Ваша мова <b>%s</b> . Виберіть мову.",

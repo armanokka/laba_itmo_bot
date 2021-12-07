@@ -1,17 +1,15 @@
 package bot
 
 import (
+	"fmt"
 	"github.com/armanokka/translobot/pkg/translate"
 	iso6391 "github.com/emvi/iso-639-1"
-	"github.com/go-errors/errors"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
 	"github.com/sirupsen/logrus"
 	"html"
-	"sort"
 	"strconv"
 	"sync"
-	"sync/atomic"
 )
 
 func (app app) onInlineQuery(update tgbotapi.InlineQuery) {
@@ -27,153 +25,183 @@ func (app app) onInlineQuery(update tgbotapi.InlineQuery) {
 		logrus.Error(err)
 	}
 
+
 	if update.Query == "" {
 		app.bot.AnswerInlineQuery(
 			tgbotapi.InlineConfig{
 				InlineQueryID:     update.ID,
-				SwitchPMText:      "Type text please",
+				SwitchPMText:      "Type text to translate",
 				SwitchPMParameter: "from_inline",
 			})
 		return
 	}
 
-	var start int // смещение для пагинации
+	var offset int // смещение для пагинации
 	if update.Offset != "" {
 		var err error
-		start, err = strconv.Atoi(update.Offset)
+		offset, err = strconv.Atoi(update.Offset)
 		if err != nil {
 			warn(err)
 			return
 		}
 	}
 
-	l := len(codes)
-
-	if start >= l {
-		warn(errors.New("слишком большое смещение"))
+	if offset > len(codes) - 1 {
+		warn(fmt.Errorf("слишком большое смещение: %d", offset))
 		return
 	}
 
-
-	end := start + 50
-	if end > l - 1 {
-		end = l - 1
+	count := 50
+	if offset + count > len(codes) - 1 {
+		count = len(codes) - 1 - offset
 	}
-	results := make([]interface{}, 0, 52)
+
+	pp.Println("offset", offset, "count", count)
 
 
+	fromlang := ""
 	var wg sync.WaitGroup
-	var user = app.loadUser(update.From.ID, warn)
-	userExists := user.Exists()
-	if userExists {
-		user.Fill()
-	}
+	var user User
+	results := sync.Map{}
 
-	tr, err := translate.GoogleHTMLTranslate("auto", "en", update.Query) // определяем язык
-	if err != nil {
-		warn(err)
-	}
-
-	from := tr.From
-	if from == "" {
-		from = user.MyLang
-	}
-	//sortOffset := int64(len(popular))
-	var sortOffset int64
-
-	if start == 0 && userExists { // Юзер существует
-
-		if from != user.MyLang {
-			sortOffset++
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				myLangTr, err := translate.GoogleHTMLTranslate(from, user.MyLang, update.Query)
-				if err != nil {
-					warn(err)
-					return
-				}
-				myLangTr.Text = html.UnescapeString(myLangTr.Text)
-				results = append(results, makeArticle("my_lang", iso6391.Name(user.MyLang) + " 🔥", myLangTr.Text, myLangTr.Text))
-			}()
-
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		user = app.loadUser(update.From.ID, warn)
+		if user.Exists() {
+			user.Fill()
 		}
-		if from != user.ToLang {
-			sortOffset++
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				toLangTr, err := translate.GoogleHTMLTranslate("auto", user.ToLang, update.Query)
-				if err != nil {
-					warn(err)
-					return
-				}
-				toLangTr.Text = html.UnescapeString(toLangTr.Text)
+	}()
 
-				results = append(results, makeArticle("to_lang", iso6391.Name(user.ToLang) + " 🔥", toLangTr.Text, toLangTr.Text))
-			}()
-			//}
-		}
-	}
-
-	wg.Wait()
-
-	for i, lang := range codes[start:end] {
-		if lang == user.MyLang || lang == user.ToLang || lang == from {
-			continue
-		}
+	for _, code := range codes[offset:offset + count] {
 		wg.Add(1)
-		lang := lang
-		i := i
+		code := code
 		go func() {
 			defer wg.Done()
 
-			tr, err := translate.GoogleHTMLTranslate("auto", lang, update.Query)
+			tr, err := translate.GoogleHTMLTranslate("auto", code, update.Query)
 			if err != nil {
 				warn(err)
 				return
+			}
+			if fromlang == "" {
+				fromlang = tr.From
 			}
 			tr.Text = html.UnescapeString(tr.Text)
 
 			if tr.Text == "" {
 				return // ну не вышло, так не вышло, че бубнить-то
 			}
-			results = append(results, makeArticle(strconv.Itoa(i), iso6391.Name(lang), tr.Text, tr.Text))
+			results.Store(code, tgbotapi.InlineQueryResultArticle{
+				Type:                "article",
+				ID:                  "да пох вообще",
+				Title:               iso6391.Name(code),
+				InputMessageContent: map[string]interface{}{
+					"message_text": tr.Text,
+					"disable_web_page_preview":false,
+				},
+				HideURL:             true,
+				Description:         tr.Text,
+			})
 		}()
 	}
-	wg.Wait()
-	sortOffsetLoaded := int(atomic.LoadInt64(&sortOffset))
-	sort.Slice(results[sortOffset:], func(i, j int) bool {
-		return results[i+sortOffsetLoaded].(tgbotapi.InlineQueryResultArticle).Title < results[j+sortOffsetLoaded].(tgbotapi.InlineQueryResultArticle).Title
-	})
 
-	pmtext := "From: " + langs[from].Name
+	wg.Wait()
+
+	blocks := make([]interface{}, 0, 50)
+
+	if offset == 0 {
+		if fromlang == user.MyLang || fromlang != user.MyLang && fromlang != user.ToLang {
+			block, ok := results.Load(user.ToLang)
+			if !ok {
+				tr, err := translate.GoogleHTMLTranslate(fromlang, user.ToLang, update.Query)
+				if err != nil {
+					warn(err)
+				}
+				tr.Text = html.UnescapeString(tr.Text)
+
+				block = tgbotapi.InlineQueryResultArticle{
+					Type:                "article",
+					ID:                  "да пох вообще",
+					Title:               iso6391.Name(user.ToLang),
+					InputMessageContent: map[string]interface{}{
+						"message_text": tr.Text,
+						"disable_web_page_preview":false,
+					},
+					HideURL:             true,
+					Description:         tr.Text,
+				}
+			}
+			article := block.(tgbotapi.InlineQueryResultArticle)
+			article.ID = "my"
+			article.Title += " 👤"
+			blocks = append(blocks, article)
+		}
+		if fromlang == user.ToLang || fromlang != user.MyLang && fromlang != user.ToLang {
+			block, ok := results.Load(user.MyLang)
+			if !ok {
+				tr, err := translate.GoogleHTMLTranslate(fromlang, user.MyLang, update.Query)
+				if err != nil {
+					warn(err)
+				}
+				tr.Text = html.UnescapeString(tr.Text)
+
+				block = tgbotapi.InlineQueryResultArticle{
+					Type:                "article",
+					ID:                  "да пох вообще",
+					Title:               iso6391.Name(user.MyLang),
+					InputMessageContent: map[string]interface{}{
+						"message_text": tr.Text,
+						"disable_web_page_preview":false,
+					},
+					HideURL:             true,
+					Description:         tr.Text,
+				}
+			}
+			article := block.(tgbotapi.InlineQueryResultArticle)
+			article.ID = "to"
+			article.Title += " 👤"
+			blocks = append(blocks, article)
+		}
+	}
+
+	for i, code := range codes[offset:offset+count] {
+		if offset == 0 && (code == user.MyLang || code == user.ToLang) {
+			continue
+		}
+		block, ok := results.Load(code)
+		if !ok {
+			warn(fmt.Errorf("couldn't find code %s in translations", code))
+		}
+		article := block.(tgbotapi.InlineQueryResultArticle)
+		article.ID = strconv.Itoa(offset + i)
+		if offset == 0 && i < 18 {
+			article.Title += " 📌"
+		}
+		blocks = append(blocks, article)
+	}
+
+	if len(blocks) > 50 {
+		count -= len(blocks) - 50
+		blocks = blocks[:50]
+	}
+
+	pmtext := "From: " + langs[fromlang].Name
 	if update.Query == "" {
 		pmtext = "Enter text"
 	}
 
-	if len(results) > 50 {
-		results = results[:50]
-	}
-	nextoffset := strconv.Itoa(end)
-	if end >= l - 1 {
-		nextoffset = ""
-	}
-
-	pp.Println(results)
-
 	if _, err := app.bot.AnswerInlineQuery(tgbotapi.InlineConfig{
 		InlineQueryID:     update.ID,
-		Results:           results,
+		Results:           blocks,
 		CacheTime:         0,
-		NextOffset: 	     nextoffset,
+		NextOffset: 	     strconv.Itoa(offset + count),
 		IsPersonal:        true,
 		SwitchPMText:      pmtext,
 		SwitchPMParameter: "from_inline",
 	}); err != nil {
 		warn(err)
-		logrus.Error(err)
-		pp.Println(results)
+		pp.Println(blocks)
 	}
 
 	app.analytics.Bot(update.From.ID, "Inline succeeded", "Inline succeeded")

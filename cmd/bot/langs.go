@@ -721,7 +721,7 @@ var langs = map[string]Lang{
 	},
 }
 
-var popular = []string{
+var codes = []string{
 	"ru",
 	"en",
 	"es",
@@ -734,22 +734,12 @@ var popular = []string{
 	"ja",
 	"ko",
 	"tr",
-}
-
-var codes = []string{
-	//"ru",
-	//"en",
-	//"es",
-	//"ar",
-	//"uz",
-	//"pt",
-	//"hi",
-	//"fr",
-	//"la",
-	//"ja",
-	//"ko",
-	//"tr",
-
+	"bn",
+	"mr",
+	"te",
+	"ms",
+	"fa",
+	"vi",
 
 	"af",
 	"am",
