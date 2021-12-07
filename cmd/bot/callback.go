@@ -15,7 +15,7 @@ import (
 	"sync"
 )
 
-func (app app) onCallbackQuery(callback tgbotapi.CallbackQuery) {
+func (app *app) onCallbackQuery(callback tgbotapi.CallbackQuery) {
 	warn := func(err error) {
 		app.bot.Send(tgbotapi.NewCallback(callback.ID, "Error, sorry"))
 		app.notifyAdmin(err)
@@ -339,7 +339,6 @@ func (app app) onCallbackQuery(callback tgbotapi.CallbackQuery) {
 		}
 
 		//var text string = callback.Message.ReplyToMessage.Text
-		pp.Println(trscript)
 		if trscript.StatusCode == 200 {
 			addition := ""
 			if trscript.Transcription != "" {
@@ -502,6 +501,7 @@ func (app app) onCallbackQuery(callback tgbotapi.CallbackQuery) {
 	case "stop_mailing":
 		if app.mailer.stop != nil {
 			app.mailer.stop()
+			app.mailer = mailer{}
 		}
 		app.bot.Send(tgbotapi.EditMessageTextConfig{
 			BaseEdit:              tgbotapi.BaseEdit{

@@ -188,19 +188,19 @@ func (app *app) onMessage(ctx context.Context, message tgbotapi.Message) {
 
 			go func() {
 				var users []tables.Users
-				err := app.db.Model(&tables.Users{}).Where("blocked = ?", false).Find(&users).Error
+				err := app.db.Model(&tables.Users{}).Where("blocked = false").Find(&users).Error
 				if err != nil {
 					warn(err)
 					return
 				}
 				msg, _ := app.bot.Send(tgbotapi.NewMessage(message.From.ID, "0/" + strconv.Itoa(len(users))))
-
+				errs := 0
 				floodWait := time.NewTicker(time.Second / 20)
-				counterUpdater := time.NewTicker(time.Second * 2)
+				counterUpdater := time.NewTicker(time.Second)
 				for i, user := range users {
 					select {
 					case <-ctx.Done():
-						break
+						return
 					case <-counterUpdater.C:
 							app.bot.Send(tgbotapi.EditMessageTextConfig{
 								BaseEdit:              tgbotapi.BaseEdit{
@@ -210,14 +210,13 @@ func (app *app) onMessage(ctx context.Context, message tgbotapi.Message) {
 									InlineMessageID: "",
 									ReplyMarkup:     nil,
 								},
-								Text:                  strconv.Itoa(i+1) + "/" + strconv.Itoa(len(users)),
+								Text:                  "Отправлено: " +strconv.Itoa(i+1) + "/" + strconv.Itoa(len(users)) + "\nОшибок: " + strconv.Itoa(errs),
 								ParseMode:             "",
 								Entities:              nil,
 								DisableWebPagePreview: false,
 							})
 					case <-floodWait.C:
-						pp.Println("разослал", user.ID)
-						if _, err = app.bot.CopyMessage(tgbotapi.CopyMessageConfig{
+						_, err = app.bot.CopyMessage(tgbotapi.CopyMessageConfig{
 							BaseChat:            tgbotapi.BaseChat{
 								ChatID:                   user.ID,
 								ChannelUsername:          "",
@@ -226,15 +225,18 @@ func (app *app) onMessage(ctx context.Context, message tgbotapi.Message) {
 								DisableNotification:      false,
 								AllowSendingWithoutReply: false,
 							},
-							FromChatID:          message.From.ID, 
+							FromChatID:          message.From.ID,
 							FromChannelUsername: "",
 							MessageID:           message.MessageID,
 							Caption:             "",
 							ParseMode:           "",
 							CaptionEntities:     nil,
-						}); err != nil {
-							pp.Printf(err.Error())
+						})
+						if err != nil {
+							errs++
 						}
+						pp.Println("разослал", user.ID)
+
 					}
 				}
 			}()
