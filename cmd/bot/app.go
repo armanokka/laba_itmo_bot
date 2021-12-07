@@ -27,6 +27,12 @@ type app struct {
 	analytics dashbot.DashBot
 	log       *zap.SugaredLogger
 	logs chan tables.UsersLogs
+	messageState *sync.Map
+	mailer mailer
+}
+
+type mailer struct {
+	stop context.CancelFunc
 }
 
 func (app app) Run(ctx context.Context) error {
@@ -53,7 +59,19 @@ func (app app) Run(ctx context.Context) error {
 					defer wg.Done()
 					start := time.Now()
 					if update.Message != nil {
-						app.onMessage(*update.Message)
+						if app.messageState == nil {
+							app.messageState = new(sync.Map)
+						}
+
+						if f, ok := app.messageState.Load(update.Message.From.ID); ok {
+							fu, ok := f.(func(message tgbotapi.Message))
+							if !ok {
+								pp.Printf("Error when casting type in messageState: %v", fu)
+							}
+							fu(*update.Message)
+							return
+						}
+						app.onMessage(ctx, *update.Message)
 					} else if update.CallbackQuery != nil {
 						app.onCallbackQuery(*update.CallbackQuery)
 					} else if update.InlineQuery != nil {
@@ -213,4 +231,15 @@ func (app app) writeUserLog(id int64, text string) {
 		FromBot: false,
 		Date:    time.Now(),
 	}
+}
+
+func (app *app) onNextUserMessage(id int64, f func(msg tgbotapi.Message)) {
+	if app.messageState == nil {
+		app.messageState = new(sync.Map)
+	}
+	app.messageState.Store(id, f)
+}
+
+func (app *app) stopUserConversation(id int64) {
+	app.messageState.Delete(id)
 }

@@ -428,3 +428,33 @@ func buildOneLetterKeyboard(letter, callbackData, backCallbackData string) tgbot
         tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", backCallbackData)))
     return keyboard
 }
+
+// buildLangsPagination создает пагинацию как говорил F d
+// в калбак передайте что-то типа set_my_lang:%s, где %s станет код выбранного языка
+func buildLangsPagination(offset int, callback, back, next string) (tgbotapi.InlineKeyboardMarkup, error) {
+    if offset < 0 || offset > len(codes) - 1 {
+        return tgbotapi.InlineKeyboardMarkup{}, nil
+    }
+    out := tgbotapi.NewInlineKeyboardMarkup()
+    for i, code := range codes[offset:offset+18] {
+        lang, ok := langs[code]
+        if !ok {
+            return tgbotapi.InlineKeyboardMarkup{}, fmt.Errorf("не нашел %s в langs", code)
+        }
+        btn := tgbotapi.NewInlineKeyboardButtonData(lang.Name + " " + lang.Emoji, fmt.Sprintf(callback, code))
+        if i % 3 == 0 {
+            out.InlineKeyboard = append(out.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(btn))
+        } else {
+            l := len(out.InlineKeyboard) - 1
+            if l < 0 {
+                l = 0
+            }
+            out.InlineKeyboard[l] = append(out.InlineKeyboard[l], btn)
+        }
+    }
+
+    out.InlineKeyboard = append(out.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+        tgbotapi.NewInlineKeyboardButtonData("<--- Back", back),
+        tgbotapi.NewInlineKeyboardButtonData("Next --->", next)))
+    return out, nil
+}

@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"context"
 	"database/sql"
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
@@ -11,11 +12,12 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
-func (app app) onMessage(message tgbotapi.Message) {
+func (app *app) onMessage(ctx context.Context, message tgbotapi.Message) {
 	warn := func(err error) {
-		app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, localize("Sorry, error caused.\n\nPlease, don't block the app.bot, I'll fix the bug in near future, the administrator has already been warned about this error ;)", message.From.LanguageCode)))
+		app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, localize("Sorry, error caused.\n\nPlease, don't block the bot, I'll fix the bug in near future, the administrator has already been warned about this error ;)", message.From.LanguageCode)))
 		app.notifyAdmin(err)
 		logrus.Error(err)
 	}
@@ -60,6 +62,7 @@ func (app app) onMessage(message tgbotapi.Message) {
 	if low := strings.ToLower(message.Text); low != "" {
 		switch {
 		case in(command("my language"), low):
+			//kb := buildLangsPagination(0, "set_my_lang_by_callback:%s", "")
 			user.SendMyLangTab(0)
 			return
 			//for i, code := range codes {
@@ -173,6 +176,87 @@ func (app app) onMessage(message tgbotapi.Message) {
 		msg :=  tgbotapi.NewMessage(message.From.ID, strconv.FormatInt(message.From.ID, 10))
 		app.bot.Send(msg)
 		app.writeBotLog(message.From.ID, "pm_id", msg.Text)
+		return
+	case "mailing":
+		if message.From.ID != config.AdminID {
+			return
+		}
+		app.bot.Send(tgbotapi.NewMessage(message.From.ID, "Отправьте сообщение для рассылки"))
+		app.onNextUserMessage(message.From.ID, func(message tgbotapi.Message) {
+			ctx, cancel := context.WithCancel(ctx)
+			app.mailer = mailer{cancel}
+
+			go func() {
+				var users []tables.Users
+				err := app.db.Model(&tables.Users{}).Where("blocked = ?", false).Find(&users).Error
+				if err != nil {
+					warn(err)
+					return
+				}
+				msg, _ := app.bot.Send(tgbotapi.NewMessage(message.From.ID, "0/" + strconv.Itoa(len(users))))
+
+				floodWait := time.NewTicker(time.Second / 20)
+				counterUpdater := time.NewTicker(time.Second * 2)
+				for i, user := range users {
+					select {
+					case <-ctx.Done():
+						break
+					case <-counterUpdater.C:
+							app.bot.Send(tgbotapi.EditMessageTextConfig{
+								BaseEdit:              tgbotapi.BaseEdit{
+									ChatID:          message.From.ID,
+									ChannelUsername: "",
+									MessageID:       msg.MessageID,
+									InlineMessageID: "",
+									ReplyMarkup:     nil,
+								},
+								Text:                  strconv.Itoa(i+1) + "/" + strconv.Itoa(len(users)),
+								ParseMode:             "",
+								Entities:              nil,
+								DisableWebPagePreview: false,
+							})
+					case <-floodWait.C:
+						pp.Println("разослал", user.ID)
+						if _, err = app.bot.CopyMessage(tgbotapi.CopyMessageConfig{
+							BaseChat:            tgbotapi.BaseChat{
+								ChatID:                   user.ID,
+								ChannelUsername:          "",
+								ReplyToMessageID:         0,
+								ReplyMarkup:              nil,
+								DisableNotification:      false,
+								AllowSendingWithoutReply: false,
+							},
+							FromChatID:          message.From.ID,
+							FromChannelUsername: "",
+							MessageID:           message.MessageID,
+							Caption:             "",
+							ParseMode:           "",
+							CaptionEntities:     nil,
+						}); err != nil {
+							pp.Printf(err.Error())
+						}
+					}
+				}
+			}()
+
+			app.bot.Send(tgbotapi.MessageConfig{
+				BaseChat:              tgbotapi.BaseChat{
+					ChatID:                   message.From.ID,
+					ChannelUsername:          "",
+					ReplyToMessageID:         0,
+					ReplyMarkup:              tgbotapi.NewInlineKeyboardMarkup(
+						tgbotapi.NewInlineKeyboardRow(
+							tgbotapi.NewInlineKeyboardButtonData("❌ Стоп", "stop_mailing"))),
+					DisableNotification:      false,
+					AllowSendingWithoutReply: false,
+				},
+				Text:                  "Рассылка начата.",
+				ParseMode:             "",
+				Entities:              nil,
+				DisableWebPagePreview: false,
+			})
+			app.stopUserConversation(message.From.ID)
+		})
 		return
 	}
 

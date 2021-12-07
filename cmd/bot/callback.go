@@ -499,7 +499,39 @@ func (app app) onCallbackQuery(callback tgbotapi.CallbackQuery) {
 
 		app.bot.Send(tgbotapi.NewEditMessageReplyMarkup(callback.From.ID, callback.Message.MessageID, keyboard))
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
+	case "stop_mailing":
+		if app.mailer.stop != nil {
+			app.mailer.stop()
+		}
+		app.bot.Send(tgbotapi.EditMessageTextConfig{
+			BaseEdit:              tgbotapi.BaseEdit{
+				ChatID:          callback.From.ID,
+				ChannelUsername: "",
+				MessageID:       callback.Message.MessageID,
+				InlineMessageID: "",
+				ReplyMarkup:     nil,
+			},
+			Text:                  callback.Message.Text,
+			ParseMode:             "",
+			Entities:              nil,
+			DisableWebPagePreview: false,
+		})
+		app.bot.Send(tgbotapi.MessageConfig{
+			BaseChat:              tgbotapi.BaseChat{
+				ChatID:                   callback.From.ID,
+				ChannelUsername:          "",
+				ReplyToMessageID:         0,
+				ReplyMarkup:              nil,
+				DisableNotification:      true,
+				AllowSendingWithoutReply: false,
+			},
+			Text:                  "Рассылка остановлена",
+			ParseMode:             "",
+			Entities:              nil,
+			DisableWebPagePreview: false,
+		})
 	default:
+		app.bot.Send(tgbotapi.NewMessage(callback.From.ID, "Action is expired. /start"))
 		app.notifyAdmin("неизвестный колбэк: " + callback.Data)
 	}
 }
