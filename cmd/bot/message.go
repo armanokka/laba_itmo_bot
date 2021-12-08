@@ -288,26 +288,26 @@ func (app *app) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 
-	From := langs[detect.From]
 	keyboard :=  tgbotapi.NewInlineKeyboardMarkup(
-		 tgbotapi.NewInlineKeyboardRow(
-			 tgbotapi.NewInlineKeyboardButtonData("From " + From.Emoji + " " + From.Name, "none")),
 		 tgbotapi.NewInlineKeyboardRow(
 			 tgbotapi.NewInlineKeyboardButtonData("🔊 " + user.Localize("To voice"),  "speech_this_message_and_replied_one:"+detect.From+":"+to)),
 	)
 
 	if ret.Examples {
-		keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
-			 tgbotapi.NewInlineKeyboardRow( tgbotapi.NewInlineKeyboardButtonData("💬 " + user.Localize("Examples"), "examples:"+detect.From+":"+to)))
+		keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0],
+			 tgbotapi.NewInlineKeyboardButtonData("💬 " + user.Localize("Examples"), "examples:"+detect.From+":"+to))
 	}
 	if ret.Translations {
 		keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
-			 tgbotapi.NewInlineKeyboardRow( tgbotapi.NewInlineKeyboardButtonData("📚 " + user.Localize("Translations"), "translations:"+detect.From+":"+to)))
+			 tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("📚 " + user.Localize("Translations"), "translations:"+detect.From+":"+to)))
 	}
 
 	if ret.Dictionary {
-		keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
-			 tgbotapi.NewInlineKeyboardRow( tgbotapi.NewInlineKeyboardButtonData("ℹ️" + user.Localize("Dictionary"), "dictonary:"+detect.From+":"+text)))
+		if len(keyboard.InlineKeyboard) == 1 {
+			keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow())
+		}
+		keyboard.InlineKeyboard[1] = append(keyboard.InlineKeyboard[1],
+			 tgbotapi.NewInlineKeyboardButtonData("ℹ️" + user.Localize("Dictionary"), "dictonary:"+detect.From+":"+text))
 	}
 
 	if _, err = app.bot.Send( tgbotapi.EditMessageTextConfig{
