@@ -52,7 +52,7 @@ func (app app) onInlineQuery(update tgbotapi.InlineQuery) {
 			CacheTime:         0,
 			IsPersonal:        true,
 			NextOffset:        "",
-			SwitchPMText:      "Get started",
+			SwitchPMText:      "Type text to translate",
 			SwitchPMParameter: "from_inline",
 		})
 		return
