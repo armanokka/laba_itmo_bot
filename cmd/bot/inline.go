@@ -34,7 +34,7 @@ func (app app) onInlineQuery(update tgbotapi.InlineQuery) {
 			ID:                  "ad",
 			Title:               "Recommend the bot",
 			InputMessageContent: map[string]interface{}{
-				"message_text": `🔥 <a href="https://t.me/translobot">Translo</a> ⚒ - <i>The best Telegram translator bot in the whole world</i>`,
+				"message_text": `🔥 <a href="https://t.me/translobot">Translo</a> 🌐 - <i>The best Telegram translator bot in the whole world</i>`,
 				"disable_web_page_preview":true,
 				"parse_mode": tgbotapi.ModeHTML,
 			},
