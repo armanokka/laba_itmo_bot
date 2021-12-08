@@ -23,42 +23,29 @@ func (app *app) onCallbackQuery(callback tgbotapi.CallbackQuery) {
 		logrus.Error(err)
 	}
 
+	arr := strings.Split(callback.Data, ":")
+
 	user := app.loadUser(callback.From.ID, warn)
-	user.Fill()
 	defer user.UpdateLastActivity()
 
-	arr := strings.Split(callback.Data, ":")
-	switch arr[0] {
-	case "set_bot_lang_and_register": // arr[1] - bot lang
+	if arr[0] == "set_bot_lang_and_register" {
 		tolang := "en"
 		if arr[1] == tolang {
 			tolang = "fr"
 		}
-		var exists bool
-		if err := app.db.Model(&tables.Users{}).
-			Raw("SELECT EXISTS(SELECT lang FROM users WHERE id=?)", callback.From.ID).
-			Find(&exists).Error; err != nil {
-			warn(err)
-		}
 
-		if exists {
+		if user.Exists() {
 			user.Update(tables.Users{Lang: arr[1]})
-		}
-
-		if !exists{
-			if err := app.db.Create(&tables.Users{
+		} else {
+			user.Create(tables.Users{
 				ID:         callback.From.ID,
 				MyLang:     arr[1],
 				ToLang:     tolang,
 				Act:        sql.NullString{},
 				Mailing:    true,
 				Lang:       arr[1],
-			}).Error; err != nil {
-				warn(err)
-			}
+			})
 		}
-
-		user.Fill()
 
 		msg := user.StartMessage()
 
@@ -73,6 +60,13 @@ func (app *app) onCallbackQuery(callback tgbotapi.CallbackQuery) {
 			Text:                  msg.Text,
 		})
 		app.bot.Send(tgbotapi.NewCallback(callback.ID, ""))
+		return
+	} else {
+		user.Fill()
+	}
+
+
+	switch arr[0] {
 	case "none":
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
 		app.writeBotLog(callback.From.ID, "cb_none", "")

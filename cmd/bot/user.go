@@ -23,7 +23,7 @@ func (u User) Exists() bool {
 	return exists
 }
 // Create creates user in u.db. Also fills a user, e.g. Fill()
-func (u User) Create(user tables.Users) {
+func (u *User) Create(user tables.Users) {
 	if err := u.db.Create(&user).Error; err != nil {
 		u.error(err)
 	} else {
