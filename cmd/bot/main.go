@@ -7,10 +7,14 @@ import (
 	"github.com/armanokka/translobot/pkg/dashbot"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
+	"os"
 	"sync"
 )
 
 func Run(ctx context.Context, bot *botapi.BotAPI, db *gorm.DB, analytics dashbot.DashBot, logger *zap.SugaredLogger) error {
+	if _, err := os.Stat("logo.jpg"); err != nil {
+		return err
+	}
 	app := app{
 		bot:       bot,
 		db:        db,

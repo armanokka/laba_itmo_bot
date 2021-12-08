@@ -479,3 +479,16 @@ func tickUntick(keyboard tgbotapi.InlineKeyboardMarkup, tickCallback, untickCall
     }
     return keyboard
 }
+
+func min(ints ...float64) float64 {
+    if len(ints) == 0 {
+        return -1
+    }
+    min := ints[0]
+    for _, v := range ints {
+        if v < min {
+            min = v
+        }
+    }
+    return min
+}

@@ -5,10 +5,12 @@ import (
 	"database/sql"
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
+	"github.com/armanokka/translobot/pkg/levenshtein"
 	"github.com/armanokka/translobot/pkg/translate"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 	"os"
 	"strconv"
 	"strings"
@@ -223,33 +225,56 @@ func (app *app) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 
-	detect, err := translate.GoogleHTMLTranslate("auto", "en", cutStringUTF16(text, 100))
+	detect, err := translate.GoogleHTMLTranslate("auto", "en", text)
 	if err != nil {
 		warn(err)
 		return
 	}
-	from := detect.From
 
-	if from != user.MyLang && from != user.ToLang { // если задетекчен язык ни родной, ни переводный
-		trTest, err := translate.GoogleHTMLTranslate(user.MyLang, "en", text) // пробуем перевести с нашего языка
-		if err != nil {
+	if detect.From != user.MyLang && detect.From != user.ToLang {
+
+		var (
+			trFromMyLang translate.GoogleHTMLTranslation
+			trFromToLang translate.GoogleHTMLTranslation
+		)
+		g, _ := errgroup.WithContext(ctx)
+		g.Go(func() error {
+			trFromMyLang, err = translate.GoogleHTMLTranslate(user.MyLang, "en", text)
+			return err
+		})
+		g.Go(func() error {
+			trFromToLang, err = translate.GoogleHTMLTranslate(user.ToLang, "en", text)
+			return err
+		})
+
+		if err = g.Wait(); err != nil {
 			warn(err)
+			return
 		}
-		if trTest.Text != text {
-			pp.Println(trTest.Text)
-			from = user.MyLang
+
+		leven1 := levenshtein.ComputeLevenshteinPercentage(text, detect.Text)
+		leven2 := levenshtein.ComputeLevenshteinPercentage(text, trFromMyLang.Text)
+		leven3 := levenshtein.ComputeLevenshteinPercentage(text, trFromToLang.Text)
+
+		min := min(leven1, leven2, leven3)
+		if min == leven1 {
+			// detect.From правильный
+		} else if min == leven2 {
+			detect.From = trFromMyLang.From
+		} else if min == leven3 {
+			detect.From = trFromToLang.From
 		}
 	}
 
-	if from == "" {
-		from = "auto"
+	if detect.From == "" {
+		detect.From = "auto"
 	}
 
 
 	var to string // language into need to translate
-	if from == user.ToLang {
+	if detect.From == user.ToLang {
 		to = user.MyLang
-	} else if from == user.MyLang {
+	} else if detect.From == user.MyLang {
 		to = user.ToLang
 	} else { // никакой из
 		to = user.MyLang
@@ -257,33 +282,32 @@ func (app *app) onMessage(ctx context.Context, message tgbotapi.Message) {
 
 
 
-
-	ret, err := app.SuperTranslate(from, to, text, message.Entities)
+	ret, err := app.SuperTranslate(detect.From, to, text, message.Entities)
 	if err != nil {
 		warn(err)
 		return
 	}
 
-	From := langs[from]
+	From := langs[detect.From]
 	keyboard :=  tgbotapi.NewInlineKeyboardMarkup(
 		 tgbotapi.NewInlineKeyboardRow(
 			 tgbotapi.NewInlineKeyboardButtonData("From " + From.Emoji + " " + From.Name, "none")),
 		 tgbotapi.NewInlineKeyboardRow(
-			 tgbotapi.NewInlineKeyboardButtonData("🔊 " + user.Localize("To voice"),  "speech_this_message_and_replied_one:"+from+":"+to)),
+			 tgbotapi.NewInlineKeyboardButtonData("🔊 " + user.Localize("To voice"),  "speech_this_message_and_replied_one:"+detect.From+":"+to)),
 	)
 
 	if ret.Examples {
 		keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
-			 tgbotapi.NewInlineKeyboardRow( tgbotapi.NewInlineKeyboardButtonData("💬 " + user.Localize("Examples"), "examples:"+from+":"+to)))
+			 tgbotapi.NewInlineKeyboardRow( tgbotapi.NewInlineKeyboardButtonData("💬 " + user.Localize("Examples"), "examples:"+detect.From+":"+to)))
 	}
 	if ret.Translations {
 		keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
-			 tgbotapi.NewInlineKeyboardRow( tgbotapi.NewInlineKeyboardButtonData("📚 " + user.Localize("Translations"), "translations:"+from+":"+to)))
+			 tgbotapi.NewInlineKeyboardRow( tgbotapi.NewInlineKeyboardButtonData("📚 " + user.Localize("Translations"), "translations:"+detect.From+":"+to)))
 	}
 
 	if ret.Dictionary {
 		keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
-			 tgbotapi.NewInlineKeyboardRow( tgbotapi.NewInlineKeyboardButtonData("ℹ️" + user.Localize("Dictionary"), "dictonary:"+from+":"+text)))
+			 tgbotapi.NewInlineKeyboardRow( tgbotapi.NewInlineKeyboardButtonData("ℹ️" + user.Localize("Dictionary"), "dictonary:"+detect.From+":"+text)))
 	}
 
 	if _, err = app.bot.Send( tgbotapi.EditMessageTextConfig{

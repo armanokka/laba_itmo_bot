@@ -25,14 +25,36 @@ func (app app) onInlineQuery(update tgbotapi.InlineQuery) {
 		logrus.Error(err)
 	}
 
-
 	if update.Query == "" {
-		app.bot.AnswerInlineQuery(
-			tgbotapi.InlineConfig{
-				InlineQueryID:     update.ID,
-				SwitchPMText:      "Type text to translate",
-				SwitchPMParameter: "from_inline",
-			})
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonURL("Try it out", "https://t.me/translobot?start=from_inline")))
+		elem := tgbotapi.InlineQueryResultArticle{
+			Type:                "article",
+			ID:                  "ad",
+			Title:               "Recommend the bot",
+			InputMessageContent: map[string]interface{}{
+				"message_text": `🔥 <a href="https://t.me/translobot">Translo</a> ⚒ - <i>The best Telegram translator bot in the whole world</i>`,
+				"disable_web_page_preview":true,
+				"parse_mode": tgbotapi.ModeHTML,
+			},
+			ReplyMarkup:         &keyboard,
+			URL:                 "",
+			HideURL:             true,
+			Description:         "click to recommend a bot in the chat",
+			ThumbURL:            "https://i.yapx.ru/PdNIa.png",
+			ThumbWidth:          200,
+			ThumbHeight:         200,
+		}
+		app.bot.AnswerInlineQuery(tgbotapi.InlineConfig{
+			InlineQueryID:     update.ID,
+			Results:           []interface{}{elem},
+			CacheTime:         0,
+			IsPersonal:        true,
+			NextOffset:        "",
+			SwitchPMText:      "Get started",
+			SwitchPMParameter: "from_inline",
+		})
 		return
 	}
 

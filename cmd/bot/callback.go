@@ -73,7 +73,6 @@ func (app *app) onCallbackQuery(callback tgbotapi.CallbackQuery) {
 			Text:                  msg.Text,
 		})
 		app.bot.Send(tgbotapi.NewCallback(callback.ID, ""))
-
 	case "none":
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
 		app.writeBotLog(callback.From.ID, "cb_none", "")
