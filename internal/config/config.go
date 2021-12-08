@@ -64,7 +64,12 @@ func Load() error {
 
 
 	// Initializing bot
-	api, err := tgbotapi.NewBotAPI(strings.TrimSpace(botToken))
+	token := os.Getenv("BOT_TOKEN")
+	if token == "" {
+		token = strings.TrimSpace(botToken)
+	}
+
+	api, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
 		panic(err)
 	}
