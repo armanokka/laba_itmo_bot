@@ -259,7 +259,7 @@ func (app *app) onCallbackQuery(callback tgbotapi.CallbackQuery) {
 				if err != nil {
 					errs <- errors.New(err)
 				}
-				text += "\n<b>" + result.Translation + "</b> <i>" + user.Localize(rev.ContextResults.Results[i].PartOfSpeech) + "</i>\n<b>└</b>"
+				text += "\n<b>" + result.Translation + "</b> <i>" + rev.ContextResults.Results[i].PartOfSpeech + "</i>\n<b>└</b>"
 				if len(tr.ContextResults.Results) > 4 {
 					tr.ContextResults.Results = tr.ContextResults.Results[:4]
 				}
@@ -513,6 +513,5 @@ func (app *app) onCallbackQuery(callback tgbotapi.CallbackQuery) {
 		}
 	default:
 		app.bot.Send(tgbotapi.NewMessage(callback.From.ID, "Action is expired. Send /start"))
-		app.notifyAdmin("неизвестный колбэк: " + callback.Data)
 	}
 }
