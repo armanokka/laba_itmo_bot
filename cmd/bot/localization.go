@@ -684,18 +684,6 @@ var translations = map[string]map[string]string{
         "es": "El bot se está traduciendo actualmente a <b>%s</b> . Seleccione el idioma que desea traducir",
         "uk": "Зараз бот перекладає на <b>%s</b> . Виберіть мову, на яку хочете перекладати",
     },
-    // ----- my lang ----- //
-    "": map[string]string{
-        "id": "Bahasa Anda adalah <b> %s</Ваш язык <b>%s</b>. Выберите Ваш язык.b> . Pilih bahasamu.",
-        "en": "Your language is <b> %s</b> . Choose your language.",
-        "de": "Ihre Sprache ist <b> %s</b> . Wähle deine Sprache.",
-        "uk": "Ваша мова <b>%s</b> . Виберіть мову.",
-        "it": "La tua lingua è <b> %s</b> . Scegli la tua LINGUA.",
-        "pt": "Seu idioma é <b> %s</b> . Escolha seu idioma.",
-        "ru": "Ваш язык <b>%s</b>. Выберите Ваш язык.",
-        "es": "Tu idioma es <b> %s</b> . Elige tu idioma.",
-        "uz": "Tilingiz <b>%s</b> . Tilingizni tanlang.",
-    },
 }
 
 
