@@ -261,6 +261,8 @@ type GoogleHTMLTranslation struct {
 }
 
 func GoogleHTMLTranslate(from, to, text string) (GoogleHTMLTranslation, error) {
+	text = strings.ReplaceAll(text, "\n", "<br>")
+
 	request := func() (*http.Response, error) {
 		params := url.Values{}
 		params.Set("q", text)
@@ -310,6 +312,7 @@ func GoogleHTMLTranslate(from, to, text string) (GoogleHTMLTranslation, error) {
 		if len(out) != 2 {
 			return GoogleHTMLTranslation{}, errors.New("пришло не два значения от переводчика, разделитель \"|\":" + strings.Join(out, "|"))
 		}
+		out[0] = strings.ReplaceAll(out[0], "<br>", "\n")
 		return GoogleHTMLTranslation{
 			Text: html.UnescapeString(out[0]),
 			From: out[1],
@@ -324,6 +327,7 @@ func GoogleHTMLTranslate(from, to, text string) (GoogleHTMLTranslation, error) {
 		if err = json.Unmarshal(body, &out); err != nil {
 			return GoogleHTMLTranslation{}, errors.WrapPrefix(body, string(body), 0)
 		}
+		out = strings.ReplaceAll(out, "<br>", "\n")
 		return GoogleHTMLTranslation{
 			Text: html.UnescapeString(out),
 			From: from,

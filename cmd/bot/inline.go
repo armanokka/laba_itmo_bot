@@ -6,7 +6,6 @@ import (
 	iso6391 "github.com/emvi/iso-639-1"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
-	"github.com/sirupsen/logrus"
 	"html"
 	"strconv"
 	"sync"
@@ -22,7 +21,7 @@ func (app app) onInlineQuery(update tgbotapi.InlineQuery) {
 			SwitchPMParameter: "from_inline",
 		})
 		app.notifyAdmin(err)
-		logrus.Error(err)
+		pp.Println("onInlineQuery: error", err)
 	}
 
 	if update.Query == "" {
@@ -85,12 +84,14 @@ func (app app) onInlineQuery(update tgbotapi.InlineQuery) {
 	var wg sync.WaitGroup
 	var user User
 	results := sync.Map{}
+	var userExists bool
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		user = app.loadUser(update.From.ID, warn)
 		if user.Exists() {
+			userExists = true
 			user.Fill()
 		}
 	}()
@@ -132,11 +133,12 @@ func (app app) onInlineQuery(update tgbotapi.InlineQuery) {
 
 	blocks := make([]interface{}, 0, 50)
 
-	if offset == 0 {
-		if fromlang == user.MyLang || fromlang != user.MyLang && fromlang != user.ToLang {
-			block, ok := results.Load(user.ToLang)
+	if offset == 0 && userExists {
+		langs := user.GetUsedLangs()
+		for i, lang := range langs {
+			block, ok := results.Load(lang)
 			if !ok {
-				tr, err := translate.GoogleHTMLTranslate(fromlang, user.ToLang, update.Query)
+				tr, err := translate.GoogleHTMLTranslate(fromlang, lang, update.Query)
 				if err != nil {
 					warn(err)
 				}
@@ -145,7 +147,7 @@ func (app app) onInlineQuery(update tgbotapi.InlineQuery) {
 				block = tgbotapi.InlineQueryResultArticle{
 					Type:                "article",
 					ID:                  "да пох вообще",
-					Title:               iso6391.Name(user.ToLang),
+					Title:               iso6391.Name(lang),
 					InputMessageContent: map[string]interface{}{
 						"message_text": tr.Text,
 						"disable_web_page_preview":false,
@@ -155,42 +157,13 @@ func (app app) onInlineQuery(update tgbotapi.InlineQuery) {
 				}
 			}
 			article := block.(tgbotapi.InlineQueryResultArticle)
-			article.ID = "my"
-			article.Title += " 👤"
-			blocks = append(blocks, article)
-		}
-		if fromlang == user.ToLang || fromlang != user.MyLang && fromlang != user.ToLang {
-			block, ok := results.Load(user.MyLang)
-			if !ok {
-				tr, err := translate.GoogleHTMLTranslate(fromlang, user.MyLang, update.Query)
-				if err != nil {
-					warn(err)
-				}
-				tr.Text = html.UnescapeString(tr.Text)
-
-				block = tgbotapi.InlineQueryResultArticle{
-					Type:                "article",
-					ID:                  "да пох вообще",
-					Title:               iso6391.Name(user.MyLang),
-					InputMessageContent: map[string]interface{}{
-						"message_text": tr.Text,
-						"disable_web_page_preview":false,
-					},
-					HideURL:             true,
-					Description:         tr.Text,
-				}
-			}
-			article := block.(tgbotapi.InlineQueryResultArticle)
-			article.ID = "to"
+			article.ID = "used_lang:"+strconv.Itoa(i)
 			article.Title += " 👤"
 			blocks = append(blocks, article)
 		}
 	}
 
 	for i, code := range codes[offset:offset+count] {
-		if offset == 0 && (code == user.MyLang || code == user.ToLang) {
-			continue
-		}
 		block, ok := results.Load(code)
 		if !ok {
 			warn(fmt.Errorf("couldn't find code %s in translations", code))
@@ -227,10 +200,7 @@ func (app app) onInlineQuery(update tgbotapi.InlineQuery) {
 	}
 
 	app.analytics.Bot(update.From.ID, "Inline succeeded", "Inline succeeded")
-
-	if user.Exists() {
-		user.UpdateLastActivity()
-		app.writeUserLog(update.From.ID, update.Query)
-		app.writeBotLog(update.From.ID, "inline_succeeded", "")
+	if userExists {
+		user.IncrUsings()
 	}
 }

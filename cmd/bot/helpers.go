@@ -8,7 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/armanokka/translobot/internal/config"
-	translate2 "github.com/armanokka/translobot/pkg/translate"
+    "github.com/armanokka/translobot/pkg/lingvo"
+    translate2 "github.com/armanokka/translobot/pkg/translate"
 	iso6391 "github.com/emvi/iso-639-1"
 	"github.com/go-errors/errors"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -303,7 +304,7 @@ func BuildSupportedLanguagesKeyboard() (tgbotapi.InlineKeyboardMarkup, error) {
 type SuperTranslation struct {
     From string
     TranslatedText string
-    Examples, Translations, Dictionary bool
+    Examples, Translations, Dictionary, Suggestions bool
 }
 
 func (app app) SuperTranslate(from, to, text string, entities []tgbotapi.MessageEntity) (ret SuperTranslation, err error) {
@@ -313,6 +314,8 @@ func (app app) SuperTranslate(from, to, text string, entities []tgbotapi.Message
     var (
         rev = translate2.ReversoTranslation{}
         dict = translate2.GoogleDictionaryResponse{}
+        suggestions *lingvo.SuggestionResult
+        lingv []lingvo.Dictionary
     )
 
     l := len(text)
@@ -323,7 +326,17 @@ func (app app) SuperTranslate(from, to, text string, entities []tgbotapi.Message
         if l > 100 {
             return nil
         }
-        dict, err = translate2.GoogleDictionary(from, text)
+        dict, err = translate2.GoogleDictionary(from, strings.ToLower(text))
+        return err
+    })
+
+    g.Go(func() error {
+        _, ok1 := lingvo.Lingvo[from]
+        _, ok2 := lingvo.Lingvo[to]
+        if !ok1 || !ok2 {
+            return nil
+        }
+        lingv, err = lingvo.GetDictionary(from, to, text)
         return err
     })
 
@@ -338,7 +351,17 @@ func (app app) SuperTranslate(from, to, text string, entities []tgbotapi.Message
     })
 
     g.Go(func() error {
-        tr, err := translate2.GoogleHTMLTranslate(from, to, strings.ReplaceAll(text, "\n", "<br>"))
+        _, ok1 := lingvo.Lingvo[from]
+        _, ok2 := lingvo.Lingvo[to]
+        if !ok1 || !ok2 {
+            return nil
+        }
+        suggestions, err = lingvo.Suggestions(from, to, strings.ToLower(text), 1, 0)
+        return err
+    })
+
+    g.Go(func() error {
+        tr, err := translate2.GoogleHTMLTranslate(from, to, text)
         if err != nil {
             return err
         }
@@ -366,8 +389,12 @@ func (app app) SuperTranslate(from, to, text string, entities []tgbotapi.Message
         }
     }
 
-    if dict.Status == 200 && dict.DictionaryData != nil {
+    if dict.Status == 200 && dict.DictionaryData != nil || len(lingv) > 0 {
         ret.Dictionary = true
+    }
+
+    if suggestions != nil && len(suggestions.Items) > 0 {
+        ret.Suggestions = true
     }
 
     return ret, nil
@@ -378,45 +405,42 @@ type Message struct {
     Keyboard tgbotapi.ReplyKeyboardMarkup
 }
 
-// buildLettersKeyboard создает клаву 5x5 с заданными коллбэками. В коллбэк напишите %s и туда вставится letter
-func buildLettersKeyboard(callbackData string) tgbotapi.InlineKeyboardMarkup {
-    keyboard := tgbotapi.NewInlineKeyboardMarkup()
-    for i, letter := range lettersSlice {
-        btn := tgbotapi.NewInlineKeyboardButtonData(letter, fmt.Sprintf(callbackData, letter))
-        if i % 5 == 0 {
-            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(btn))
-            continue
-        }
-        last := len(keyboard.InlineKeyboard) - 1
-        keyboard.InlineKeyboard[last] = append(keyboard.InlineKeyboard[last], btn)
+func reverse(arr []string) []string {
+    for i, j := 0, len(arr)-1; i < j; i, j = i+1, j-1 {
+        arr[i], arr[j] = arr[j], arr[i]
     }
-    return keyboard
+    return arr
 }
 
-// buildLettersKeyboard создает клаву с языками на данную букву. В коллбэк напишите %s и туда вставится код языка
-func buildOneLetterKeyboard(letter, callbackData, backCallbackData string) tgbotapi.InlineKeyboardMarkup {
-    keyboard := tgbotapi.NewInlineKeyboardMarkup()
-    for i, lang := range lettersLangs[letter] {
-        btn := tgbotapi.NewInlineKeyboardButtonData(lang.Name + lang.Emoji, fmt.Sprintf(callbackData, iso6391.CodeForName(lang.Name)))
-        if i % 3 == 0 {
-            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(btn))
-        } else {
-            last := len(keyboard.InlineKeyboard) - 1
-            keyboard.InlineKeyboard[last] = append(keyboard.InlineKeyboard[last], btn)
-        }
-    }
-    keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
-        tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("↩", backCallbackData)))
-    return keyboard
-}
 
 // buildLangsPagination создает пагинацию как говорил F d
 // в калбак передайте что-то типа set_my_lang:%s, где %s станет код выбранного языка
-func buildLangsPagination(offset int, count int, buttonSelectLangCallback, buttonBackCallback, buttonNextCallback, tickedCallback string) (tgbotapi.InlineKeyboardMarkup, error) {
+func (u User) buildLangsPagination(offset int, count int, fromLang string, buttonSelectLangCallback, buttonBackCallback, buttonNextCallback string) (tgbotapi.InlineKeyboardMarkup, error) {
     if offset < 0 || offset > len(codes) - 1 {
         return tgbotapi.InlineKeyboardMarkup{}, nil
     }
     out := tgbotapi.NewInlineKeyboardMarkup()
+
+    if offset == 0 {
+        userLangs := u.GetUsedLangs()
+
+        for i, to := range userLangs {
+            btn := tgbotapi.NewInlineKeyboardButtonData("🆙 " + langs[to].Name, fmt.Sprintf("translate_to:%s:%s", fromLang, to))
+            if i % 3 == 0 {
+                out.InlineKeyboard = append(out.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(btn))
+            } else {
+                l := len(out.InlineKeyboard) - 1
+                if l < 0 {
+                    l = 0
+                }
+                out.InlineKeyboard[l] = append(out.InlineKeyboard[l], btn)
+            }
+        }
+
+    }
+
+
+
     if count == 0 {
         offset -= 18
         count += 18
@@ -428,9 +452,6 @@ func buildLangsPagination(offset int, count int, buttonSelectLangCallback, butto
         }
 
         callback := fmt.Sprintf(buttonSelectLangCallback, code)
-        if callback == tickedCallback {
-            lang.Name = "👉" + lang.Name
-        }
 
         btn := tgbotapi.NewInlineKeyboardButtonData(lang.Name, callback)
         if i % 3 == 0 {
@@ -461,6 +482,17 @@ func randid(seed int64) string {
     uuid := fmt.Sprintf("%x-%x-%x-%x-%x",
         b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
     return uuid
+}
+
+func remove(arr []string, k string) []string {
+    ret := make([]string, 0, len(arr))
+    for _, v := range arr {
+        if v == k {
+            continue
+        }
+        ret = append(ret, v)
+    }
+    return ret
 }
 
 func tickUntick(keyboard tgbotapi.InlineKeyboardMarkup, tickCallback, untickCallback, prefix string) tgbotapi.InlineKeyboardMarkup {

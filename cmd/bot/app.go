@@ -57,23 +57,17 @@ func (app app) Run(ctx context.Context) error {
 				wg.Add(1)
 				go func() {
 					defer wg.Done()
+					defer func() {
+						if err := recover(); err != nil {
+							pp.Println("Panic:", err)
+							app.notifyAdmin("Panic:", err)
+						}
+					}()
 					start := time.Now()
 					if update.Message != nil {
-						if app.messageState == nil {
-							app.messageState = new(sync.Map)
-						}
-
-						if f, ok := app.messageState.Load(update.Message.From.ID); ok {
-							fu, ok := f.(func(message tgbotapi.Message))
-							if !ok {
-								pp.Printf("Error when casting type in messageState: %v", fu)
-							}
-							fu(*update.Message)
-							return
-						}
 						app.onMessage(ctx, *update.Message)
 					} else if update.CallbackQuery != nil {
-						app.onCallbackQuery(*update.CallbackQuery)
+						app.onCallbackQuery(ctx, *update.CallbackQuery)
 					} else if update.InlineQuery != nil {
 						app.onInlineQuery(*update.InlineQuery)
 					} else if update.MyChatMember != nil {
@@ -116,27 +110,6 @@ func (app app) runLogsListener(ctx context.Context, pushDbInterval time.Duration
 			}
 			if err := app.db.Create(inserts).Error; err != nil {
 				app.notifyAdmin(err)
-
-				for _, insert := range inserts {
-					user := app.loadUser(insert.ID, func(err error) {
-						app.notifyAdmin(err)
-					})
-					if !user.Exists() {
-						if err = app.db.Create(&tables.Users{
-							ID:         insert.ID,
-							MyLang:     "en",
-							ToLang:     "es",
-							Act:        sql.NullString{},
-							Mailing:    true,
-							Usings:     0,
-							Lang:       "en",
-							ReferrerID: 0,
-							Blocked:    false,
-						}).Error; err != nil {
-							app.notifyAdmin(err)
-						}
-					}
-				}
 			}
 			inserts = nil
 			logrus.Info("message logs were saved")
@@ -233,13 +206,3 @@ func (app app) writeUserLog(id int64, text string) {
 	}
 }
 
-func (app *app) onNextUserMessage(id int64, f func(msg tgbotapi.Message)) {
-	if app.messageState == nil {
-		app.messageState = new(sync.Map)
-	}
-	app.messageState.Store(id, f)
-}
-
-func (app *app) stopUserConversation(id int64) {
-	app.messageState.Delete(id)
-}

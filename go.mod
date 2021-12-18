@@ -20,6 +20,7 @@ require (
 	golang.org/x/net v0.0.0-20210510120150-4163338589ed // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20211001092434-39dca1131b70 // indirect
+	gopkg.in/resty.v1 v1.12.0
 	gorm.io/driver/mysql v1.1.1
 	gorm.io/gorm v1.21.12
 )

@@ -1,10 +1,12 @@
 package bot
 
 import (
+	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
 	"github.com/armanokka/translobot/pkg/botapi"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"gorm.io/gorm"
+	"strings"
 	"time"
 )
 
@@ -76,72 +78,62 @@ func (u User) IncrUsings() {
 	}
 }
 
-func (u User) SendMyLangTab(messageID int) {
-	keyboard := buildLettersKeyboard("show_langs_by_letter_and_set_my_lang:%s")
-	my := langs[u.MyLang].Name
-	if messageID == 0 {
-		u.bot.Send(tgbotapi.MessageConfig{
-			BaseChat:              tgbotapi.BaseChat{
-				ChatID:                   u.ID,
-				ChannelUsername:          "",
-				ReplyToMessageID:         0,
-				ReplyMarkup:              keyboard,
-				DisableNotification:      false,
-				AllowSendingWithoutReply: false,
-			},
-			Text:                  u.Localize("Ваш язык <b>%s</b>. Выберите Ваш язык.", my),
-			ParseMode:             tgbotapi.ModeHTML,
-			Entities:              nil,
-			DisableWebPagePreview: false,
+func (u User) SendStart(message tgbotapi.Message) {
+	if !u.Exists() {
+		if message.From.LanguageCode == "" || !in(config.BotLocalizedLangs, message.From.LanguageCode) {
+			message.From.LanguageCode = "en"
+		}
+		u.Create(tables.Users{
+			ID:      message.From.ID,
+			Usings:  0,
+			Lang:    message.From.LanguageCode,
+			Blocked: false,
 		})
 	} else {
-		u.bot.Send(tgbotapi.EditMessageTextConfig{
-			BaseEdit:              tgbotapi.BaseEdit{
-				ChatID:          u.ID,
-				ChannelUsername: "",
-				MessageID:       messageID,
-				InlineMessageID: "",
-				ReplyMarkup:     &keyboard,
-			},
-			Text:                  u.Localize("Ваш язык <b>%s</b>. Выберите Ваш язык.",  my),
-			ParseMode:             tgbotapi.ModeHTML,
-			Entities:              nil,
-			DisableWebPagePreview: false,
-		})
+		u.Fill()
 	}
+
+	u.bot.Send(tgbotapi.MessageConfig{
+		BaseChat:               tgbotapi.BaseChat{
+			ChatID:                   message.From.ID,
+			ChannelUsername:          "",
+			ReplyToMessageID:         0,
+			ReplyMarkup:              tgbotapi.NewRemoveKeyboard(true),
+			DisableNotification:      true,
+			AllowSendingWithoutReply: false,
+		},
+		Text:                  u.Localize("Просто напиши мне текст, а я его переведу"),
+	})
+
+	return
 }
 
-func (u User) SendToLangTab(messageID int) {
-	keyboard := buildLettersKeyboard("show_langs_by_letter_and_set_to_lang:%s")
-	to := langs[u.ToLang].Name
-	if messageID == 0 {
-		u.bot.Send(tgbotapi.MessageConfig{
-			BaseChat:              tgbotapi.BaseChat{
-				ChatID:                   u.ID,
-				ChannelUsername:          "",
-				ReplyToMessageID:         0,
-				ReplyMarkup:              keyboard,
-				DisableNotification:      false,
-				AllowSendingWithoutReply: false,
-			},
-			Text:                  u.Localize("Сейчас бот переводит на <b>%s</b>. Выберите язык, на который хотите переводить", to),
-			ParseMode:             tgbotapi.ModeHTML,
-			Entities:              nil,
-			DisableWebPagePreview: false,
-		})
-	} else {
-		u.bot.Send(tgbotapi.EditMessageTextConfig{
-			BaseEdit:              tgbotapi.BaseEdit{
-				ChatID:          u.ID,
-				ChannelUsername: "",
-				MessageID:       messageID,
-				InlineMessageID: "",
-				ReplyMarkup:     &keyboard,
-			},
-			Text:                  u.Localize("Сейчас бот переводит на <b>%s</b>. Выберите язык, на который хотите переводить", to),
-			ParseMode:             tgbotapi.ModeHTML,
-			Entities:              nil,
-			DisableWebPagePreview: false,
-		})
+func (u *User) AddUsedLang(lang string) {
+	last := strings.Split(u.Users.LastLangs, ",")
+	if in(last, lang) && len(last) > 0 {
+		last = remove(last, lang)
 	}
+	last = append(last, lang)
+	if len(last) > 3 {
+		last = last[1:]
+	}
+
+	put := strings.Join(last, ",")
+	put = strings.TrimPrefix(put, ",")
+	put = strings.TrimSuffix(put, ",")
+
+	err := u.db.Model(&tables.Users{}).Where("id = ?", u.ID).Update("last_langs", put).Error
+	if err != nil {
+		u.error(err)
+		return
+	}
+	u.Users.LastLangs = put
+}
+
+func (u User) GetUsedLangs() []string {
+	langs := strings.Split(u.LastLangs, ",")
+	if len(langs) == 1 && langs[0] == "" {
+		return []string{}
+	}
+	return reverse(langs)
 }
