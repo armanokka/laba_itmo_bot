@@ -77,8 +77,6 @@ func (app app) onInlineQuery(update tgbotapi.InlineQuery) {
 		count = len(codes) - 1 - offset
 	}
 
-	pp.Println("offset", offset, "count", count)
-
 
 	fromlang := ""
 	var wg sync.WaitGroup
@@ -115,6 +113,20 @@ func (app app) onInlineQuery(update tgbotapi.InlineQuery) {
 			if tr.Text == "" {
 				return // ну не вышло, так не вышло, че бубнить-то
 			}
+
+			keyboard := tgbotapi.NewInlineKeyboardMarkup(
+				tgbotapi.NewInlineKeyboardRow(
+					tgbotapi.InlineKeyboardButton{
+						Text:                         "translate",
+						URL:                          nil,
+						LoginURL:                     nil,
+						CallbackData:                 nil,
+						SwitchInlineQuery:            nil,
+						SwitchInlineQueryCurrentChat: &tr.Text,
+						CallbackGame:                 nil,
+						Pay:                          false,
+					}))
+
 			results.Store(code, tgbotapi.InlineQueryResultArticle{
 				Type:                "article",
 				ID:                  "да пох вообще",
@@ -123,6 +135,7 @@ func (app app) onInlineQuery(update tgbotapi.InlineQuery) {
 					"message_text": tr.Text,
 					"disable_web_page_preview":false,
 				},
+				ReplyMarkup: &keyboard,
 				HideURL:             true,
 				Description:         tr.Text,
 			})
@@ -144,6 +157,19 @@ func (app app) onInlineQuery(update tgbotapi.InlineQuery) {
 				}
 				tr.Text = html.UnescapeString(tr.Text)
 
+				keyboard := tgbotapi.NewInlineKeyboardMarkup(
+					tgbotapi.NewInlineKeyboardRow(
+						tgbotapi.InlineKeyboardButton{
+							Text:                         "translate",
+							URL:                          nil,
+							LoginURL:                     nil,
+							CallbackData:                 nil,
+							SwitchInlineQuery:            nil,
+							SwitchInlineQueryCurrentChat: &tr.Text,
+							CallbackGame:                 nil,
+							Pay:                          false,
+						}))
+
 				block = tgbotapi.InlineQueryResultArticle{
 					Type:                "article",
 					ID:                  "да пох вообще",
@@ -152,6 +178,7 @@ func (app app) onInlineQuery(update tgbotapi.InlineQuery) {
 						"message_text": tr.Text,
 						"disable_web_page_preview":false,
 					},
+					ReplyMarkup: &keyboard,
 					HideURL:             true,
 					Description:         tr.Text,
 				}
