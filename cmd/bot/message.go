@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
+	"github.com/armanokka/translobot/pkg/levenshtein"
 	"github.com/armanokka/translobot/pkg/translate"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 	"net/url"
 	"os"
 	"strconv"
@@ -102,6 +104,35 @@ func (app *app) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 
+	switch user.Act {
+	case "setup_langs":
+		fromLang, err := translate.GoogleHTMLTranslate("auto", "en", message.Text)
+		if err != nil {
+			warn(err)
+		}
+		from := fromLang.From
+
+
+		keyboard, err := user.buildLangsPagination(0, 18, from, fmt.Sprintf("setup_langs:%s:%s", from, "%s"), fmt.Sprintf("setup_langs_pagination:%s:0", from), fmt.Sprintf("setup_langs_pagination:%s:18", from))
+		if err != nil {
+			warn(err)
+		}
+		app.bot.Send(tgbotapi.MessageConfig{
+			BaseChat:              tgbotapi.BaseChat{
+				ChatID:                   message.From.ID,
+				ChannelUsername:          "",
+				ReplyToMessageID:         message.MessageID,
+				ReplyMarkup:              keyboard,
+				DisableNotification:      true,
+				AllowSendingWithoutReply: false,
+			},
+			Text:                  user.Localize("На какой язык перевести?"),
+			ParseMode:             "",
+			Entities:              nil,
+			DisableWebPagePreview: true,
+		})
+		return
+	}
 
 	if user.Usings == 5 || (user.Usings > 0 && user.Usings % 20 == 0) {
 		text := user.Localize("Я рекомендую @translobot")
@@ -130,150 +161,122 @@ func (app *app) onMessage(ctx context.Context, message tgbotapi.Message) {
 		// tg://share...
 	}
 
-	tr, err := translate.GoogleHTMLTranslate("auto", "en", message.Text)
-	if err != nil {
-		warn(err)
-	}
-	from := tr.From
 
 
-	keyboard, err := user.buildLangsPagination(0, 18, from, fmt.Sprintf("translate_to:%s:%s", from, "%s"), fmt.Sprintf("translate_pagination:%s:0", from), fmt.Sprintf("translate_pagination:%s:18", from))
+
+
+
+	var text = message.Text
+	if message.Caption != "" {
+		text = message.Caption
+	}
+
+	if text == "" {
+		app.bot.Send( tgbotapi.NewMessage(message.Chat.ID, user.Localize("Please, send text message")))
+		app.analytics.Bot(message.Chat.ID, "Please, send text message", "Message is not text message")
+		return
+	}
+
+	detect, err := translate.GoogleHTMLTranslate("auto", "en", text)
 	if err != nil {
 		warn(err)
+		return
 	}
-	app.bot.Send(tgbotapi.MessageConfig{
+	from := detect.From
+
+	if from != user.MyLang && from != user.ToLang {
+
+		var (
+			trFromMyLang translate.GoogleHTMLTranslation
+			trFromToLang translate.GoogleHTMLTranslation
+		)
+		g, _ := errgroup.WithContext(ctx)
+		g.Go(func() error {
+			trFromMyLang, err = translate.GoogleHTMLTranslate(user.MyLang, "en", text)
+			return err
+		})
+		g.Go(func() error {
+			trFromToLang, err = translate.GoogleHTMLTranslate(user.ToLang, "en", text)
+			return err
+		})
+
+		if err = g.Wait(); err != nil {
+			warn(err)
+			return
+		}
+
+		leven1 := levenshtein.ComputeLevenshteinPercentage(text, detect.Text)
+		leven2 := levenshtein.ComputeLevenshteinPercentage(text, trFromMyLang.Text)
+		leven3 := levenshtein.ComputeLevenshteinPercentage(text, trFromToLang.Text)
+
+		min := min(leven1, leven2, leven3)
+		if min == leven1 {
+			// detect.From правильный
+		} else if min == leven2 {
+			from = trFromMyLang.From
+		} else if min == leven3 {
+			from = trFromToLang.From
+		}
+	}
+
+	if from == "" {
+		from = "auto"
+	}
+
+
+	var to string // language into need to translate
+	if from == user.ToLang {
+		to = user.MyLang
+	} else if from == user.MyLang {
+		to = user.ToLang
+	} else { // никакой из
+		to = user.MyLang
+	}
+
+
+
+	ret, err := app.SuperTranslate(from, to, text, message.Entities)
+	if err != nil {
+		warn(err)
+		return
+	}
+
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🔊 " + user.Localize("To voice"), fmt.Sprintf("speech_this_message_and_replied_one:%s:%s", from, to))))
+	if ret.Examples {
+		keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0], tgbotapi.NewInlineKeyboardButtonData("💬 " + user.Localize("Examples"), fmt.Sprintf("exm:%s:%s", from, to)))
+	}
+	if ret.Translations {
+		keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("📚 " + user.Localize("Translations"), fmt.Sprintf("trs:%s:%s", from, to))))
+	}
+	if ret.Dictionary {
+		l := len(keyboard.InlineKeyboard) - 1
+		if l < 0 {
+			l = 0
+		}
+		keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData("ℹ️" + user.Localize("Dictionary"), fmt.Sprintf("dict:%s", from)))
+	}
+
+	if _, err = app.bot.Send(tgbotapi.MessageConfig{
 		BaseChat:              tgbotapi.BaseChat{
-			ChatID:                   message.From.ID,
+			ChatID:                   message.Chat.ID,
 			ChannelUsername:          "",
 			ReplyToMessageID:         message.MessageID,
 			ReplyMarkup:              keyboard,
 			DisableNotification:      true,
 			AllowSendingWithoutReply: false,
 		},
-		Text:                  user.Localize("На какой язык перевести?"),
-		ParseMode:             "",
+		Text:                  ret.TranslatedText,
+		ParseMode:             tgbotapi.ModeHTML,
 		Entities:              nil,
 		DisableWebPagePreview: false,
-	})
+	}); err != nil {
+		pp.Println(err)
+	}
 
-	//
-	//
-	//var text = message.Text
-	//if message.Caption != "" {
-	//	text = message.Caption
-	//}
-	//
-	//if text == "" {
-	//	app.bot.Send( tgbotapi.NewMessage(message.Chat.ID, user.Localize("Please, send text message")))
-	//	app.analytics.Bot(message.Chat.ID, "Please, send text message", "Message is not text message")
-	//	return
-	//}
-	//
-	//detect, err := translate.GoogleHTMLTranslate("auto", "en", text)
-	//if err != nil {
-	//	warn(err)
-	//	return
-	//}
-	//
-	//if detect.From != user.MyLang && detect.From != user.ToLang {
-	//
-	//	var (
-	//		trFromMyLang translate.GoogleHTMLTranslation
-	//		trFromToLang translate.GoogleHTMLTranslation
-	//	)
-	//	g, _ := errgroup.WithContext(ctx)
-	//	g.Go(func() error {
-	//		trFromMyLang, err = translate.GoogleHTMLTranslate(user.MyLang, "en", text)
-	//		return err
-	//	})
-	//	g.Go(func() error {
-	//		trFromToLang, err = translate.GoogleHTMLTranslate(user.ToLang, "en", text)
-	//		return err
-	//	})
-	//
-	//	if err = g.Wait(); err != nil {
-	//		warn(err)
-	//		return
-	//	}
-	//
-	//	leven1 := levenshtein.ComputeLevenshteinPercentage(text, detect.Text)
-	//	leven2 := levenshtein.ComputeLevenshteinPercentage(text, trFromMyLang.Text)
-	//	leven3 := levenshtein.ComputeLevenshteinPercentage(text, trFromToLang.Text)
-	//
-	//	min := min(leven1, leven2, leven3)
-	//	if min == leven1 {
-	//		// detect.From правильный
-	//	} else if min == leven2 {
-	//		detect.From = trFromMyLang.From
-	//	} else if min == leven3 {
-	//		detect.From = trFromToLang.From
-	//	}
-	//}
-	//
-	//if detect.From == "" {
-	//	detect.From = "auto"
-	//}
-	//
-	//
-	//var to string // language into need to translate
-	//if detect.From == user.ToLang {
-	//	to = user.MyLang
-	//} else if detect.From == user.MyLang {
-	//	to = user.ToLang
-	//} else { // никакой из
-	//	to = user.MyLang
-	//}
-	//
-	//
-	//
-	//ret, err := app.SuperTranslate(detect.From, to, text, message.Entities)
-	//if err != nil {
-	//	warn(err)
-	//	return
-	//}
-	//
-	//keyboard :=  tgbotapi.NewInlineKeyboardMarkup(
-	//	 tgbotapi.NewInlineKeyboardRow(
-	//		 tgbotapi.NewInlineKeyboardButtonData("🔊 " + user.Localize("To voice"),  "speech_this_message_and_replied_one:"+detect.From+":"+to)),
-	//)
-	//
-	//if ret.Examples {
-	//	keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0],
-	//		 tgbotapi.NewInlineKeyboardButtonData("💬 " + user.Localize("Examples"), "examples:"+detect.From+":"+to))
-	//}
-	//if ret.Translations {
-	//	keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
-	//		 tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("📚 " + user.Localize("Translations"), "translations:"+detect.From+":"+to)))
-	//}
-	//
-	//if ret.Dictionary {
-	//	if len(keyboard.InlineKeyboard) == 1 {
-	//		keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow())
-	//	}
-	//	keyboard.InlineKeyboard[1] = append(keyboard.InlineKeyboard[1],
-	//		 tgbotapi.NewInlineKeyboardButtonData("ℹ️" + user.Localize("Dictionary"), "dictonary:"+detect.From+":"+text))
-	//}
-	//
-	//if _, err = app.bot.Send(tgbotapi.MessageConfig{
-	//	BaseChat:              tgbotapi.BaseChat{
-	//		ChatID:                   message.Chat.ID,
-	//		ChannelUsername:          "",
-	//		ReplyToMessageID:         message.MessageID,
-	//		ReplyMarkup:              keyboard,
-	//		DisableNotification:      true,
-	//		AllowSendingWithoutReply: false,
-	//	},
-	//	Text:                  ret.TranslatedText,
-	//	ParseMode:             tgbotapi.ModeHTML,
-	//	Entities:              nil,
-	//	DisableWebPagePreview: false,
-	//}); err != nil {
-	//	pp.Println(err)
-	//}
-	//
-	//app.analytics.Bot(user.ID, ret.TranslatedText, "Translated")
-	//user.IncrUsings()
-	//if user.Exists() {
-	//	app.writeBotLog(message.From.ID, "pm_translate", ret.TranslatedText)
-	//}
+	app.analytics.Bot(user.ID, ret.TranslatedText, "Translated")
+	user.IncrUsings()
+	app.writeBotLog(message.From.ID, "pm_translate", ret.TranslatedText)
 }

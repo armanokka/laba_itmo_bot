@@ -421,26 +421,6 @@ func (u User) buildLangsPagination(offset int, count int, fromLang string, butto
     }
     out := tgbotapi.NewInlineKeyboardMarkup()
 
-    if offset == 0 {
-        userLangs := u.GetUsedLangs()
-
-        for i, to := range userLangs {
-            btn := tgbotapi.NewInlineKeyboardButtonData("🆙 " + langs[to].Name, fmt.Sprintf("translate_to:%s:%s", fromLang, to))
-            if i % 3 == 0 {
-                out.InlineKeyboard = append(out.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(btn))
-            } else {
-                l := len(out.InlineKeyboard) - 1
-                if l < 0 {
-                    l = 0
-                }
-                out.InlineKeyboard[l] = append(out.InlineKeyboard[l], btn)
-            }
-        }
-
-    }
-
-
-
     if count == 0 {
         offset -= 18
         count += 18

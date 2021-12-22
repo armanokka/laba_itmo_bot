@@ -6,7 +6,6 @@ import (
 	"github.com/armanokka/translobot/pkg/botapi"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"gorm.io/gorm"
-	"strings"
 	"time"
 )
 
@@ -54,10 +53,22 @@ func (u User) Localize(text string, placeholders ...interface{}) string {
 	return localize(text, u.Lang, placeholders...)
 }
 
-func (u User) UpdateLastActivity() {
+func (u *User) UpdateLastActivity() {
 	if err := u.db.Model(&tables.Users{}).Where("id = ?", u.ID).Update("last_activity", time.Now()).Error; err != nil {
 		u.error(err)
+		return
 	}
+	u.LastActivity = time.Now()
+}
+
+func (u *User) UpdateAct(act string) {
+	if err := u.db.Model(&tables.Users{}).Where("id = ?", u.ID).Update("act", act).Error; err != nil {
+		u.error(err)
+	}
+}
+
+func (u *User) ResetAct() {
+	u.UpdateAct("")
 }
 
 func (u User) StartMessage() Message {
@@ -104,36 +115,6 @@ func (u User) SendStart(message tgbotapi.Message) {
 		},
 		Text:                  u.Localize("Просто напиши мне текст, а я его переведу"),
 	})
-
+	u.UpdateAct("setup_langs")
 	return
-}
-
-func (u *User) AddUsedLang(lang string) {
-	last := strings.Split(u.Users.LastLangs, ",")
-	if in(last, lang) && len(last) > 0 {
-		last = remove(last, lang)
-	}
-	last = append(last, lang)
-	if len(last) > 3 {
-		last = last[1:]
-	}
-
-	put := strings.Join(last, ",")
-	put = strings.TrimPrefix(put, ",")
-	put = strings.TrimSuffix(put, ",")
-
-	err := u.db.Model(&tables.Users{}).Where("id = ?", u.ID).Update("last_langs", put).Error
-	if err != nil {
-		u.error(err)
-		return
-	}
-	u.Users.LastLangs = put
-}
-
-func (u User) GetUsedLangs() []string {
-	langs := strings.Split(u.LastLangs, ",")
-	if len(langs) == 1 && langs[0] == "" {
-		return []string{}
-	}
-	return reverse(langs)
 }

@@ -147,47 +147,48 @@ func (app app) onInlineQuery(update tgbotapi.InlineQuery) {
 	blocks := make([]interface{}, 0, 50)
 
 	if offset == 0 && userExists {
-		langs := user.GetUsedLangs()
-		for i, lang := range langs {
-			block, ok := results.Load(lang)
-			if !ok {
-				tr, err := translate.GoogleHTMLTranslate(fromlang, lang, update.Query)
-				if err != nil {
-					warn(err)
-				}
-				tr.Text = html.UnescapeString(tr.Text)
-
-				keyboard := tgbotapi.NewInlineKeyboardMarkup(
-					tgbotapi.NewInlineKeyboardRow(
-						tgbotapi.InlineKeyboardButton{
-							Text:                         "translate",
-							URL:                          nil,
-							LoginURL:                     nil,
-							CallbackData:                 nil,
-							SwitchInlineQuery:            nil,
-							SwitchInlineQueryCurrentChat: &tr.Text,
-							CallbackGame:                 nil,
-							Pay:                          false,
-						}))
-
-				block = tgbotapi.InlineQueryResultArticle{
-					Type:                "article",
-					ID:                  "да пох вообще",
-					Title:               iso6391.Name(lang),
-					InputMessageContent: map[string]interface{}{
-						"message_text": tr.Text,
-						"disable_web_page_preview":false,
-					},
-					ReplyMarkup: &keyboard,
-					HideURL:             true,
-					Description:         tr.Text,
-				}
-			}
-			article := block.(tgbotapi.InlineQueryResultArticle)
-			article.ID = "used_lang:"+strconv.Itoa(i)
-			article.Title += " 👤"
-			blocks = append(blocks, article)
-		}
+		// здесь надо добавлять языки юзера вроде
+		//langs := user.GetUsedLangs()
+		//for i, lang := range langs {
+		//	block, ok := results.Load(lang)
+		//	if !ok {
+		//		tr, err := translate.GoogleHTMLTranslate(fromlang, lang, update.Query)
+		//		if err != nil {
+		//			warn(err)
+		//		}
+		//		tr.Text = html.UnescapeString(tr.Text)
+		//
+		//		keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		//			tgbotapi.NewInlineKeyboardRow(
+		//				tgbotapi.InlineKeyboardButton{
+		//					Text:                         "translate",
+		//					URL:                          nil,
+		//					LoginURL:                     nil,
+		//					CallbackData:                 nil,
+		//					SwitchInlineQuery:            nil,
+		//					SwitchInlineQueryCurrentChat: &tr.Text,
+		//					CallbackGame:                 nil,
+		//					Pay:                          false,
+		//				}))
+		//
+		//		block = tgbotapi.InlineQueryResultArticle{
+		//			Type:                "article",
+		//			ID:                  "да пох вообще",
+		//			Title:               iso6391.Name(lang),
+		//			InputMessageContent: map[string]interface{}{
+		//				"message_text": tr.Text,
+		//				"disable_web_page_preview":false,
+		//			},
+		//			ReplyMarkup: &keyboard,
+		//			HideURL:             true,
+		//			Description:         tr.Text,
+		//		}
+		//	}
+		//	article := block.(tgbotapi.InlineQueryResultArticle)
+		//	article.ID = "used_lang:"+strconv.Itoa(i)
+		//	article.Title += " 👤"
+		//	blocks = append(blocks, article)
+		//}
 	}
 
 	for i, code := range codes[offset:offset+count] {

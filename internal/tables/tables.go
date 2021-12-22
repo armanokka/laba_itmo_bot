@@ -8,10 +8,13 @@ import (
 // Users is table in DB
 type Users struct {
 	ID     int64 `gorm:"primaryKey;index;not null"`
+	MyLang string
+	ToLang string
+	Act string
 	Usings int `gorm:"default:0"`
 	Lang string `gorm:"default:en"`
 	Blocked bool `gorm:"default:false"`
-	LastLangs string `gorm:"default:''"`
+	LastActivity time.Time
 }
 
 type UsersLogs struct {
