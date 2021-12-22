@@ -2,6 +2,8 @@ package bot
 
 import (
 	"fmt"
+	"github.com/armanokka/translobot/internal/config"
+	"github.com/armanokka/translobot/internal/tables"
 	"github.com/armanokka/translobot/pkg/translate"
 	iso6391 "github.com/emvi/iso-639-1"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -25,19 +27,51 @@ func (app app) onInlineQuery(update tgbotapi.InlineQuery) {
 	}
 
 	if update.Query == "" {
-		keyboard := tgbotapi.NewInlineKeyboardMarkup(
+
+		lang := update.From.LanguageCode
+		if !in(config.BotLocalizedLangs, lang) {
+			lang = "en"
+		}
+
+		user := User{Users: tables.Users{Lang: lang}}
+
+		kbLoc := tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonURL(user.Localize("Try it out"), "https://t.me/translobot?start=from_inline")))
+
+		elemLoc := tgbotapi.InlineQueryResultArticle{
+			Type:                "article",
+			ID:                  "ad_local",
+			Title:               user.Localize("Порекомендовать бота"),
+			InputMessageContent: map[string]interface{}{
+				"message_text": user.Localize("inline_ad"),
+				"disable_web_page_preview":true,
+				"parse_mode": tgbotapi.ModeHTML,
+			},
+			ReplyMarkup:         &kbLoc,
+			URL:                 "",
+			HideURL:             true,
+			Description:         user.Localize("click to recommend a bot in the chat"),
+			ThumbURL:            "https://i.yapx.ru/PdNIa.png",
+			ThumbWidth:          200,
+			ThumbHeight:         200,
+		}
+
+		kbEn := tgbotapi.NewInlineKeyboardMarkup(
 			tgbotapi.NewInlineKeyboardRow(
 				tgbotapi.NewInlineKeyboardButtonURL("Try it out", "https://t.me/translobot?start=from_inline")))
-		elem := tgbotapi.InlineQueryResultArticle{
+
+
+		elemEn := tgbotapi.InlineQueryResultArticle{
 			Type:                "article",
-			ID:                  "ad",
+			ID:                  "ad_en",
 			Title:               "Recommend the bot",
 			InputMessageContent: map[string]interface{}{
 				"message_text": `🔥 <a href="https://t.me/translobot">Translo</a> 🌐 - <i>The best Telegram translator bot in the whole world</i>`,
 				"disable_web_page_preview":true,
 				"parse_mode": tgbotapi.ModeHTML,
 			},
-			ReplyMarkup:         &keyboard,
+			ReplyMarkup:         &kbEn,
 			URL:                 "",
 			HideURL:             true,
 			Description:         "click to recommend a bot in the chat",
@@ -47,7 +81,7 @@ func (app app) onInlineQuery(update tgbotapi.InlineQuery) {
 		}
 		app.bot.AnswerInlineQuery(tgbotapi.InlineConfig{
 			InlineQueryID:     update.ID,
-			Results:           []interface{}{elem},
+			Results:           []interface{}{elemLoc, elemEn},
 			CacheTime:         0,
 			IsPersonal:        true,
 			NextOffset:        "",
