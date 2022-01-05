@@ -1,5 +1,5 @@
 {
-    "%s language is not supported": "لغة٪ s غير مدعومة",
+    "{{.Name}} language is not supported": "{{.Name}}اللغة غير مدعومة",
     "Are you developer?": "هل انت مطور؟",
     "Available only for idioms, nouns, verbs and adjectives": "متاح فقط للتعابير والأسماء والأفعال والصفات",
     "Delete": "حذف",

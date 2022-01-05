@@ -165,7 +165,8 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 			tr, err := translate.GoogleHTMLTranslate("auto", code, update.Query)
 			if err != nil {
 				warn(err)
-				return
+				// not return
+				tr.Text = "error"
 			}
 			if fromlang == "" {
 				fromlang = tr.From
@@ -173,7 +174,8 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 			tr.Text = html.UnescapeString(tr.Text)
 
 			if tr.Text == "" {
-				return // ну не вышло, так не вышло, че бубнить-то
+				// not return
+				tr.Text = "error"
 			}
 
 			keyboard := tgbotapi.NewInlineKeyboardMarkup(
@@ -212,19 +214,30 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 		if fromlang != user.MyLang {
 				block, ok := results.Load(user.MyLang)
 				if ok {
-					article := block.(tgbotapi.InlineQueryResultArticle)
-					article.ID = "my_lang!"
-					article.Title += " 👤"
-					blocks = append(blocks, article)
+					article, ok := block.(tgbotapi.InlineQueryResultArticle)
+					if !ok {
+						app.notifyAdmin(fmt.Errorf("there is no tgbotapi.InlineQueryResultArticle in block with code %s", user.MyLang))
+					}
+					if ok {
+						article.ID = "my_lang!"
+						article.Title += " 👤"
+						blocks = append(blocks, article)
+					}
 				}
 		}
 		if fromlang != user.ToLang {
 			block, ok := results.Load(user.ToLang)
 			if ok {
-				article := block.(tgbotapi.InlineQueryResultArticle)
-				article.ID = "to_lang!"
-				article.Title += " 👤"
-				blocks = append(blocks, article)
+				article, ok := block.(tgbotapi.InlineQueryResultArticle)
+				if !ok {
+					app.notifyAdmin(fmt.Errorf("there is no tgbotapi.InlineQueryResultArticle in block with code %s", user.ToLang))
+				}
+				if ok {
+					article.ID = "to_lang!"
+					article.Title += " 👤"
+					blocks = append(blocks, article)
+				}
+
 			}
 		}
 	}
@@ -234,7 +247,10 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 		if !ok {
 			warn(fmt.Errorf("couldn't find code %s in translations", code))
 		}
-		article := block.(tgbotapi.InlineQueryResultArticle)
+		article, ok := block.(tgbotapi.InlineQueryResultArticle)
+		if !ok {
+			app.notifyAdmin(fmt.Errorf("there is no tgbotapi.InlineQueryResultArticle in block with code %s", code))
+		}
 		article.ID = strconv.Itoa(offset + i)
 		if offset == 0 && i < 18 {
 			article.Title += " 📌"

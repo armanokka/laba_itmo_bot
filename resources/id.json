@@ -1,5 +1,5 @@
 {
-    "%s language is not supported": "%s bahasa tidak didukung",
+    "{{.Name}} language is not supported": "{{.Name} bahasa tidak didukung",
     "Are you developer?": "Apakah Anda pengembang?",
     "Available only for idioms, nouns, verbs and adjectives": "Hanya tersedia untuk idiom, kata benda, kata kerja dan kata sifat",
     "Delete": "Menghapus",

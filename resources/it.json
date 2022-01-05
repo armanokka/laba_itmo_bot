@@ -1,5 +1,5 @@
 {
-    "%s language is not supported": "%s lingua non è supportata",
+    "{{.Name}} language is not supported": "{{.Name}} la lingua non è supportata",
     "Are you developer?": "Sei uno sviluppatore?",
     "Available only for idioms, nouns, verbs and adjectives": "Disponibile solo per modi di dire, nomi, verbi e aggettivi",
     "Delete": "Elimina",

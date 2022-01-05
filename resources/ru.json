@@ -1,4 +1,5 @@
 {
+    "{{.Name}} language is not supported": "{{.Name}} язык не поддерживается",
     "Are you developer?": "Вы разработчик?",
     "Available only for idioms, nouns, verbs and adjectives": "Доступно только для идиом, существительных, глаголов и прилагательных.",
     "Delete": "Удалить",

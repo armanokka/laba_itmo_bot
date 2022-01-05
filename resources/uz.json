@@ -1,5 +1,5 @@
 {
-    "%s language is not supported": "%s tili qo'llab -quvvatlanmaydi",
+    "{{.Name}} language is not supported": "{{.Name}} tili qo'llab-quvvatlanmaydi",
     "Are you developer?": "Siz dasturchimisiz?",
     "Available only for idioms, nouns, verbs and adjectives": "Faqat iboralar, otlar, fe'llar va sifatlar uchun mavjud",
     "Delete": "O'chirish",

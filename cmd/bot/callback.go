@@ -8,7 +8,6 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
-	"github.com/sirupsen/logrus"
 	"reflect"
 	"strconv"
 	"strings"
@@ -20,7 +19,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 	warn := func(err error) {
 		app.bot.Send(tgbotapi.NewCallback(callback.ID, "Error, sorry"))
 		app.notifyAdmin(err)
-		logrus.Error(err)
+		pp.Println(err)
 	}
 
 	arr := strings.Split(callback.Data, ":")

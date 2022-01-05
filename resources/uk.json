@@ -1,5 +1,5 @@
 {
-    "%s language is not supported": "Мова %s не підтримується",
+    "{{.Name}} language is not supported": "{{.Name}} мова не підтримується",
     "Are you developer?": "Ви розробник?",
     "Available only for idioms, nouns, verbs and adjectives": "Доступно лише для ідіом, іменників, дієслів та прикметників",
     "Delete": "Видалити",
