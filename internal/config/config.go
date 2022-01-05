@@ -93,15 +93,10 @@ func Load() error {
 	if err = cronjob.AddFunc("@daily", func() {
 		if err = db.Model(&tables.UsersLogs{}).Exec("DELETE FROM users_logs WHERE date < (NOW() - INTERVAL 30 DAY)").Error; err != nil {
 			pp.Println(err)
-			bot.Send(tgbotapi.NewMessage(AdminID, fmt.Sprint(err)))
+			bot.Send(tgbotapi.NewMessage(AdminID, fmt.Sprint(err) + "\n\nIT'S FROM config.go"))
 		}
 	}); err != nil {
 		panic(err)
-	}
-
-	// Checking logo.jpg
-	if _, err := os.Stat("logo.jpg"); err != nil {
-		return err
 	}
 
 

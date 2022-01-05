@@ -3,11 +3,15 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	boto "github.com/armanokka/translobot/cmd/bot"
+	"github.com/armanokka/translobot/cmd/botdb"
 	"github.com/armanokka/translobot/cmd/server"
 	"github.com/armanokka/translobot/internal/config"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/text/language"
 	"os"
 	"os/signal"
 	"syscall"
@@ -20,8 +24,6 @@ func main() {
 
 	log, _ := zap.NewProduction()
 	defer log.Sync()
-	sugar := log.Sugar()
-
 
 	ctx, cancel := context.WithCancel(context.Background())
 	stop := make(chan os.Signal, 1)
@@ -32,13 +34,25 @@ func main() {
 		cancel()
 	}()
 
-	db := config.DB()
+	db := botdb.New(config.DB())
 	botAPI := config.BotAPI()
 	analytics := config.Analytics()
 
+	bundle := i18n.NewBundle(language.English)
+	bundle.RegisterUnmarshalFunc("json", json.Unmarshal)
+	bundle.MustLoadMessageFile("resources/ru.json")
+	bundle.MustLoadMessageFile("resources/en.json")
+	bundle.MustLoadMessageFile("resources/de.json")
+	bundle.MustLoadMessageFile("resources/es.json")
+	bundle.MustLoadMessageFile("resources/uk.json")
+	bundle.MustLoadMessageFile("resources/uz.json")
+	bundle.MustLoadMessageFile("resources/id.json")
+	bundle.MustLoadMessageFile("resources/it.json")
+	bundle.MustLoadMessageFile("resources/pt.json")
+
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
-		return boto.Run(ctx, botAPI, db, analytics, sugar)
+		return boto.New(botAPI, db, analytics, log, bundle).Run(ctx)
 	})
 
 	g.Go(func() error {

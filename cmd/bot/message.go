@@ -2,6 +2,7 @@ package bot
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
@@ -9,19 +10,30 @@ import (
 	"github.com/armanokka/translobot/pkg/translate"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
-	"github.com/sirupsen/logrus"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
+	"gorm.io/gorm"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
-func (app *app) onMessage(ctx context.Context, message tgbotapi.Message) {
+func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
+	localizer := i18n.NewLocalizer(app.bundle, message.From.LanguageCode)
+
 	warn := func(err error) {
-		app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, localize("Sorry, error caused.\n\nPlease, don't block the bot, I'll fix the bug in near future, the administrator has already been warned about this error ;)", message.From.LanguageCode)))
+		locale, err := localizer.LocalizeMessage(&i18n.Message{ID: "Sorry, error caused.\n\nPlease, don't block the bot, I'll fix the bug in near future, the administrator has already been warned about this error ;)"})
+		if err != nil {
+			app.notifyAdmin(fmt.Errorf("%w", err))
+			app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Sorry, error caused.\n\nPlease, don't block the bot, I'll fix the bug in near future, the administrator has already been warned about this error ;)"))
+		} else {
+			app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, locale))
+		}
 		app.notifyAdmin(err)
-		logrus.Error(err)
+		app.log.Error("%w", zap.Error(err))
 	}
 	app.analytics.User(message.Text, message.From)
 
@@ -29,49 +41,69 @@ func (app *app) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 
-	var user = app.loadUser(message.From.ID, warn)
-	defer user.UpdateLastActivity()
 
-	if strings.HasPrefix(message.Text, "/start") {
-		user.SendStart(message)
-		return
-	} else {
-		user.Fill()
-	}
+	defer func() {
+		if err := app.db.UpdateUserLastActivity(message.From.ID); err != nil {
+			app.notifyAdmin(fmt.Errorf("%w", err))
+		}
+	}()
 
-	app.writeUserLog(message.From.ID, message.Text)
+	user, err := app.db.GetUserByID(message.From.ID)
+	if err != nil {
+		if errors.Is(gorm.ErrRecordNotFound, err) {
+			if message.From.LanguageCode == "" {
+				message.From.LanguageCode = "en"
+			}
+			err = app.db.CreateUser(tables.Users{
+				ID:           message.From.ID,
+				MyLang:       "",
+				ToLang:       "",
+				Act:          "setup_langs",
+				Usings:       1,
+				Blocked:      false,
+				LastActivity: time.Now(),
+			})
+			if err != nil {
+				warn(err)
+				return
+			}
 
-	if low := strings.ToLower(message.Text); low != "" {
-		switch {
-		case in(command("my language"), low): // добавить обратную совместимось
-			user.SendStart(message)
-			return
-		case in(command("translate language"), low):
-			user.SendStart(message) // backward compatibility
-			return
+		} else {
+			warn(err)
 		}
 	}
 
-	switch message.Command() {
-	case "stats":
-		var users int
-		err := app.db.Model(&tables.Users{}).Raw("SELECT COUNT(*) FROM users").Find(&users).Error
+	if strings.HasPrefix(message.Text, "/start") {
+		locale, err := localizer.LocalizeMessage(&i18n.Message{
+			ID:          "Просто напиши мне текст, а я его переведу",
+		})
 		if err != nil {
 			warn(err)
 			return
 		}
-		var stats = make(map[string]string, 20)
-		if err = app.db.Model(&tables.UsersLogs{}).Raw("SELECT intent, COUNT(*) FROM users_logs GROUP BY intent ORDER BY count(*) DESC").Find(&stats).Error; err != nil {
+		app.bot.Send(tgbotapi.MessageConfig{
+			BaseChat:               tgbotapi.BaseChat{
+				ChatID:                   message.From.ID,
+				ChannelUsername:          "",
+				ReplyToMessageID:         0,
+				ReplyMarkup:              tgbotapi.NewRemoveKeyboard(true),
+				DisableNotification:      true,
+				AllowSendingWithoutReply: false,
+			},
+			Text:                  locale,
+		})
+		if err = app.db.UpdateUser(message.From.ID, tables.Users{Act: "setup_langs"}); err != nil {
 			warn(err)
 		}
-		text := "Всего " + strconv.Itoa(users) + " юзеров"
-		for name, count := range stats {
-			text += "\n" + name + ": " + count
-		}
-		msg :=  tgbotapi.NewMessage(message.Chat.ID, text)
-		app.bot.Send(msg)
-		app.writeBotLog(message.From.ID, "pm_stats", msg.Text)
 		return
+	}
+
+
+	if err = app.db.LogUserMessage(message.From.ID, message.Text); err != nil {
+		app.notifyAdmin(fmt.Errorf("%w", err))
+	}
+
+	switch message.Command() {
 	case "users":
 		if message.From.ID != config.AdminID {
 			return
@@ -81,8 +113,8 @@ func (app *app) onMessage(ctx context.Context, message tgbotapi.Message) {
 			warn(err)
 			return
 		}
-		var users []tables.Users
-		if err = app.db.Model(&tables.Users{}).Find(&users).Error; err != nil {
+		users, err := app.db.GetAllUsers()
+		if err != nil {
 			warn(err)
 			return
 		}
@@ -95,12 +127,17 @@ func (app *app) onMessage(ctx context.Context, message tgbotapi.Message) {
 		doc :=  tgbotapi.NewInputMediaDocument("users.txt")
 		group :=  tgbotapi.NewMediaGroup(message.From.ID, []interface{}{doc})
 		app.bot.Send(group)
-		app.writeBotLog(message.From.ID, "pm_users", "{document was sended}")
+		if err = app.db.LogBotMessage(message.From.ID, "pm_users", "shared users' ids"); err != nil {
+			app.notifyAdmin(fmt.Errorf("%w", err))
+		}
 		return
 	case "id":
 		msg :=  tgbotapi.NewMessage(message.From.ID, strconv.FormatInt(message.From.ID, 10))
 		app.bot.Send(msg)
-		app.writeBotLog(message.From.ID, "pm_id", msg.Text)
+		if err = app.db.LogBotMessage(message.From.ID, "pm_id", msg.Text); err != nil {
+			app.notifyAdmin(fmt.Errorf("%w", err))
+		}
+
 		return
 	}
 
@@ -113,11 +150,16 @@ func (app *app) onMessage(ctx context.Context, message tgbotapi.Message) {
 		from := fromLang.From
 
 
-		keyboard, err := user.buildLangsPagination(0, 18, from, fmt.Sprintf("setup_langs:%s:%s", from, "%s"), fmt.Sprintf("setup_langs_pagination:%s:0", from), fmt.Sprintf("setup_langs_pagination:%s:18", from))
+		keyboard, err := buildLangsPagination(0, 18, fmt.Sprintf("setup_langs:%s:%s", from, "%s"), fmt.Sprintf("setup_langs_pagination:%s:0", from), fmt.Sprintf("setup_langs_pagination:%s:18", from))
 		if err != nil {
 			warn(err)
 		}
-		app.bot.Send(tgbotapi.MessageConfig{
+		locale, err := localizer.LocalizeMessage(&i18n.Message{ID: "На какой язык перевести?"})
+		if err != nil {
+			warn(err)
+			return
+		}
+		if _, err = app.bot.Send(tgbotapi.MessageConfig{
 			BaseChat:              tgbotapi.BaseChat{
 				ChatID:                   message.From.ID,
 				ChannelUsername:          "",
@@ -126,17 +168,36 @@ func (app *app) onMessage(ctx context.Context, message tgbotapi.Message) {
 				DisableNotification:      true,
 				AllowSendingWithoutReply: false,
 			},
-			Text:                  user.Localize("На какой язык перевести?"),
+			Text:                  locale,
 			ParseMode:             "",
 			Entities:              nil,
 			DisableWebPagePreview: true,
-		})
+		}); err != nil {
+			pp.Println(err)
+		}
 		return
 	}
 
 	if user.Usings == 5 || (user.Usings > 0 && user.Usings % 20 == 0) {
-		text := user.Localize("Я рекомендую @translobot")
-		link := strings.ReplaceAll(text, " ", "+")
+		IrecommendBotLocale, err := localizer.LocalizeMessage(&i18n.Message{ID: "Я рекомендую @translobot"})
+		if err != nil {
+			warn(err)
+			return
+		}
+
+		TellAboutUsLocale, err := localizer.LocalizeMessage(&i18n.Message{ID: "Рассказать про нас"})
+		if err != nil {
+			warn(err)
+			return
+		}
+
+		RecommendationLocale, err := localizer.LocalizeMessage(&i18n.Message{ID: "recommendation"})
+		if err != nil {
+			warn(err)
+			return
+		}
+
+		link := strings.ReplaceAll(IrecommendBotLocale, " ", "+")
 		link = url.PathEscape(link)
 		defer func() {
 			if _, err := app.bot.Send(tgbotapi.MessageConfig{
@@ -146,11 +207,11 @@ func (app *app) onMessage(ctx context.Context, message tgbotapi.Message) {
 					ReplyToMessageID:         0,
 					ReplyMarkup:              tgbotapi.NewInlineKeyboardMarkup(
 						tgbotapi.NewInlineKeyboardRow(
-							tgbotapi.NewInlineKeyboardButtonURL(user.Localize("Рассказать про нас"), "http://t.me/share/url?url=" + link))),
+							tgbotapi.NewInlineKeyboardButtonURL(TellAboutUsLocale, "http://t.me/share/url?url=" + link))),
 					DisableNotification:      true,
 					AllowSendingWithoutReply: false,
 				},
-				Text:                  user.Localize("recommendation"),
+				Text:                  RecommendationLocale,
 				ParseMode:             tgbotapi.ModeHTML,
 				Entities:              nil,
 				DisableWebPagePreview: false,
@@ -158,7 +219,6 @@ func (app *app) onMessage(ctx context.Context, message tgbotapi.Message) {
 				pp.Println(err)
 			}
 		}()
-		// tg://share...
 	}
 
 
@@ -172,7 +232,12 @@ func (app *app) onMessage(ctx context.Context, message tgbotapi.Message) {
 	}
 
 	if text == "" {
-		app.bot.Send( tgbotapi.NewMessage(message.Chat.ID, user.Localize("Please, send text message")))
+		locale, err := localizer.LocalizeMessage(&i18n.Message{ID: "Please, send text message"})
+		if err != nil {
+			warn(err)
+			return
+		}
+		app.bot.Send( tgbotapi.NewMessage(message.Chat.ID, locale))
 		app.analytics.Bot(message.Chat.ID, "Please, send text message", "Message is not text message")
 		return
 	}
@@ -241,22 +306,43 @@ func (app *app) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 
+	ToVoiceLocale, err := localizer.LocalizeMessage(&i18n.Message{ID: "To voice"})
+	if err != nil {
+		warn(err)
+		return
+	}
+	ExamplesLocale, err := localizer.LocalizeMessage(&i18n.Message{ID: "Examples"})
+	if err != nil {
+		warn(err)
+		return
+	}
+	TranslationsLocale, err := localizer.LocalizeMessage(&i18n.Message{ID: "Translations"})
+	if err != nil {
+		warn(err)
+		return
+	}
+	DictionaryLocale, err := localizer.LocalizeMessage(&i18n.Message{ID: "Dictionary"})
+	if err != nil {
+		warn(err)
+		return
+	}
+
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("🔊 " + user.Localize("To voice"), fmt.Sprintf("speech_this_message_and_replied_one:%s:%s", from, to))))
+			tgbotapi.NewInlineKeyboardButtonData("🔊 " + ToVoiceLocale, fmt.Sprintf("speech_this_message_and_replied_one:%s:%s", from, to))))
 	if ret.Examples {
-		keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0], tgbotapi.NewInlineKeyboardButtonData("💬 " + user.Localize("Examples"), fmt.Sprintf("exm:%s:%s", from, to)))
+		keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0], tgbotapi.NewInlineKeyboardButtonData("💬 " + ExamplesLocale, fmt.Sprintf("exm:%s:%s", from, to)))
 	}
 	if ret.Translations {
 		keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("📚 " + user.Localize("Translations"), fmt.Sprintf("trs:%s:%s", from, to))))
+			tgbotapi.NewInlineKeyboardButtonData("📚 " + TranslationsLocale, fmt.Sprintf("trs:%s:%s", from, to))))
 	}
 	if ret.Dictionary {
 		l := len(keyboard.InlineKeyboard) - 1
 		if l < 0 {
 			l = 0
 		}
-		keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData("ℹ️" + user.Localize("Dictionary"), fmt.Sprintf("dict:%s", from)))
+		keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData("ℹ️" + DictionaryLocale, fmt.Sprintf("dict:%s", from)))
 	}
 
 	if _, err = app.bot.Send(tgbotapi.MessageConfig{
@@ -277,6 +363,10 @@ func (app *app) onMessage(ctx context.Context, message tgbotapi.Message) {
 	}
 
 	app.analytics.Bot(user.ID, ret.TranslatedText, "Translated")
-	user.IncrUsings()
-	app.writeBotLog(message.From.ID, "pm_translate", ret.TranslatedText)
+	if err = app.db.IncreaseUserUsings(message.From.ID); err != nil {
+		app.notifyAdmin(fmt.Errorf("%w", err))
+	}
+	if err = app.db.LogBotMessage(message.From.ID, "pm_translate", ret.TranslatedText); err != nil {
+		app.notifyAdmin(fmt.Errorf("%w", err))
+	}
 }

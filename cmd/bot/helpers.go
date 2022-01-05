@@ -4,27 +4,19 @@ Helper functions
 package bot
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"github.com/armanokka/translobot/internal/config"
-    "github.com/armanokka/translobot/pkg/lingvo"
-    translate2 "github.com/armanokka/translobot/pkg/translate"
-	iso6391 "github.com/emvi/iso-639-1"
-	"github.com/go-errors/errors"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/k0kubun/pp"
-	"golang.org/x/sync/errgroup"
-	"html"
-	"io"
-	"io/ioutil"
+    "encoding/json"
+    "fmt"
+    "github.com/armanokka/translobot/internal/config"
+    "github.com/go-errors/errors"
+    tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+    "io"
+    "io/ioutil"
     "log"
     "math/rand"
     "net/http"
-	"os"
-	"strconv"
-	"strings"
-	"unicode/utf16"
+    "strconv"
+    "strings"
+    "unicode/utf16"
 )
 
 func format(i int64) string {
@@ -199,49 +191,6 @@ func inMapValues(m map[string]string, values ...string) bool {
     return true
 }
 
-func (app app) sendSpeech(lang, text string, callbackID string, user User) error {
-    sdec, err := translate2.TTS(lang, text)
-    if err != nil {
-        if err == translate2.ErrTTSLanguageNotSupported {
-            call := tgbotapi.NewCallback(callbackID, user.Localize("%s language is not supported", iso6391.Name(lang)))
-            call.ShowAlert = true
-            app.bot.AnswerCallbackQuery(call)
-            return nil
-        }
-        if e, ok := err.(translate2.HTTPError); ok {
-            if e.Code == 500 || e.Code == 414 {
-                call := tgbotapi.NewCallback(callbackID, "Too big text")
-                call.ShowAlert = true
-                app.bot.AnswerCallbackQuery(call)
-                return nil
-            }
-        }
-        app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callbackID, "Iternal error"))
-        pp.Println(err)
-        return err
-    }
-    app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callbackID, "⏳"))
-
-    f, err := os.CreateTemp("", "")
-    if err != nil {
-        return err
-    }
-    defer func() {
-        if err = f.Close(); err != nil {
-            app.notifyAdmin(err)
-        }
-    }()
-    _, err = f.Write(sdec)
-    if err != nil {
-        return err
-    }
-    audio := tgbotapi.NewAudio(user.ID, f.Name())
-    audio.Title = text
-    kb := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
-    audio.ReplyMarkup = kb
-    app.bot.Send(audio)
-    return nil
-}
 
 
 func WitAiSpeech(wav io.Reader, lang string, bits int) (string, error) {
@@ -307,98 +256,6 @@ type SuperTranslation struct {
     Examples, Translations, Dictionary, Suggestions bool
 }
 
-func (app app) SuperTranslate(from, to, text string, entities []tgbotapi.MessageEntity) (ret SuperTranslation, err error) {
-    text = html.EscapeString(text)
-    text = applyEntitiesHtml(text, entities)
-
-    var (
-        rev = translate2.ReversoTranslation{}
-        dict = translate2.GoogleDictionaryResponse{}
-        suggestions *lingvo.SuggestionResult
-        lingv []lingvo.Dictionary
-    )
-
-    l := len(text)
-
-    g, _ := errgroup.WithContext(context.Background())
-
-    g.Go(func() error {
-        if l > 100 {
-            return nil
-        }
-        dict, err = translate2.GoogleDictionary(from, strings.ToLower(text))
-        return err
-    })
-
-    g.Go(func() error {
-        _, ok1 := lingvo.Lingvo[from]
-        _, ok2 := lingvo.Lingvo[to]
-        if !ok1 || !ok2 {
-            return nil
-        }
-        lingv, err = lingvo.GetDictionary(from, to, text)
-        return err
-    })
-
-    g.Go(func() error {
-        if l > 100 {
-            return nil
-        }
-        if inMapValues(translate2.ReversoSupportedLangs(), from, to) && from != to {
-            rev, err = translate2.ReversoTranslate(translate2.ReversoIso6392(from), translate2.ReversoIso6392(to), strings.ToLower(text))
-        }
-        return err
-    })
-
-    g.Go(func() error {
-        _, ok1 := lingvo.Lingvo[from]
-        _, ok2 := lingvo.Lingvo[to]
-        if !ok1 || !ok2 {
-            return nil
-        }
-        suggestions, err = lingvo.Suggestions(from, to, strings.ToLower(text), 1, 0)
-        return err
-    })
-
-    g.Go(func() error {
-        tr, err := translate2.GoogleHTMLTranslate(from, to, text)
-        if err != nil {
-            return err
-        }
-        if tr.Text == "" && text != "" {
-            return err
-        }
-        ret.From = tr.From
-        ret.TranslatedText = tr.Text
-        ret.TranslatedText = strings.NewReplacer("<br> ", "<br>").Replace(ret.TranslatedText)
-        ret.TranslatedText = strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "",  `<br>`, "\n").Replace(ret.TranslatedText)
-        return nil
-    })
-
-    if err = g.Wait(); err != nil {
-        app.notifyAdmin(err)
-        return SuperTranslation{}, err
-    }
-
-    if len(rev.ContextResults.Results) > 0 {
-        if len(rev.ContextResults.Results[0].SourceExamples) > 0 {
-            ret.Examples = true
-        }
-        if rev.ContextResults.Results[0].Translation != "" {
-            ret.Translations = true
-        }
-    }
-
-    if dict.Status == 200 && dict.DictionaryData != nil || len(lingv) > 0 {
-        ret.Dictionary = true
-    }
-
-    if suggestions != nil && len(suggestions.Items) > 0 {
-        ret.Suggestions = true
-    }
-
-    return ret, nil
-}
 
 type Message struct {
     Text string
@@ -415,7 +272,7 @@ func reverse(arr []string) []string {
 
 // buildLangsPagination создает пагинацию как говорил F d
 // в калбак передайте что-то типа set_my_lang:%s, где %s станет код выбранного языка
-func (u User) buildLangsPagination(offset int, count int, fromLang string, buttonSelectLangCallback, buttonBackCallback, buttonNextCallback string) (tgbotapi.InlineKeyboardMarkup, error) {
+func buildLangsPagination(offset int, count int, buttonSelectLangCallback, buttonBackCallback, buttonNextCallback string) (tgbotapi.InlineKeyboardMarkup, error) {
     if offset < 0 || offset > len(codes) - 1 {
         return tgbotapi.InlineKeyboardMarkup{}, nil
     }

@@ -12,7 +12,6 @@ type Users struct {
 	ToLang string
 	Act string
 	Usings int `gorm:"default:0"`
-	Lang string `gorm:"default:en"`
 	Blocked bool `gorm:"default:false"`
 	LastActivity time.Time
 }
