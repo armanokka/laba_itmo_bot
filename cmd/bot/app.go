@@ -252,7 +252,13 @@ func (app App) sendSpeech(id int64, lang, text string, callbackID string, locali
 	sdec, err := translate2.TTS(lang, text)
 	if err != nil {
 		if err == translate2.ErrTTSLanguageNotSupported {
-			locale, err := localizer.LocalizeMessage(&i18n.Message{ID: "%s language is not supported"})
+			locale, err := localizer.Localize(&i18n.LocalizeConfig{
+				MessageID:      "{{.Name}} language is not supported",
+				TemplateData:   map[string]string{"Name": langs[lang].Name},
+				PluralCount:    nil,
+				DefaultMessage: nil,
+				Funcs:          nil,
+			})
 			if err != nil {
 				return err
 			}
