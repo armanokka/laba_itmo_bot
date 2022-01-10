@@ -200,12 +200,11 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 
 		var text string
 
-		for i, result := range rev.ContextResults.Results {
+		for _, result := range rev.ContextResults.Results {
 			if result.Translation == "" {
 				continue
 			}
 			result := result
-			i := i
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
@@ -214,27 +213,8 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 					errs <- errors.New(err)
 				}
 
-				partOfSpeechLocales := make([]string, 0, 1)
-				partOfSpeechLocales = strings.Split(rev.ContextResults.Results[i].PartOfSpeech, "/")
-				if len(partOfSpeechLocales) == 0 {
-					if rev.ContextResults.Results[i].PartOfSpeech != "" {
-						partOfSpeechLocales = append(partOfSpeechLocales, rev.ContextResults.Results[i].PartOfSpeech)
-					}
-				}
 
-				for i, part := range partOfSpeechLocales {
-					if part == "" {
-						continue
-					}
-					locale, err := localizer.LocalizeMessage(&i18n.Message{ID: part})
-					if err != nil {
-						app.notifyAdmin(fmt.Errorf("%w", err))
-					}
-					partOfSpeechLocales[i] = locale
-				}
-
-
-				text += "\n<b>" + result.Translation + "</b> <i>" + strings.Join(partOfSpeechLocales, "/") + "</i>\n<b>└</b>"
+				text += "\n<b>" + result.Translation + "\n└</b>"
 				if len(tr.ContextResults.Results) > 4 {
 					tr.ContextResults.Results = tr.ContextResults.Results[:4]
 				}
