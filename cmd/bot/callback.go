@@ -225,7 +225,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 					if i > 0 {
 						text += ", "
 					}
-					text += result.Translation
+					text += "<code>" + result.Translation + "</code>"
 				}
 			}()
 		}
