@@ -163,7 +163,7 @@ func (app App) SuperTranslate(from, to, text string, entities []tgbotapi.Message
 		rev = translate2.ReversoTranslation{}
 		dict = translate2.GoogleDictionaryResponse{}
 		suggestions *lingvo.SuggestionResult
-		lingv []lingvo.Dictionary
+		//lingv []lingvo.Dictionary
 	)
 
 	l := len(text)
@@ -178,15 +178,15 @@ func (app App) SuperTranslate(from, to, text string, entities []tgbotapi.Message
 		return err
 	})
 
-	g.Go(func() error {
-		_, ok1 := lingvo.Lingvo[from]
-		_, ok2 := lingvo.Lingvo[to]
-		if !ok1 || !ok2 {
-			return nil
-		}
-		lingv, err = lingvo.GetDictionary(from, to, text)
-		return err
-	})
+	//g.Go(func() error {
+	//	_, ok1 := lingvo.Lingvo[from]
+	//	_, ok2 := lingvo.Lingvo[to]
+	//	if !ok1 || !ok2 {
+	//		return nil
+	//	}
+	//	lingv, err = lingvo.GetDictionary(from, to, text)
+	//	return err
+	//})
 
 	g.Go(func() error {
 		if l > 100 {
@@ -237,7 +237,7 @@ func (app App) SuperTranslate(from, to, text string, entities []tgbotapi.Message
 		}
 	}
 
-	if dict.Status == 200 && dict.DictionaryData != nil || len(lingv) > 0 {
+	if dict.Status == 200 && dict.DictionaryData != nil {
 		ret.Dictionary = true
 	}
 
