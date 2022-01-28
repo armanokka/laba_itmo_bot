@@ -33,7 +33,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, locale))
 		}
 		app.notifyAdmin(err)
-		app.log.Error("%w", zap.Error(err))
+		app.log.Error("from onMessage->warn()", zap.Error(fmt.Errorf("%w", err)))
 	}
 	app.analytics.User(message.Text, message.From)
 

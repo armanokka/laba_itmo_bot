@@ -119,7 +119,7 @@ func (app App) notifyAdmin(args ...interface{}) {
 		Entities:              nil,
 		DisableWebPagePreview: false,
 	}); err != nil {
-		app.log.Error("%w", zap.Error(err))
+		app.log.Error(fmt.Sprintf("%w", err), zap.Error(err))
 	}
 }
 
@@ -218,7 +218,7 @@ func (app App) SuperTranslate(from, to, text string, entities []tgbotapi.Message
 		}
 		ret.From = tr.From
 		ret.TranslatedText = tr.Text
-		ret.TranslatedText = strings.NewReplacer("<br> ", "<br>").Replace(ret.TranslatedText)
+		ret.TranslatedText = strings.ReplaceAll(ret.TranslatedText, "<br> ", "<br>")
 		ret.TranslatedText = strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "",  `<br>`, "\n").Replace(ret.TranslatedText)
 		return nil
 	})
