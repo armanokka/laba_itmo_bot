@@ -1,12 +1,11 @@
 package bot
 
 import (
-	"errors"
 	"fmt"
-	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
 	"github.com/armanokka/translobot/pkg/translate"
 	iso6391 "github.com/emvi/iso-639-1"
+	"github.com/go-errors/errors"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
@@ -20,6 +19,7 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 	app.analytics.User(update.Query, update.From)
 
 	warn := func(err error) {
+		err = errors.Wrap(err, 1)
 		app.bot.AnswerInlineQuery(tgbotapi.InlineConfig{
 			InlineQueryID:     update.ID,
 			SwitchPMText:      "Error, sorry.",
@@ -32,11 +32,6 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 	localizer := i18n.NewLocalizer(app.bundle, update.From.LanguageCode)
 
 	if update.Query == "" {
-
-		lang := update.From.LanguageCode
-		if !in(config.BotLocalizedLangs, lang) {
-			lang = "en"
-		}
 
 		tryItOutLocale, err := localizer.LocalizeMessage(&i18n.Message{ID: "Try it out"})
 		if err != nil {
@@ -277,7 +272,7 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 		SwitchPMText:      pmtext,
 		SwitchPMParameter: "from_inline",
 	}); err != nil {
-		warn(err)
+		warn(errors.WrapPrefix(err, "app.bot.AnswerInlineQuery:", 1))
 		pp.Println(blocks)
 	}
 

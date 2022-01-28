@@ -270,7 +270,7 @@ func GoogleHTMLTranslate(from, to, text string) (GoogleHTMLTranslation, error) {
 		params.Set("tl", to)
 		params.Set("client", "gtx")
 		params.Set("format", "html")
-		req, err := http.NewRequest("POST", "https://translate.googleapis.com/translate_a/t?anno=3&client=te_lib&format=html&v=1.0&key=AIzaSyBOti4mM-6x9WDnZIjIeyEU21OpBXqWBgw&logld=vTE_20210503_00&sl=en&tl=ru&tc=3&sr=1&tk=488339.105044&mode=1", bytes.NewBufferString(params.Encode()))
+		req, err := http.NewRequest("POST", "https://translate.googleapis.com/translate_a/t?anno=3&client=te_lib&format=html&v=1.0&key=AIzaSyBOti4mM-6x9WDnZIjIeyEU21OpBXqWBgw&logld=vTE_20210503_00&sl=" + url.PathEscape(from) + "&tl=" + url.PathEscape(to) + "&tc=3&sr=1&tk=488339.105044&mode=1", bytes.NewBufferString(params.Encode()))
 		if err != nil {
 			return nil, err
 		}
@@ -312,7 +312,10 @@ func GoogleHTMLTranslate(from, to, text string) (GoogleHTMLTranslation, error) {
 		if len(out) != 2 {
 			return GoogleHTMLTranslation{}, errors.New("пришло не два значения от переводчика, разделитель \"|\":" + strings.Join(out, "|"))
 		}
+
+		out[0] = strings.ReplaceAll(out[0], "<br> ", "<br>")
 		out[0] = strings.ReplaceAll(out[0], "<br>", "\n")
+
 		return GoogleHTMLTranslation{
 			Text: html.UnescapeString(out[0]),
 			From: out[1],
@@ -327,7 +330,10 @@ func GoogleHTMLTranslate(from, to, text string) (GoogleHTMLTranslation, error) {
 		if err = json.Unmarshal(body, &out); err != nil {
 			return GoogleHTMLTranslation{}, errors.WrapPrefix(body, string(body), 0)
 		}
+
+		out = strings.ReplaceAll(out, "<br> ", "<br>")
 		out = strings.ReplaceAll(out, "<br>", "\n")
+
 		return GoogleHTMLTranslation{
 			Text: html.UnescapeString(out),
 			From: from,

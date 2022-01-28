@@ -8,6 +8,7 @@ import (
 	"github.com/armanokka/translobot/cmd/botdb"
 	"github.com/armanokka/translobot/cmd/server"
 	"github.com/armanokka/translobot/internal/config"
+	"github.com/k0kubun/pp"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -18,6 +19,7 @@ import (
 )
 
 func main() {
+	pp.WithLineInfo = true
 	if err := config.Load(); err != nil {
 		panic(err)
 	}
@@ -49,6 +51,7 @@ func main() {
 	bundle.MustLoadMessageFile("resources/id.json")
 	bundle.MustLoadMessageFile("resources/it.json")
 	bundle.MustLoadMessageFile("resources/pt.json")
+	bundle.MustLoadMessageFile("resources/ar.json")
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {

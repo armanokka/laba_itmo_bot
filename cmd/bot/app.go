@@ -9,6 +9,7 @@ import (
 	"github.com/armanokka/translobot/pkg/lingvo"
 	translate2 "github.com/armanokka/translobot/pkg/translate"
 	"github.com/armanokka/translobot/repos"
+	"github.com/go-errors/errors"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
@@ -104,18 +105,21 @@ func (app App) notifyAdmin(args ...interface{}) {
 	text := ""
 	for _, arg := range args {
 		switch v := arg.(type) {
+		case errors.Error:
+			text += "\n" + v.Error() + "\n" + v.ErrorStack()
 		case error:
-			text += "\n" + v.Error() + "\n\n<code>" + string(debug.Stack()) + "</code>"
+			text += "\n" + v.Error() + "\n\n" + string(debug.Stack())
 		default:
 			text += "\n\n" + fmt.Sprint(arg)
 		}
 	}
+	pp.Println("reported text", text)
 	if _, err := app.bot.Send(tgbotapi.MessageConfig{
 		BaseChat:              tgbotapi.BaseChat{
 			ChatID:                   config.AdminID,
 		},
 		Text:                  text,
-		ParseMode:             tgbotapi.ModeHTML,
+		ParseMode:             "",
 		Entities:              nil,
 		DisableWebPagePreview: false,
 	}); err != nil {
@@ -170,13 +174,16 @@ func (app App) SuperTranslate(from, to, text string, entities []tgbotapi.Message
 
 	g, _ := errgroup.WithContext(context.Background())
 
-	g.Go(func() error {
-		if l > 100 {
-			return nil
-		}
-		dict, err = translate2.GoogleDictionary(from, strings.ToLower(text))
-		return err
-	})
+	if l < 100 {
+		g.Go(func() error {
+			dict, err = translate2.GoogleDictionary(from, strings.ToLower(text))
+			if err != nil {
+				err = errors.WrapPrefix(err, "g.Go: translate2.GoogleDictionary:", 1)
+			}
+			return err
+		})
+	}
+
 
 	//g.Go(func() error {
 	//	_, ok1 := lingvo.Lingvo[from]
@@ -188,33 +195,38 @@ func (app App) SuperTranslate(from, to, text string, entities []tgbotapi.Message
 	//	return err
 	//})
 
-	g.Go(func() error {
-		if l > 100 {
-			return nil
-		}
-		if inMapValues(translate2.ReversoSupportedLangs(), from, to) && from != to {
-			rev, err = translate2.ReversoTranslate(translate2.ReversoIso6392(from), translate2.ReversoIso6392(to), strings.ToLower(text))
-		}
-		return err
-	})
+	if l < 100 {
+		g.Go(func() error {
+			if inMapValues(translate2.ReversoSupportedLangs(), from, to) && from != to {
+				rev, err = translate2.ReversoTranslate(translate2.ReversoIso6392(from), translate2.ReversoIso6392(to), strings.ToLower(text))
+			}
+			if err != nil {
+				err = errors.WrapPrefix(err, "g.Go: translate2.ReversoTranslate:", 1)
+			}
+			return err
+		})
+	}
 
-	g.Go(func() error {
-		_, ok1 := lingvo.Lingvo[from]
-		_, ok2 := lingvo.Lingvo[to]
-		if !ok1 || !ok2 {
-			return nil
-		}
-		suggestions, err = lingvo.Suggestions(from, to, strings.ToLower(text), 1, 0)
-		return err
-	})
+	_, ok1 := lingvo.Lingvo[from]
+	_, ok2 := lingvo.Lingvo[to]
+	if ok1 && ok2 {
+		g.Go(func() error {
+			suggestions, err = lingvo.Suggestions(from, to, strings.ToLower(text), 1, 0)
+			if err != nil {
+				err = errors.WrapPrefix(err, "g.Go: lingvo.Suggestions:", 1)
+			}
+			return err
+		})
+	}
+
 
 	g.Go(func() error {
 		tr, err := translate2.GoogleHTMLTranslate(from, to, text)
 		if err != nil {
-			return err
+			return errors.WrapPrefix(err, "g.Go: translate2.GoogleHTMLTranslate", 1)
 		}
 		if tr.Text == "" && text != "" {
-			return err
+			return errors.Errorf("g.Go: translate2.GoogleHTMLTranslate: tr.Text is empty", 1)
 		}
 		ret.From = tr.From
 		ret.TranslatedText = tr.Text
@@ -224,7 +236,6 @@ func (app App) SuperTranslate(from, to, text string, entities []tgbotapi.Message
 	})
 
 	if err = g.Wait(); err != nil {
-		app.notifyAdmin(err)
 		return SuperTranslation{}, err
 	}
 
