@@ -4,17 +4,21 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/go-errors/errors"
 	"github.com/k0kubun/pp"
-	"html"
+	"github.com/tidwall/gjson"
+	"gopkg.in/resty.v1"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 
@@ -260,85 +264,145 @@ type GoogleHTMLTranslation struct {
 	From string
 }
 
+func generateTkk(needNew bool) (string, error) {
+	f, err := os.OpenFile("tk.cache", os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			f, err = os.Create("tk.cache")
+			if err != nil {
+				return "", err
+			}
+		} else {
+			return "", err
+		}
+	}
+	defer f.Close()
+
+	if !needNew {
+		stat, err := os.Stat(f.Name())
+		if err != nil {
+			return "", err
+		}
+		if time.Since(stat.ModTime()) < time.Hour {
+			tkk, err := ioutil.ReadAll(f)
+			if err != nil {
+				return "", err
+			}
+			return string(tkk), nil
+		}
+	}
+
+
+	res, err := http.DefaultClient.Get("https://translate.googleapis.com/translate_a/element.js")
+	if err != nil {
+		return "", err
+	}
+	out, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
+	if res.StatusCode != 200 {
+		return "", fmt.Errorf("generateTkk: not 200 code, html: %s", out)
+	}
+	text := string(out)
+
+	i1 := strings.Index(text, "c._ctkk='") + len("c._ctkk='")
+	i2 := strings.Index(text[i1:], "'")
+	tkk := text[i1:i1+i2]
+	if _, err = f.WriteString(tkk); err != nil {
+		return "", err
+	}
+	stat, err := os.Stat(f.Name())
+	pp.Println("stat", time.Since(stat.ModTime()).String())
+	return tkk, nil
+}
+
+
+func getTk(tkk string, text string) (string, error) {
+	resp, err := http.Get(fmt.Sprintf("https://ancient-springs-54230.herokuapp.com/tkk.php?tkk=%s&text=%s", tkk, url.PathEscape(text)))
+	if err != nil {
+		return "", err
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("getTk: not 200: %s", body)
+	}
+	return string(body), nil
+}
+
+
 func GoogleHTMLTranslate(from, to, text string) (GoogleHTMLTranslation, error) {
-	text = strings.ReplaceAll(text, "\n", "<br>")
-
-	request := func() (*http.Response, error) {
-		params := url.Values{}
-		params.Set("q", text)
-		params.Set("sl", from)
-		params.Set("tl", to)
-		params.Set("client", "gtx")
-		params.Set("format", "html")
-		req, err := http.NewRequest("POST", "https://translate.googleapis.com/translate_a/t?anno=3&client=te_lib&format=html&v=1.0&key=AIzaSyBOti4mM-6x9WDnZIjIeyEU21OpBXqWBgw&logld=vTE_20210503_00&sl=" + url.PathEscape(from) + "&tl=" + url.PathEscape(to) + "&tc=3&sr=1&tk=488339.105044&mode=1", bytes.NewBufferString(params.Encode()))
-		if err != nil {
-			return nil, err
-		}
-		req.Header["authority"] = []string{"translate.googleapis.com"}
-		req.Header["cookie"] = []string{""}
-		req.Header["origin"] = []string{"https://lingvanex.com"}
-		req.Header["referrer"] = []string{"https://lingvanex.com"}
-		req.Header["content-type"] = []string{"application/x-www-form-urlencoded; charset=UTF-8"}
-		req.Header["sec-fetch-site"] = []string{"cross-site"}
-		req.Header["sec-fetch-mode"] = []string{"cors"}
-		req.Header["sec-fetch-dest"] = []string{"empty"}
-		req.Header["sec-ch-ua-mobile"] = []string{"?0"}
-		req.Header["sec-ch-ua"] = []string{`" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"`}
-		req.Header["user-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36"}
-		return http.DefaultClient.Do(req)
+	tkk, err := generateTkk(false)
+	if err != nil {
+		return GoogleHTMLTranslation{}, err
 	}
 
-	var res *http.Response
-
-	for i:=0;i<3;i++ {
-		var err error
-		res, err = request()
-		if err == nil && res.StatusCode == 200 {
-			break
-		}
+	tk, err := getTk(tkk, text)
+	if err != nil {
+		return GoogleHTMLTranslation{}, err
 	}
 
+	url := fmt.Sprintf("https://translate.googleapis.com/translate_a/t?sp=nmt&anno=3&client=te_lib&format=html&v=1.0&key=AIzaSyBOti4mM-6x9WDnZIjIeyEU21OpBXqWBgw&logld=vTE_20210503_00&sl=" + from + "&tl=" + to + "&tc=1&sr=1&tk=" + tk + "&mode=1")
+	resp, err := resty.New().R().SetHeaders(map[string]string{
+		"authority": "translate.googleapis.com",
+		"origin": "https://stackoverflow.com/",
+		"referrer": "https://stackoverflow.com/",
+		"content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+	}).SetFormData(map[string]string{
+		"q": text,
+		"sl": from,
+		"tl": to,
+		"client": "gtx",
+		"format": "html",
+	}).SetContentLength(true).Post(url)
 
-	if from == "auto" { // придёт два значения
-		body, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			return GoogleHTMLTranslation{}, err
+	if err != nil {
+		return GoogleHTMLTranslation{}, err
+	}
+
+	ret := resp.String()
+
+	if gjson.Get(ret, "0").Exists() {
+		if gjson.Get(ret, "1").Exists() {
+			from = gjson.Get(ret, "1").String()
 		}
-
-		var out []string
-		if err = json.Unmarshal(body, &out); err != nil {
-			return GoogleHTMLTranslation{}, errors.WrapPrefix(err, string(body), 0)
+		if from == "" || from == "auto" {
+			from, err = DetectLanguageGoogle(cutString(text, 200))
+			if err != nil {
+				return GoogleHTMLTranslation{}, err
+			}
 		}
-		if len(out) != 2 {
-			return GoogleHTMLTranslation{}, errors.New("пришло не два значения от переводчика, разделитель \"|\":" + strings.Join(out, "|"))
-		}
-
-		out[0] = strings.ReplaceAll(out[0], "<br> ", "<br>")
-		out[0] = strings.ReplaceAll(out[0], "<br>", "\n")
-
 		return GoogleHTMLTranslation{
-			Text: html.UnescapeString(out[0]),
-			From: out[1],
-		}, nil
-	} else {
-		body, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			return GoogleHTMLTranslation{}, err
-		}
-
-		var out string
-		if err = json.Unmarshal(body, &out); err != nil {
-			return GoogleHTMLTranslation{}, errors.WrapPrefix(body, string(body), 0)
-		}
-
-		out = strings.ReplaceAll(out, "<br> ", "<br>")
-		out = strings.ReplaceAll(out, "<br>", "\n")
-
-		return GoogleHTMLTranslation{
-			Text: html.UnescapeString(out),
+			Text: gjson.Get(ret, "0").String(),
 			From: from,
 		}, nil
 	}
+	tr := strings.TrimPrefix(ret, "\"")
+	tr = strings.TrimSuffix(tr, "\"")
+
+	if from == "" || from == "auto" {
+		from, err = DetectLanguageGoogle(cutString(text, 200))
+		if err != nil {
+			return GoogleHTMLTranslation{}, err
+		}
+	}
+
+	return GoogleHTMLTranslation{
+		Text: tr,
+		From: from,
+	}, nil
+}
+
+// cutString cut string using runes by limit
+func cutString (text string, limit int) string {
+	runes := []rune(text)
+	if len(runes) > limit {
+		return string(runes[:limit])
+	}
+	return text
 }
 
 func ReversoTranslate(from, to, text string) (ReversoTranslation, error) {
