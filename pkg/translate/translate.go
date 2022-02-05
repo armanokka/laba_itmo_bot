@@ -7,9 +7,12 @@ import (
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/go-errors/errors"
+	"github.com/go-resty/resty/v2"
 	"github.com/k0kubun/pp"
 	"github.com/tidwall/gjson"
-	"gopkg.in/resty.v1"
+	"golang.org/x/text/encoding/charmap"
+	"golang.org/x/text/transform"
+	"html"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -283,7 +286,7 @@ func generateTkk(needNew bool) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		if time.Since(stat.ModTime()) < time.Hour {
+		if stat.ModTime().Hour() == time.Now().Hour() && time.Since(stat.ModTime()) < time.Hour {
 			tkk, err := ioutil.ReadAll(f)
 			if err != nil {
 				return "", err
@@ -312,30 +315,25 @@ func generateTkk(needNew bool) (string, error) {
 	if _, err = f.WriteString(tkk); err != nil {
 		return "", err
 	}
-	stat, err := os.Stat(f.Name())
-	pp.Println("stat", time.Since(stat.ModTime()).String())
 	return tkk, nil
 }
 
 
 func getTk(tkk string, text string) (string, error) {
-	resp, err := http.Get(fmt.Sprintf("https://ancient-springs-54230.herokuapp.com/tkk.php?tkk=%s&text=%s", tkk, url.PathEscape(text)))
+	resp, err := resty.New().R().SetFormData(map[string]string{
+		"tkk": tkk,
+		"text": text,
+	}).Post(fmt.Sprintf("http://ancient-springs-54230.herokuapp.com/tkk.php"))
 	if err != nil {
 		return "", err
 	}
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("getTk: not 200: %s", body)
-	}
-	return string(body), nil
+	return resp.String(), nil
 }
 
 
 func GoogleHTMLTranslate(from, to, text string) (GoogleHTMLTranslation, error) {
-	tkk, err := generateTkk(false)
+	text = strings.ReplaceAll(text, "\n", "<br>")
+	tkk, err := generateTkk(true)
 	if err != nil {
 		return GoogleHTMLTranslation{}, err
 	}
@@ -345,43 +343,80 @@ func GoogleHTMLTranslate(from, to, text string) (GoogleHTMLTranslation, error) {
 		return GoogleHTMLTranslation{}, err
 	}
 
-	url := fmt.Sprintf("https://translate.googleapis.com/translate_a/t?sp=nmt&anno=3&client=te_lib&format=html&v=1.0&key=AIzaSyBOti4mM-6x9WDnZIjIeyEU21OpBXqWBgw&logld=vTE_20210503_00&sl=" + from + "&tl=" + to + "&tc=1&sr=1&tk=" + tk + "&mode=1")
+	formData := url.Values{}
+	formData.Set("q", text)
+	formData.Set("client", "gtx")
+	formData.Set("sl", from)
+	formData.Set("tl", to)
+	formData.Set("format", "html")
+
+	uri := fmt.Sprintf("https://translate.googleapis.com/translate_a/t?anno=3&client=te_lib&format=html&v=1.0&key=AIzaSyBOti4mM-6x9WDnZIjIeyEU21OpBXqWBgw&logld=vTE_20220201&sl=" + from + "&tl=" + to + "&tc=1&sr=1&tk=" + tk + "&mode=1")
 	resp, err := resty.New().R().SetHeaders(map[string]string{
 		"authority": "translate.googleapis.com",
 		"origin": "https://stackoverflow.com/",
 		"referrer": "https://stackoverflow.com/",
-		"content-type": "application/x-www-form-urlencoded; charset=UTF-8",
-	}).SetFormData(map[string]string{
-		"q": text,
-		"sl": from,
-		"tl": to,
-		"client": "gtx",
-		"format": "html",
-	}).SetContentLength(true).Post(url)
+		"content-type": "application/x-www-form-urlencoded; charset=UTF-16",
+	}).SetFormDataFromValues(formData).Post(uri)
 
 	if err != nil {
 		return GoogleHTMLTranslation{}, err
 	}
 
 	ret := resp.String()
+	fmt.Println("ret", ret)
 
-	if gjson.Get(ret, "0").Exists() {
-		if gjson.Get(ret, "1").Exists() {
-			from = gjson.Get(ret, "1").String()
-		}
-		if from == "" || from == "auto" {
+	if arr := gjson.Get(ret, "@this").Array(); len(arr) > 0 {
+		pp.Println("ret is parsing as array")
+
+		var from string
+		if len(arr) == 2 {
+			from = arr[1].String()
+		} else {
 			from, err = DetectLanguageGoogle(cutString(text, 200))
 			if err != nil {
 				return GoogleHTMLTranslation{}, err
 			}
 		}
+
+		var out string
+
+		for _, v := range arr {
+			var s string
+			if err = json.Unmarshal([]byte(v.Raw), &s); err != nil {
+				return GoogleHTMLTranslation{}, err
+			}
+			fmt.Println(s)
+			doc, err := goquery.NewDocumentFromReader(strings.NewReader(s))
+			if err != nil {
+				return GoogleHTMLTranslation{}, err
+			}
+			doc.Find("body > b").Each(func(i int, selection *goquery.Selection) {
+				//if !strings.HasPrefix(text[selection.Index():], "<b>") {
+				//	return
+				//}
+				h, err := selection.Html()
+				if err != nil {
+					return
+				}
+				h = html.UnescapeString(h)
+				pp.Println(h)
+				out += h
+				//if i % 2 != 0 {
+				//	out += h
+				//}
+			})
+		}
+
 		return GoogleHTMLTranslation{
-			Text: gjson.Get(ret, "0").String(),
+			Text: html.UnescapeString(strings.ReplaceAll(strings.TrimSpace(out), "<br>", "\n")),
 			From: from,
 		}, nil
 	}
-	tr := strings.TrimPrefix(ret, "\"")
-	tr = strings.TrimSuffix(tr, "\"")
+
+	var tr string
+	if err = json.Unmarshal([]byte(ret), &tr); err != nil {
+		return GoogleHTMLTranslation{}, err
+	}
 
 	if from == "" || from == "auto" {
 		from, err = DetectLanguageGoogle(cutString(text, 200))
@@ -391,10 +426,76 @@ func GoogleHTMLTranslate(from, to, text string) (GoogleHTMLTranslation, error) {
 	}
 
 	return GoogleHTMLTranslation{
-		Text: tr,
+		Text: strings.ReplaceAll(tr, "<br>", "\n"),
 		From: from,
 	}, nil
 }
+
+func GoogleTranslate(from, to, text string) (*TranslateGoogleAPIResponse, error) {
+	buf := new(bytes.Buffer)
+	buf.WriteString("async=translate,sl:" + url.QueryEscape(from) + ",tl:" + url.QueryEscape(to) + ",st:" + url.QueryEscape(text) + ",id:1624032860465,qc:true,ac:true,_id:tw-async-translate,_pms:s,_fmt:pc,format:html")
+	req, err := http.NewRequest("POST", "https://www.google.com/async/translate?vet=12ahUKEwjFh8rkyaHxAhXqs4sKHYvmAqAQqDgwAHoECAIQJg..i&ei=SMbMYMXDKernrgSLzYuACg&yv=3", buf)
+	if err != nil {
+		return &TranslateGoogleAPIResponse{}, err
+	}
+	req.Header["content-type"] = []string{"application/x-www-form-urlencoded;charset=UTF-8"}
+	// req.Header["accept"] = []string{"*/*"}
+	// req.Header["accept-encoding"] = []string{"gzip, deflate, br"}
+	// req.Header["accept-language"] = []string{"ru-RU,ru;q=0.9"}
+	req.Header["cookie"] = []string{"NID=217=mKKVUv88-BW4Vouxnh-qItLKFt7zm0Gj3yDLC8oDKb_PuLIb-p6fcPVcsXZWeNwkjDSFfypZ8BKqy27dcJH-vFliM4dKaiKdFrm7CherEXVt-u_DPr9Yecyv_tZRSDU7E52n5PWwOkaN2I0-naa85Tb9-uTjaKjO0gmdbShqba5MqKxuTLY; 1P_JAR=2021-06-18-16; DV=A3qPWv6ELckmsH4dFRGdR1fe4Gj-oRcZWqaFSPtAjwAAAAA"}
+	req.Header["origin"] = []string{"https://www.google.com"}
+	req.Header["referer"] = []string{"https://www.google.com/"}
+	req.Header["sec-fetch-site"] = []string{"cross-site"}
+	req.Header["sec-fetch-mode"] = []string{"cors"}
+	req.Header["sec-fetch-dest"] = []string{"empty"}
+	req.Header["sec-ch-ua-mobile"] = []string{"?0"}
+	req.Header["sec-ch-ua"] = []string{`" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"`}
+	req.Header["user-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.101 Safari/537.36"}
+
+	var client http.Client
+	res, err := client.Do(req)
+	if err != nil {
+		return &TranslateGoogleAPIResponse{}, err
+	}
+	if res.StatusCode != 200 {
+		return &TranslateGoogleAPIResponse{}, HTTPError{
+			Code:        res.StatusCode,
+			Description: "got non 200 http code",
+		}
+	}
+
+	doc, err := goquery.NewDocumentFromReader(res.Body)
+	if err != nil {
+		return &TranslateGoogleAPIResponse{}, err
+	}
+	result := &TranslateGoogleAPIResponse{
+		Text:               doc.Find("span[id=tw-answ-target-text]").Text(),
+		FromLang:           doc.Find("span[id=tw-answ-detected-sl]").Text(),
+		FromLangNativeName: doc.Find("span[id=tw-answ-detected-sl-name]").Text(),
+		SourceRomanization: doc.Find("span[id=tw-answ-source-romanization]").Text(),
+	}
+
+	doc.Find(`div[class~=tw-bilingual-entry]`).Each(func(i int, s *goquery.Selection) {
+		result.Variants = append(result.Variants, &Variant{
+			Word:    s.Find("span > span").Text(),
+			Meaning: s.Find("div").Text(),
+		})
+	})
+	doc.Find("img[data-src]").Each(func(i int, selection *goquery.Selection) {
+		link, _ := selection.Attr("data-src")
+		result.Images = append(result.Images, link)
+	})
+	return result, err
+}
+
+
+func windows1251ToUtf8(s string) (string, error) {
+	sr := strings.NewReader(s)
+	tr := transform.NewReader(sr, charmap.Windows1251.NewDecoder())
+	buf, err := ioutil.ReadAll(tr)
+	return string(buf), err
+}
+
 
 // cutString cut string using runes by limit
 func cutString (text string, limit int) string {
@@ -503,15 +604,7 @@ func ReversoQueryService(sourceText, sourceLang, targetText, targetLang string) 
 		return http.DefaultClient.Do(req)
 	}
 
-	var res *http.Response
-	for i:=0;i<3;i++ {
-		res, err = request()
-		//body, err := ioutil.ReadAll(res.Body)
-		//pp.Println(string(body))
-		if err == nil {
-			break
-		}
-	}
+	res, err := request()
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {

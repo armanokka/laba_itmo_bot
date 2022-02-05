@@ -28,7 +28,7 @@ var (
 )
 
 var BotLocalizedLangs = []string{
-	"en", "ru", "de", "es", "uk", "uz", "id", "it", "pt",
+	"en", "ru", "de", "es", "uk", "uz", "id", "it", "pt", "ar",
 }
 
 var WitAPIKeys = map[string]string{

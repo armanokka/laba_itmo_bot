@@ -6,13 +6,10 @@ import (
 	"fmt"
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
-	"github.com/armanokka/translobot/pkg/levenshtein"
 	"github.com/armanokka/translobot/pkg/translate"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
-	"go.uber.org/zap"
-	"golang.org/x/sync/errgroup"
 	"gorm.io/gorm"
 	"net/url"
 	"os"
@@ -27,13 +24,12 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	warn := func(err error) {
 		locale, err := localizer.LocalizeMessage(&i18n.Message{ID: "Sorry, error caused.\n\nPlease, don't block the bot, I'll fix the bug in near future, the administrator has already been warned about this error ;)"})
 		if err != nil {
-			app.notifyAdmin(fmt.Errorf("%w", err))
+			app.notifyAdmin(err)
 			app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Sorry, error caused.\n\nPlease, don't block the bot, I'll fix the bug in near future, the administrator has already been warned about this error ;)"))
 		} else {
 			app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, locale))
 		}
 		app.notifyAdmin(err)
-		app.log.Error("from onMessage->warn()", zap.Error(fmt.Errorf("%w", err)))
 	}
 	app.analytics.User(message.Text, message.From)
 
@@ -242,46 +238,11 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 
-	detect, err := translate.GoogleHTMLTranslate("auto", "en", text)
+
+	from, err := translate.DetectLanguageGoogle(text)
 	if err != nil {
 		warn(err)
 		return
-	}
-	from := detect.From
-
-	if from != user.MyLang && from != user.ToLang {
-
-		var (
-			trFromMyLang translate.GoogleHTMLTranslation
-			trFromToLang translate.GoogleHTMLTranslation
-		)
-		g, _ := errgroup.WithContext(ctx)
-		g.Go(func() error {
-			trFromMyLang, err = translate.GoogleHTMLTranslate(user.MyLang, "en", text)
-			return err
-		})
-		g.Go(func() error {
-			trFromToLang, err = translate.GoogleHTMLTranslate(user.ToLang, "en", text)
-			return err
-		})
-
-		if err = g.Wait(); err != nil {
-			warn(err)
-			return
-		}
-
-		leven1 := levenshtein.ComputeLevenshteinPercentage(text, detect.Text)
-		leven2 := levenshtein.ComputeLevenshteinPercentage(text, trFromMyLang.Text)
-		leven3 := levenshtein.ComputeLevenshteinPercentage(text, trFromToLang.Text)
-
-		min := min(leven1, leven2, leven3)
-		if min == leven1 {
-			// detect.From правильный
-		} else if min == leven2 {
-			from = trFromMyLang.From
-		} else if min == leven3 {
-			from = trFromToLang.From
-		}
 	}
 
 	if from == "" {

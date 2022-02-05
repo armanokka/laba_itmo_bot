@@ -20,7 +20,6 @@ import (
 	"runtime/debug"
 	"strings"
 	"sync"
-	"time"
 )
 
 type App struct {
@@ -70,7 +69,6 @@ func (app App) Run(ctx context.Context) error {
 							app.notifyAdmin("Panic:", err)
 						}
 					}()
-					start := time.Now()
 					if update.Message != nil {
 						if update.Message.From.LanguageCode == "" {
 							update.Message.From.LanguageCode = "en"
@@ -92,7 +90,6 @@ func (app App) Run(ctx context.Context) error {
 						}
 						app.onMyChatMember(*update.MyChatMember)
 					}
-					pp.Println("Time spent:", time.Since(start).String())
 				}()
 
 			}
@@ -113,7 +110,6 @@ func (app App) notifyAdmin(args ...interface{}) {
 			text += "\n\n" + fmt.Sprint(arg)
 		}
 	}
-	pp.Println("reported text", text)
 	if _, err := app.bot.Send(tgbotapi.MessageConfig{
 		BaseChat:              tgbotapi.BaseChat{
 			ChatID:                   config.AdminID,
@@ -162,7 +158,6 @@ func (app App) notifyAdmin(args ...interface{}) {
 func (app App) SuperTranslate(from, to, text string, entities []tgbotapi.MessageEntity) (ret SuperTranslation, err error) {
 	text = html.EscapeString(text)
 	text = applyEntitiesHtml(text, entities)
-
 	var (
 		rev = translate2.ReversoTranslation{}
 		dict = translate2.GoogleDictionaryResponse{}
@@ -221,17 +216,17 @@ func (app App) SuperTranslate(from, to, text string, entities []tgbotapi.Message
 
 
 	g.Go(func() error {
-		tr, err := translate2.GoogleHTMLTranslate(from, to, text)
+		tr, err := translate2.GoogleTranslate(from, to, text)
 		if err != nil {
 			return errors.WrapPrefix(err, "g.Go: translate2.GoogleHTMLTranslate", 1)
 		}
 		if tr.Text == "" && text != "" {
 			return errors.Errorf("g.Go: translate2.GoogleHTMLTranslate: tr.Text is empty", 1)
 		}
-		ret.From = tr.From
+		ret.From = tr.FromLang
 		ret.TranslatedText = tr.Text
-		ret.TranslatedText = strings.ReplaceAll(ret.TranslatedText, "<br> ", "<br>")
-		ret.TranslatedText = strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "",  `<br>`, "\n").Replace(ret.TranslatedText)
+		//ret.TranslatedText = strings.ReplaceAll(ret.TranslatedText, "<br> ", "<br>")
+		//ret.TranslatedText = strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "",  `<br>`, "\n").Replace(ret.TranslatedText)
 		return nil
 	})
 
