@@ -139,11 +139,11 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 
 	switch user.Act {
 	case "setup_langs":
-		fromLang, err := translate.GoogleHTMLTranslate("auto", "en", message.Text)
+		fromLang, err := translate.GoogleTranslate("auto", "en", cutStringUTF16(message.Text, 100))
 		if err != nil {
 			warn(err)
 		}
-		from := fromLang.From
+		from := fromLang.FromLang
 
 
 		keyboard, err := buildLangsPagination(0, 18, fmt.Sprintf("setup_langs:%s:%s", from, "%s"), fmt.Sprintf("setup_langs_pagination:%s:0", from), fmt.Sprintf("setup_langs_pagination:%s:18", from))
@@ -239,11 +239,13 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	}
 
 
-	from, err := translate.DetectLanguageGoogle(text)
+	from, err := translate.DetectLanguageGoogle(cutStringUTF16(text, 100))
 	if err != nil {
 		warn(err)
 		return
 	}
+
+	pp.Println("here")
 
 	if from == "" {
 		from = "auto"

@@ -156,21 +156,26 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 		code := code
 		go func() {
 			defer wg.Done()
+			if fromlang == "" {
+				tr, err := translate.GoogleTranslate("auto", "en", cutStringUTF16(update.Query, 100))
+				if err != nil {
+					warn(err)
+					return
+				}
+				fromlang = tr.FromLang
+			}
 
-			tr, err := translate.GoogleHTMLTranslate("auto", code, update.Query)
+			tr, err := translate.YandexTranslate(fromlang, code, update.Query)
 			if err != nil {
 				warn(err)
 				// not return
-				tr.Text = "error"
 			}
-			if fromlang == "" {
-				fromlang = tr.From
-			}
-			tr.Text = html.UnescapeString(tr.Text)
 
-			if tr.Text == "" {
+			tr = html.UnescapeString(tr)
+
+			if tr == "" {
 				// not return
-				tr.Text = "error"
+				tr = "error"
 			}
 
 			keyboard := tgbotapi.NewInlineKeyboardMarkup(
@@ -181,7 +186,7 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 						LoginURL:                     nil,
 						CallbackData:                 nil,
 						SwitchInlineQuery:            nil,
-						SwitchInlineQueryCurrentChat: &tr.Text,
+						SwitchInlineQueryCurrentChat: &tr,
 						CallbackGame:                 nil,
 						Pay:                          false,
 					}))
@@ -191,12 +196,12 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 				ID:                  "да пох вообще",
 				Title:               iso6391.Name(code),
 				InputMessageContent: map[string]interface{}{
-					"message_text": tr.Text,
+					"message_text": tr,
 					"disable_web_page_preview":false,
 				},
 				ReplyMarkup: &keyboard,
 				HideURL:             true,
-				Description:         tr.Text,
+				Description:         tr,
 			})
 		}()
 	}

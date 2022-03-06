@@ -102,11 +102,11 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		}
 
 		if callback.From.LanguageCode != "en" {
-			tr, err := translate2.GoogleHTMLTranslate("en", callback.From.LanguageCode, text)
+			tr, err := translate2.YandexTranslate("en", callback.From.LanguageCode, text)
 			if err != nil {
 				warn(err)
 			}
-			text = tr.Text
+			text = tr
 		}
 
 
@@ -301,15 +301,18 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		}
 		app.db.LogBotMessage(callback.From.ID, "cb_dict", text)
 	case "setup_langs": // arr[1] - source language, arr[2] - direction to translate, in replied message there is source text
-		go app.bot.Send(tgbotapi.NewChatAction(callback.From.ID, "typing"))
+		app.bot.Send(tgbotapi.NewChatAction(callback.From.ID, "typing"))
 		from := arr[1]
 		to := arr[2]
-		app.db.UpdateUserByMap(callback.From.ID, map[string]interface{}{
-			"my_lang": from,
-			"to_lang": to,
+		if err := app.db.UpdateUserByMap(callback.From.ID, map[string]interface{}{
+			"my_lang": to,
+			"to_lang": from,
 			"last_activity": time.Now(),
 			"act": "",
-		})
+		}); err != nil {
+			warn(err)
+			return
+		}
 
 		answer, err := app.SuperTranslate(from, to, callback.Message.ReplyToMessage.Text, callback.Message.ReplyToMessage.Entities)
 		if err != nil {
@@ -361,7 +364,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		//		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Lingvo", fmt.Sprintf("lingvo_vars:%s:%s:%d", from, to, 0))))
 		//}
 
-		app.bot.Send(tgbotapi.MessageConfig{
+		if _, err = app.bot.Send(tgbotapi.MessageConfig{
 			BaseChat:              tgbotapi.BaseChat{
 				ChatID:                   callback.From.ID,
 				ChannelUsername:          "",
@@ -374,7 +377,9 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			ParseMode:             tgbotapi.ModeHTML,
 			Entities:              nil,
 			DisableWebPagePreview: false,
-		})
+		}); err != nil {
+			pp.Println(err)
+		}
 		app.bot.Send(tgbotapi.NewCallback(callback.ID, ""))
 		if err = app.db.IncreaseUserUsings(callback.From.ID); err != nil {
 			app.notifyAdmin(fmt.Errorf("%w", err))

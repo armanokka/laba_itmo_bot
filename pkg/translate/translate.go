@@ -366,7 +366,6 @@ func GoogleHTMLTranslate(from, to, text string) (GoogleHTMLTranslation, error) {
 	fmt.Println("ret", ret)
 
 	if arr := gjson.Get(ret, "@this").Array(); len(arr) > 0 {
-		pp.Println("ret is parsing as array")
 
 		var from string
 		if len(arr) == 2 {
@@ -432,6 +431,7 @@ func GoogleHTMLTranslate(from, to, text string) (GoogleHTMLTranslation, error) {
 }
 
 func GoogleTranslate(from, to, text string) (*TranslateGoogleAPIResponse, error) {
+	text = cutString(text, 100)
 	buf := new(bytes.Buffer)
 	buf.WriteString("async=translate,sl:" + url.QueryEscape(from) + ",tl:" + url.QueryEscape(to) + ",st:" + url.QueryEscape(text) + ",id:1624032860465,qc:true,ac:true,_id:tw-async-translate,_pms:s,_fmt:pc,format:html")
 	req, err := http.NewRequest("POST", "https://www.google.com/async/translate?vet=12ahUKEwjFh8rkyaHxAhXqs4sKHYvmAqAQqDgwAHoECAIQJg..i&ei=SMbMYMXDKernrgSLzYuACg&yv=3", buf)

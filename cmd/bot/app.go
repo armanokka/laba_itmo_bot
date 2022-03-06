@@ -3,6 +3,7 @@ package bot
 import (
 	"context"
 	"fmt"
+	"git.mills.io/prologic/bitcask"
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/pkg/botapi"
 	"github.com/armanokka/translobot/pkg/dashbot"
@@ -28,15 +29,17 @@ type App struct {
 	log *zap.Logger
 	db        repos.BotDB
 	analytics dashbot.DashBot
+	bc *bitcask.Bitcask
 }
 
-func New(bot *botapi.BotAPI, db repos.BotDB, analytics dashbot.DashBot, logger *zap.Logger, bundle *i18n.Bundle) App {
+func New(bot *botapi.BotAPI, db repos.BotDB, analytics dashbot.DashBot, logger *zap.Logger, bundle *i18n.Bundle, bc *bitcask.Bitcask) App {
 	return App{
 		bot:       bot,
 		db:        db,
 		analytics: analytics,
 		log:       logger,
 		bundle: bundle,
+		bc: bc,
 	}
 }
 
@@ -49,26 +52,21 @@ func (app App) Run(ctx context.Context) error {
 	wg := sync.WaitGroup{}
 	g.Go(func() error {
 		for {
-			defer func() {
-				if err := recover(); err != nil {
-					app.log.Error("%w", zap.Any("error", err))
-					app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Panic:" + fmt.Sprint(err)))
-				}
-			}()
 			select {
 			case <-ctx.Done():
 				wg.Wait()
 				return ctx.Err()
 			case update := <-updates:
+				defer func() {
+					if err := recover(); err != nil {
+						app.log.Error("%w", zap.Any("error", err))
+						app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Panic:" + fmt.Sprint(err)))
+					}
+				}()
+
 				wg.Add(1)
 				go func() {
 					defer wg.Done()
-					defer func() {
-						if err := recover(); err != nil {
-							pp.Println("Panic:", err)
-							app.notifyAdmin("Panic:", err)
-						}
-					}()
 					if update.Message != nil {
 						if update.Message.From.LanguageCode == "" {
 							update.Message.From.LanguageCode = "en"
@@ -214,21 +212,23 @@ func (app App) SuperTranslate(from, to, text string, entities []tgbotapi.Message
 		})
 	}
 
+	if from == "auto" {
+		tr, err := translate2.GoogleTranslate(from, to, cutStringUTF16(text, 100))
+		if err != nil {
+			return SuperTranslation{}, errors.WrapPrefix(err, "g.Go: translate2.GoogleTranslate", 1)
+		}
+		from = tr.FromLang
+	}
 
 	g.Go(func() error {
-		tr, err := translate2.GoogleTranslate(from, to, text)
+		tr, err := translate2.YandexTranslate(from, to, text)
 		if err != nil {
-			return errors.WrapPrefix(err, "g.Go: translate2.GoogleHTMLTranslate", 1)
+			return err
 		}
-		if tr.Text == "" && text != "" {
-			return errors.Errorf("g.Go: translate2.GoogleHTMLTranslate: tr.Text is empty", 1)
-		}
-		ret.From = tr.FromLang
-		ret.TranslatedText = tr.Text
-		//ret.TranslatedText = strings.ReplaceAll(ret.TranslatedText, "<br> ", "<br>")
-		//ret.TranslatedText = strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "",  `<br>`, "\n").Replace(ret.TranslatedText)
+		ret.TranslatedText = tr
 		return nil
 	})
+
 
 	if err = g.Wait(); err != nil {
 		return SuperTranslation{}, err
