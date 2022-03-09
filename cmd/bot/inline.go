@@ -3,14 +3,12 @@ package bot
 import (
 	"fmt"
 	"github.com/armanokka/translobot/internal/tables"
-	"github.com/armanokka/translobot/pkg/translate"
-	iso6391 "github.com/emvi/iso-639-1"
+	translate2 "github.com/armanokka/translobot/pkg/translate"
 	"github.com/go-errors/errors"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"gorm.io/gorm"
-	"html"
 	"strconv"
 	"sync"
 )
@@ -130,12 +128,11 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 	}
 
 
-	fromlang := ""
+	userExists := false
+	from := ""
 	var wg sync.WaitGroup
 	var user tables.Users
 	var err error
-	results := sync.Map{}
-	var userExists bool
 
 	wg.Add(1)
 	go func() {
@@ -151,111 +148,91 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 		}
 	}()
 
-	for _, code := range codes[offset:offset + count] {
-		wg.Add(1)
-		code := code
-		go func() {
-			defer wg.Done()
-			if fromlang == "" {
-				tr, err := translate.GoogleTranslate("auto", "en", cutStringUTF16(update.Query, 100))
-				if err != nil {
-					warn(err)
-					return
-				}
-				fromlang = tr.FromLang
-			}
-
-			tr, err := translate.YandexTranslate(fromlang, code, update.Query)
-			if err != nil {
-				warn(err)
-				// not return
-			}
-
-			tr = html.UnescapeString(tr)
-
-			if tr == "" {
-				// not return
-				tr = "error"
-			}
-
-			keyboard := tgbotapi.NewInlineKeyboardMarkup(
-				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.InlineKeyboardButton{
-						Text:                         "translate",
-						URL:                          nil,
-						LoginURL:                     nil,
-						CallbackData:                 nil,
-						SwitchInlineQuery:            nil,
-						SwitchInlineQueryCurrentChat: &tr,
-						CallbackGame:                 nil,
-						Pay:                          false,
-					}))
-
-			results.Store(code, tgbotapi.InlineQueryResultArticle{
-				Type:                "article",
-				ID:                  "да пох вообще",
-				Title:               iso6391.Name(code),
-				InputMessageContent: map[string]interface{}{
-					"message_text": tr,
-					"disable_web_page_preview":false,
-				},
-				ReplyMarkup: &keyboard,
-				HideURL:             true,
-				Description:         tr,
-			})
-		}()
-	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		tr, err := translate2.GoogleTranslate("auto", "en", update.Query)
+		if err != nil {
+			warn(err)
+		}
+		from = tr.FromLang
+	}()
 
 	wg.Wait()
-
 	blocks := make([]interface{}, 0, 50)
 
 	if offset == 0 && userExists {
-		if fromlang != user.MyLang {
-				block, ok := results.Load(user.MyLang)
-				if ok {
-					article, ok := block.(tgbotapi.InlineQueryResultArticle)
-					if !ok {
-						app.notifyAdmin(fmt.Errorf("there is no tgbotapi.InlineQueryResultArticle in block with code %s", user.MyLang))
-					}
-					if ok {
-						article.ID = "my_lang!"
-						article.Title += " 👤"
-						blocks = append(blocks, article)
-					}
-				}
+		if from != user.MyLang {
+			keyboard := inlineTranslationKeyboard(user.MyLang)
+			name := langs[user.MyLang].Name
+			blocks = append(blocks, tgbotapi.InlineQueryResultArticle{
+				Type:                "article",
+				ID:                  "inline_translate:" + user.MyLang,
+				Title:               name + " 🔥",
+				InputMessageContent: map[string]interface{}{
+					"message_text": update.Query,
+					"disable_web_page_preview":true,
+					"parse_mode": "",
+				},
+				ReplyMarkup:         &keyboard,
+				URL:                 "",
+				HideURL:             true,
+				Description:         "send message in " + langs[user.MyLang].Name,
+				ThumbURL:            "",
+				ThumbWidth:          200,
+				ThumbHeight:         200,
+			})
 		}
-		if fromlang != user.ToLang {
-			block, ok := results.Load(user.ToLang)
-			if ok {
-				article, ok := block.(tgbotapi.InlineQueryResultArticle)
-				if !ok {
-					app.notifyAdmin(fmt.Errorf("there is no tgbotapi.InlineQueryResultArticle in block with code %s", user.ToLang))
-				}
-				if ok {
-					article.ID = "to_lang!"
-					article.Title += " 👤"
-					blocks = append(blocks, article)
-				}
-
-			}
+		if from != user.ToLang {
+			keyboard := inlineTranslationKeyboard(user.ToLang)
+			name := langs[user.ToLang].Name
+			blocks = append(blocks, tgbotapi.InlineQueryResultArticle{
+				Type:                "article",
+				ID:                  "inline_translate:" + user.ToLang,
+				Title:               name + " 🔥",
+				InputMessageContent: map[string]interface{}{
+					"message_text": update.Query,
+					"disable_web_page_preview":true,
+				},
+				ReplyMarkup:         &keyboard,
+				URL:                 "",
+				HideURL:             true,
+				Description:         "send message in " + name,
+				ThumbURL:            "",
+				ThumbWidth:          200,
+				ThumbHeight:         200,
+			})
 		}
 	}
 
+
 	for i, code := range codes[offset:offset+count] {
-		block, ok := results.Load(code)
-		if !ok {
-			warn(fmt.Errorf("couldn't find code %s in translations", code))
+		if code == user.MyLang || code == user.ToLang {
+			continue
 		}
-		article, ok := block.(tgbotapi.InlineQueryResultArticle)
-		if !ok {
-			app.notifyAdmin(fmt.Errorf("there is no tgbotapi.InlineQueryResultArticle in block with code %s", code))
+		lang := langs[code]
+		title := lang.Name
+		if i < 18 && offset == 0 {
+			title += " 📌"
 		}
-		article.ID = strconv.Itoa(offset + i)
-		if offset == 0 && i < 18 {
-			article.Title += " 📌"
-		}
-		blocks = append(blocks, article)
+		keyboard := inlineTranslationKeyboard(code)
+		blocks = append(blocks, tgbotapi.InlineQueryResultArticle{
+			Type:                "article",
+			ID:                 	strconv.Itoa(i)+":"+code,
+			Title:               title,
+			InputMessageContent: map[string]interface{}{
+				"message_text": update.Query,
+				"disable_web_page_preview":true,
+				"parse_mode": "",
+			},
+			ReplyMarkup:         &keyboard,
+			URL:                 "",
+			HideURL:             true,
+			Description:         "send message in " + lang.Name,
+			ThumbURL:            "",
+			ThumbWidth:          200,
+			ThumbHeight:         200,
+		})
 	}
 
 	if len(blocks) > 50 {
@@ -263,7 +240,7 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 		blocks = blocks[:50]
 	}
 
-	pmtext := "From: " + langs[fromlang].Name
+	pmtext := "Translo"
 	if update.Query == "" {
 		pmtext = "Enter text"
 	}

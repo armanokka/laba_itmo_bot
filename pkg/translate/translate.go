@@ -14,6 +14,8 @@ import (
 	"golang.org/x/text/transform"
 	"html"
 	"io/ioutil"
+	"math"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -363,7 +365,6 @@ func GoogleHTMLTranslate(from, to, text string) (GoogleHTMLTranslation, error) {
 	}
 
 	ret := resp.String()
-	fmt.Println("ret", ret)
 
 	if arr := gjson.Get(ret, "@this").Array(); len(arr) > 0 {
 
@@ -384,7 +385,6 @@ func GoogleHTMLTranslate(from, to, text string) (GoogleHTMLTranslation, error) {
 			if err = json.Unmarshal([]byte(v.Raw), &s); err != nil {
 				return GoogleHTMLTranslation{}, err
 			}
-			fmt.Println(s)
 			doc, err := goquery.NewDocumentFromReader(strings.NewReader(s))
 			if err != nil {
 				return GoogleHTMLTranslation{}, err
@@ -508,10 +508,10 @@ func cutString (text string, limit int) string {
 
 func ReversoTranslate(from, to, text string) (ReversoTranslation, error) {
 	if _, ok := reversoSupportedLangs[from]; !ok {
-		return ReversoTranslation{}, ErrReversoLangNotSupported
+		return ReversoTranslation{}, ErrLangNotSupported
 	}
 	if _, ok := reversoSupportedLangs[to]; !ok {
-		return ReversoTranslation{}, ErrReversoLangNotSupported
+		return ReversoTranslation{}, ErrLangNotSupported
 	}
 	if from == to {
 		return ReversoTranslation{}, SameLangsWerePassed
@@ -810,3 +810,75 @@ func ReversoSuggestions(from, to, text string) (ReversoSuggestionsResponse, erro
 	return result, err
 }
 
+type MicrosoftTranslation struct {
+	From string
+	TranslatedText string
+}
+
+func MicrosoftTranslate(from, to, text string) (MicrosoftTranslation, error) { // с помощью расширения Mate Translate
+	params := url.Values{}
+	params.Set("appId", `"000000000A9F426B41914349A3EC94D7073FF941"`)
+	texts, err := json.Marshal(strings.Split(text, "\n"))
+	if err != nil {
+		return MicrosoftTranslation{}, err
+	}
+	params.Set("texts", string(texts))
+	params.Set("to", `"` + to + `"`)
+	params.Set("loc", "en")
+	params.Set("ctr", "")
+	params.Set("ref", "WidgetV3")
+	rand.Seed(time.Now().UnixNano())
+	params.Set("rgp", strconv.FormatInt(int64(math.Floor(1e9 * rand.Float64())), 16))
+
+	req, err := http.NewRequest("GET", "https://api.microsofttranslator.com/v2/ajax.svc/TranslateArray?" + params.Encode(), nil)
+	if err != nil {
+		return MicrosoftTranslation{}, err
+	}
+	req.Header["Content-Type"] = []string{"application/json; charset=UTF-8"}
+	req.Header["Accept-Language"] = []string{"ru-RU,ru;q=0.9"}
+	req.Header["Accept"] = []string{"application/json, text/javascript, */*; q=0.01"}
+	req.Header["User-aAent"] =  []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.174 YaBrowser/22.1.5.810 Yowser/2.5 Safari/537.36"}
+	req.Header["origin"] = []string{"https://stackoverflow.com"}
+	req.Header["referrer"] = []string{"https://stackoverflow.com/"}
+	req.Header["sec-fetch-site"] = []string{"cross-site"}
+	req.Header["sec-fetch-mode"] = []string{"cors"}
+	req.Header["sec-fetch-dest"] = []string{"empty"}
+	req.Header["sec-ch-ua-mobile"] = []string{"?1"}
+	req.Header["sec-ch-ua-platform"] = []string{`"Android"`}
+	req.Header["sec-ch-ua"] = []string{`" Not A;Brand";v="99", "Chromium";v="99", "Google Chrome";v="99"`}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return MicrosoftTranslation{}, err
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return MicrosoftTranslation{}, err
+	}
+
+	i := bytes.Index(body, []byte("["))
+	if i == -1 {
+		time.Sleep(time.Second)
+		return MicrosoftTranslate(from, to, text)
+		//return MicrosoftTranslation{}, fmt.Errorf("%s", body)
+	}
+	body = body[i:]
+
+	out := ""
+	from = ""
+	for i, elem := range gjson.ParseBytes(body).Array() {
+		if from == "" {
+			from = elem.Get("From").String()
+		}
+		if i > 0 {
+			out += "\n"
+		}
+		out += elem.Get("TranslatedText").String()
+	}
+
+	return MicrosoftTranslation{
+		From:           from,
+		TranslatedText: out,
+	}, nil
+}

@@ -11,6 +11,7 @@ import (
 	"github.com/k0kubun/pp"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"gorm.io/gorm"
+	"html"
 	"net/url"
 	"os"
 	"strconv"
@@ -174,6 +175,8 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 
+	app.bot.Send(tgbotapi.NewChatAction(message.From.ID, "typing"))
+
 	if user.Usings == 5 || (user.Usings > 0 && user.Usings % 20 == 0) {
 		IrecommendBotLocale, err := localizer.LocalizeMessage(&i18n.Message{ID: "Я рекомендую @translobot"})
 		if err != nil {
@@ -245,8 +248,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 
-	pp.Println("here")
-
 	if from == "" {
 		from = "auto"
 	}
@@ -263,11 +264,17 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 
 
 
-	ret, err := app.SuperTranslate(from, to, text, message.Entities)
+	ret, err := app.SuperTranslate(user, from, to, text, message.Entities)
 	if err != nil {
 		warn(err)
 		return
 	}
+	ret.TranslatedText, err = url.QueryUnescape(ret.TranslatedText)
+	if err != nil {
+		warn(err)
+		return
+	}
+	ret.TranslatedText = html.UnescapeString(ret.TranslatedText)
 
 	ToVoiceLocale, err := localizer.LocalizeMessage(&i18n.Message{ID: "To voice"})
 	if err != nil {
@@ -307,6 +314,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		}
 		keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData("ℹ️" + DictionaryLocale, fmt.Sprintf("dict:%s", from)))
 	}
+	fmt.Println(ret.TranslatedText)
 
 	if _, err = app.bot.Send(tgbotapi.MessageConfig{
 		BaseChat:              tgbotapi.BaseChat{

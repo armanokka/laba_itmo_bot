@@ -26,11 +26,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 
 	localizer := i18n.NewLocalizer(app.bundle, callback.From.LanguageCode)
 
-	//user, err := app.db.GetUserByID(callback.From.ID)
-	//if err != nil {
-	//	warn(err)
-	//	return
-	//}
+
 	defer func() {
 		if err := app.db.UpdateUserLastActivity(callback.From.ID); err != nil {
 			app.notifyAdmin(fmt.Errorf("%w", err))
@@ -102,11 +98,11 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		}
 
 		if callback.From.LanguageCode != "en" {
-			tr, err := translate2.YandexTranslate("en", callback.From.LanguageCode, text)
+			tr, err := translate2.MicrosoftTranslate("en", callback.From.LanguageCode, text)
 			if err != nil {
 				warn(err)
 			}
-			text = tr
+			text = tr.TranslatedText
 		}
 
 
@@ -314,7 +310,13 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			return
 		}
 
-		answer, err := app.SuperTranslate(from, to, callback.Message.ReplyToMessage.Text, callback.Message.ReplyToMessage.Entities)
+		user, err := app.db.GetUserByID(callback.From.ID)
+		if err != nil {
+			warn(err)
+			return
+		}
+
+		answer, err := app.SuperTranslate(user, from, to, callback.Message.ReplyToMessage.Text, callback.Message.ReplyToMessage.Entities)
 		if err != nil {
 			warn(err)
 			return
@@ -446,7 +448,15 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 				DisableWebPagePreview: false,
 			})
 		}
-		default:
-		app.bot.Send(tgbotapi.NewMessage(callback.From.ID, "Action is expired. Send /start"))
+	//case "inline_translate": //arr[1] - lang
+	//	pp.Println(callback)
+	//	tr, err := translate2.MicrosoftTranslate("", arr[1], callback.Message.Text)
+	//	if err != nil {
+	//		warn(err)
+	//		return
+	//	}
+	//	app.bot.Send(tgbotapi.NewEditMessageText(callback.From.ID, callback.Message.MessageID, tr.TranslatedText))
+	//	default:
+	//	app.bot.Send(tgbotapi.NewMessage(callback.From.ID, "Action is expired. Send /start"))
 	}
 }

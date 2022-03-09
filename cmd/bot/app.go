@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"git.mills.io/prologic/bitcask"
 	"github.com/armanokka/translobot/internal/config"
+	"github.com/armanokka/translobot/internal/tables"
 	"github.com/armanokka/translobot/pkg/botapi"
 	"github.com/armanokka/translobot/pkg/dashbot"
 	"github.com/armanokka/translobot/pkg/lingvo"
@@ -87,6 +88,11 @@ func (app App) Run(ctx context.Context) error {
 							update.MyChatMember.From.LanguageCode = "en"
 						}
 						app.onMyChatMember(*update.MyChatMember)
+					} else if update.ChosenInlineResult != nil {
+						if update.ChosenInlineResult.From.LanguageCode == "" {
+							update.ChosenInlineResult.From.LanguageCode = "en"
+						}
+						app.chosenInlineResult(*update.ChosenInlineResult)
 					}
 				}()
 
@@ -153,9 +159,10 @@ func (app App) notifyAdmin(args ...interface{}) {
 //}
 
 
-func (app App) SuperTranslate(from, to, text string, entities []tgbotapi.MessageEntity) (ret SuperTranslation, err error) {
-	text = html.EscapeString(text)
+func (app App) SuperTranslate(user tables.Users, from, to, text string, entities []tgbotapi.MessageEntity) (ret SuperTranslation, err error) {
 	text = applyEntitiesHtml(text, entities)
+	//text = html.EscapeString(text)
+
 	var (
 		rev = translate2.ReversoTranslation{}
 		dict = translate2.GoogleDictionaryResponse{}
@@ -176,17 +183,6 @@ func (app App) SuperTranslate(from, to, text string, entities []tgbotapi.Message
 			return err
 		})
 	}
-
-
-	//g.Go(func() error {
-	//	_, ok1 := lingvo.Lingvo[from]
-	//	_, ok2 := lingvo.Lingvo[to]
-	//	if !ok1 || !ok2 {
-	//		return nil
-	//	}
-	//	lingv, err = lingvo.GetDictionary(from, to, text)
-	//	return err
-	//})
 
 	if l < 100 {
 		g.Go(func() error {
@@ -221,6 +217,39 @@ func (app App) SuperTranslate(from, to, text string, entities []tgbotapi.Message
 	}
 
 	g.Go(func() error {
+		if len(text) < 50 {
+			if v, err := lingvo.GetDictionary(user.MyLang, user.ToLang, text); err == nil && len(v) > 0 {
+				out := ""
+				for i, r := range v {
+					if i > 0 {
+						out += "\n"
+					}
+					out += r.Translations
+				}
+				ret.TranslatedText = out
+				return nil
+			}
+			if v, err := lingvo.GetDictionary(user.ToLang, user.MyLang, text); err == nil && len(v) > 0 {
+				out := ""
+				for i, r := range v {
+					if i > 0 {
+						out += "\n"
+					}
+					out += r.Translations
+				}
+				ret.TranslatedText = out
+				return nil
+			}
+		}
+
+		if html.UnescapeString(text) != html.EscapeString(text) { // есть html теги
+			tr, err := translate2.MicrosoftTranslate(from, to, text)
+			if err != nil {
+				return err
+			}
+			ret.TranslatedText = tr.TranslatedText
+			return nil
+		}
 		tr, err := translate2.YandexTranslate(from, to, text)
 		if err != nil {
 			return err

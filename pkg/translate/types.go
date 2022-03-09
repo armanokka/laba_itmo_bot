@@ -31,7 +31,7 @@ type TranslateGoogleAPIResponse struct {
 
 
 var ErrTTSLanguageNotSupported = errors.New("translateTTS js object not found")
-var ErrReversoLangNotSupported = errors.New("language is not supported by Reverso")
+var ErrLangNotSupported = errors.New("language is not supported by Reverso")
 var SameLangsWerePassed = errors.New("the same languages were passed to ReversoTranslate()")
 
 type ReversoRequestTranslate struct {

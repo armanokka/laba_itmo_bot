@@ -3,6 +3,7 @@ package translate
 import (
 	"fmt"
 	"github.com/tidwall/gjson"
+	"html"
 	"io/ioutil"
 	"math"
 	"math/rand"
@@ -27,7 +28,7 @@ func YandexTranslate(from, to, text string) (string, error) {
 	for _, part := range parts {
 		params := url.Values{}
 		for _, chunk := range splitIntoChunks(part, 100) {
-			params.Add("text", chunk)
+			params.Add("text", html.EscapeString(chunk))
 		}
 		uri := `https://browser.translate.yandex.net/api/v1/tr.json/translate?translateMode=balloon&context_title=` + url.PathEscape(cutString(part, 16)) + `&id=` + generateSid() + `-0-0&srv=yabrowser&lang=`+from+`-`+to+`&format=html&options=0&` + params.Encode()
 		req, err := http.NewRequest("GET", uri, nil)
@@ -58,6 +59,10 @@ func YandexTranslate(from, to, text string) (string, error) {
 			return "", err
 		}
 		if gjson.GetBytes(body, "code").Int() != 200 {
+			switch gjson.GetBytes(body, "code").Int() {
+			case 501:
+				return "", ErrLangNotSupported
+			}
 			return "", fmt.Errorf("YandexTranslate:" + gjson.GetBytes(body, "message").String())
 		}
 		for _, result := range gjson.GetBytes(body, "text").Array() {
