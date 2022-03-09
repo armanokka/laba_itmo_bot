@@ -3,10 +3,12 @@ package bot
 import (
 	translate2 "github.com/armanokka/translobot/pkg/translate"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/k0kubun/pp"
 	"strings"
 )
 
 func (app App) chosenInlineResult(result tgbotapi.ChosenInlineResult) {
+	pp.Println(result)
 	warn := func(err error) {
 		app.notifyAdmin(err)
 	}
@@ -19,13 +21,19 @@ func (app App) chosenInlineResult(result tgbotapi.ChosenInlineResult) {
 		if !ok {
 			return
 		}
-		tr, err := translate2.MicrosoftTranslate("", arr[1], result.Query)
+		from, err := translate2.DetectLanguageGoogle(cutStringUTF16(result.Query, 100))
 		if err != nil {
 			warn(err)
 			return
 		}
 
-		app.bot.Send(tgbotapi.EditMessageTextConfig{
+		tr, err := translate2.FlexibleTranslate(from, arr[1], result.Query)
+		if err != nil {
+			warn(err)
+			return
+		}
+
+		if _, err = app.bot.Send(tgbotapi.EditMessageTextConfig{
 			BaseEdit:              tgbotapi.BaseEdit{
 				ChatID:          0,
 				ChannelUsername: "",
@@ -33,10 +41,12 @@ func (app App) chosenInlineResult(result tgbotapi.ChosenInlineResult) {
 				InlineMessageID: result.InlineMessageID,
 				ReplyMarkup:     nil,
 			},
-			Text:                  tr.TranslatedText,
+			Text:                  tr,
 			ParseMode:             "",
 			Entities:              nil,
 			DisableWebPagePreview: false,
-		})
+		}); err != nil {
+			pp.Println(err)
+		}
 	}
 }

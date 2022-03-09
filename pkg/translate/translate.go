@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/armanokka/translobot/pkg/lingvo"
 	"github.com/go-errors/errors"
 	"github.com/go-resty/resty/v2"
 	"github.com/k0kubun/pp"
@@ -26,6 +27,44 @@ import (
 	"time"
 )
 
+
+func FlexibleTranslate(from, to, text string) (string, error) {
+	if len(text) < 50 {
+		if v, err := lingvo.GetDictionary(from, to, text); err == nil && len(v) > 0 {
+			out := ""
+			for i, r := range v {
+				if i > 0 {
+					out += "\n"
+				}
+				out += r.Translations
+			}
+			return out, nil
+		}
+		if v, err := lingvo.GetDictionary(to, from, text); err == nil && len(v) > 0 {
+			out := ""
+			for i, r := range v {
+				if i > 0 {
+					out += "\n"
+				}
+				out += r.Translations
+			}
+			return out, nil
+		}
+	}
+
+	if html.UnescapeString(text) != html.EscapeString(text) { // есть html теги
+		tr, err := MicrosoftTranslate(from, to, text)
+		if err != nil {
+			return "", err
+		}
+		return tr.TranslatedText, nil
+	}
+	tr, err := YandexTranslate(from, to, text)
+	if err != nil {
+		return "", err
+	}
+	return tr, nil
+}
 
 //func GoogleTranslate(from, to, text string) (TranslateGoogleAPIResponse, error) {
 //	buf := new(bytes.Buffer)
