@@ -3,6 +3,7 @@ package translate
 import (
     "errors"
     "fmt"
+    "strings"
 )
 
 type HTTPError struct {
@@ -625,4 +626,38 @@ var YandexSupportedLanguages = map[string]string{
     "yi": "Идиш",
     "zh": "Китайский",
     "zu": "Зулу",
+}
+
+func splitIntoChunksBySentences(text string, limit int) []string {
+    sentences := strings.Split(text, ".")
+    out := make([]string, 0, len(text) / limit)
+    out = append(out, "")
+
+    for _, sentence := range sentences {
+        l := len([]rune(sentence))
+        if l > limit {
+            out = append(out, splitIntoChunks(sentence, limit)...)
+        }
+
+        last := len(out) - 1
+        if last < 0 {
+            last = 0
+        }
+
+        if len([]rune(out[last])) + l + 1 > limit {
+            out = append(out, sentence)
+            continue
+        }
+
+
+        i := len(out) - 1
+        if l < 0 {
+            i = 0
+        }
+        if i > 0 {
+            out[i] += "."
+        }
+        out[i] += sentence
+    }
+    return out
 }

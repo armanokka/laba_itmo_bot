@@ -28,7 +28,7 @@ func YandexTranslate(from, to, text string) (string, error) {
 	if _, ok := YandexSupportedLanguages[to]; !ok {
 		return "", ErrLangNotSupported
 	}
-	parts := splitIntoChunks(text, 2000)
+	parts := splitIntoChunksBySentences(text, 2000)
 	out := ""
 	for _, part := range parts {
 		params := url.Values{}
