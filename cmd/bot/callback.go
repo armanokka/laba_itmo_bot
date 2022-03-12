@@ -54,12 +54,12 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			return
 		}
 		go func() {
-			if err := app.sendSpeech(user ,arr[2], callback.Message.ReplyToMessage.Text, callback.ID); err != nil { // озвучиваем непереведенное сообщение
+			if err := app.sendSpeech(user ,arr[1], callback.Message.ReplyToMessage.Text, callback.ID); err != nil { // озвучиваем непереведенное сообщение
 				warn(err)
 				return
 			}
 		}()
-		if err := app.sendSpeech(user, arr[1], text, callback.ID); err != nil { // озвучиваем переведенное сообщение
+		if err := app.sendSpeech(user, arr[2], text, callback.ID); err != nil { // озвучиваем переведенное сообщение
 			warn(err)
 			return
 		}
