@@ -50,6 +50,7 @@ func Load() error {
 	db, err = gorm.Open(mysql.Open("f0568401_user:NlEbEgda@tcp(141.8.193.236:3306)/f0568401_user?charset=utf8mb4&parseTime=True&loc=Local"), &gorm.Config{
 		SkipDefaultTransaction:                   true,
 		CreateBatchSize: 1000,
+		PrepareStmt: true,
 	})
 	if err != nil {
 		panic(err)

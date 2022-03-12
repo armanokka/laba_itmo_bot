@@ -7,15 +7,15 @@ import (
 	"github.com/go-errors/errors"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
-	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"gorm.io/gorm"
 	"strconv"
+	"strings"
 	"sync"
 )
 
 func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
-	app.analytics.User(update.Query, update.From)
-
+	go 	app.analytics.User(update.Query, update.From)
+	update.Query = strings.Title(update.Query)
 	warn := func(err error) {
 		err = errors.Wrap(err, 1)
 		app.bot.AnswerInlineQuery(tgbotapi.InlineConfig{
@@ -27,47 +27,26 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 		pp.Println("onInlineQuery: error", err)
 	}
 
-	localizer := i18n.NewLocalizer(app.bundle, update.From.LanguageCode)
+	user := tables.Users{MyLang: update.From.LanguageCode}
 
 	if update.Query == "" {
-
-		tryItOutLocale, err := localizer.LocalizeMessage(&i18n.Message{ID: "Try it out"})
-		if err != nil {
-			warn(err)
-			return
-		}
-		recommendLocale, err := localizer.LocalizeMessage(&i18n.Message{ID: "Порекомендовать бота"})
-		if err != nil {
-			warn(err)
-			return
-		}
-		adLocale, err := localizer.LocalizeMessage(&i18n.Message{ID: "inline_ad"})
-		if err != nil {
-			warn(err)
-			return
-		}
-		clickLocale, err := localizer.LocalizeMessage(&i18n.Message{ID: "click to recommend a bot in the chat"})
-		if err != nil {
-			warn(err)
-			return
-		}
 		kbLoc := tgbotapi.NewInlineKeyboardMarkup(
 			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonURL(tryItOutLocale, "https://t.me/translobot?start=from_inline")))
+				tgbotapi.NewInlineKeyboardButtonURL(user.Localize("Попробовать"), "https://t.me/translobot?start=from_inline")))
 
 		elemLoc := tgbotapi.InlineQueryResultArticle{
 			Type:                "article",
 			ID:                  "ad_local",
-			Title:               recommendLocale,
+			Title:               user.Localize("Порекомендовать бота"),
 			InputMessageContent: map[string]interface{}{
-				"message_text": adLocale,
+				"message_text": user.Localize("inline_ad"),
 				"disable_web_page_preview":true,
 				"parse_mode": tgbotapi.ModeHTML,
 			},
 			ReplyMarkup:         &kbLoc,
 			URL:                 "",
 			HideURL:             true,
-			Description:         clickLocale,
+			Description:         user.Localize("кликните, чтобы порекомендовать бота в чате"),
 			ThumbURL:            "https://i.yapx.ru/PdNIa.png",
 			ThumbWidth:          200,
 			ThumbHeight:         200,
@@ -131,7 +110,6 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 	userExists := false
 	from := ""
 	var wg sync.WaitGroup
-	var user tables.Users
 	var err error
 
 	wg.Add(1)

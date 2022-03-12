@@ -278,13 +278,13 @@ func WitAiSpeech(wav io.Reader, lang string, bits int) (string, error) {
     }
     req, err := http.NewRequest("POST", "https://api.wit.ai/speech?v=20210928&bits=" + strconv.Itoa(bits), wav)
     if err != nil {
-        panic(err)
+        return "", err
     }
     req.Header.Set("Authorization", "Bearer " + key)
     req.Header.Set("Content-Type", "audio/wave")
     resp, err := http.DefaultClient.Do(req)
     if err != nil {
-        panic(err)
+        return "", err
     }
     defer resp.Body.Close()
 
@@ -350,7 +350,7 @@ func reverse(arr []string) []string {
 
 // buildLangsPagination создает пагинацию как говорил F d
 // в калбак передайте что-то типа set_my_lang:%s, где %s станет код выбранного языка
-func buildLangsPagination(offset int, count int, buttonSelectLangCallback, buttonBackCallback, buttonNextCallback string) (tgbotapi.InlineKeyboardMarkup, error) {
+func buildLangsPagination(offset int, count int, exceptLang, buttonSelectLangCallback, buttonBackCallback, buttonNextCallback string) (tgbotapi.InlineKeyboardMarkup, error) {
     if offset < 0 || offset > len(codes) - 1 {
         return tgbotapi.InlineKeyboardMarkup{}, nil
     }
@@ -361,6 +361,9 @@ func buildLangsPagination(offset int, count int, buttonSelectLangCallback, butto
         count += 18
     }
     for i, code := range codes[offset:offset+count] {
+        if code == exceptLang {
+            continue
+        }
         lang, ok := langs[code]
         if !ok {
             return tgbotapi.InlineKeyboardMarkup{}, fmt.Errorf("не нашел %s в langs", code)
@@ -375,6 +378,10 @@ func buildLangsPagination(offset int, count int, buttonSelectLangCallback, butto
             l := len(out.InlineKeyboard) - 1
             if l < 0 {
                 l = 0
+            }
+            if len(out.InlineKeyboard) == 0 {
+                out.InlineKeyboard = append(out.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(btn))
+                continue
             }
             out.InlineKeyboard[l] = append(out.InlineKeyboard[l], btn)
         }

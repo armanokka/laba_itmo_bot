@@ -857,7 +857,7 @@ type MicrosoftTranslation struct {
 func MicrosoftTranslate(from, to, text string) (MicrosoftTranslation, error) { // с помощью расширения Mate Translate
 	params := url.Values{}
 	params.Set("appId", `"000000000A9F426B41914349A3EC94D7073FF941"`)
-	texts, err := json.Marshal(strings.Split(text, "\n"))
+	texts, err := json.Marshal(strings.Split(text, "."))
 	if err != nil {
 		return MicrosoftTranslation{}, err
 	}
@@ -911,7 +911,7 @@ func MicrosoftTranslate(from, to, text string) (MicrosoftTranslation, error) { /
 			from = elem.Get("From").String()
 		}
 		if i > 0 {
-			out += "\n"
+			out += "."
 		}
 		out += elem.Get("TranslatedText").String()
 	}

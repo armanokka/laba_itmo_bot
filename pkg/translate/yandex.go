@@ -3,7 +3,6 @@ package translate
 import (
 	"fmt"
 	"github.com/tidwall/gjson"
-	"html"
 	"io/ioutil"
 	"math"
 	"math/rand"
@@ -23,25 +22,33 @@ func generateSid() string {
 }
 
 func YandexTranslate(from, to, text string) (string, error) {
-	parts := splitIntoChunks(text, 400)
+	if _, ok := YandexSupportedLanguages[from]; !ok {
+		return "", ErrLangNotSupported
+	}
+	if _, ok := YandexSupportedLanguages[to]; !ok {
+		return "", ErrLangNotSupported
+	}
+	parts := splitIntoChunks(text, 2000)
 	out := ""
 	for _, part := range parts {
 		params := url.Values{}
-		for _, chunk := range splitIntoChunks(part, 100) {
-			params.Add("text", html.EscapeString(chunk))
-		}
-		uri := `https://browser.translate.yandex.net/api/v1/tr.json/translate?translateMode=balloon&context_title=` + url.PathEscape(cutString(part, 16)) + `&id=` + generateSid() + `-0-0&srv=yabrowser&lang=`+from+`-`+to+`&format=html&options=0&` + params.Encode()
-		req, err := http.NewRequest("GET", uri, nil)
+		params.Add("text", part)
+		params.Add("translateMode", "balloon")
+		params.Add("context_title",  url.PathEscape(cutString(part, 16)))
+		params.Add("id", generateSid() + `-0-0`)
+		params.Add("srv", "yabrowser")
+		params.Add("lang", from+`-`+to)
+		params.Add("format", "html")
+		params.Add("options", "0")
+		req, err := http.NewRequest("GET", `https://browser.translate.yandex.net/api/v1/tr.json/translate?`+ params.Encode(), nil)
 		if err != nil {
 			return "", err
 		}
-		req.Header["Content-Type"] = []string{"application/json; charset=UTF-8"}
+		req.Header["Content-Type"] = []string{"application/json; charset=UTF-16"}
 		req.Header["Accept-Language"] = []string{"ru,en;q=0.9"}
 		req.Header["User-aAent"] =  []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.174 YaBrowser/22.1.5.810 Yowser/2.5 Safari/537.36"}
 		req.Header["origin"] = []string{"https://stackoverflow.com"}
 		req.Header["referrer"] = []string{"https://stackoverflow.com/"}
-		req.Header["Content-Type"] = []string{"application/json; charset=UTF-8"}
-		req.Header["Content-Type"] = []string{"application/json; charset=UTF-8"}
 		req.Header["sec-fetch-site"] = []string{"cross-site"}
 		req.Header["sec-fetch-mode"] = []string{"cors"}
 		req.Header["sec-fetch-dest"] = []string{"empty"}
@@ -59,10 +66,6 @@ func YandexTranslate(from, to, text string) (string, error) {
 			return "", err
 		}
 		if gjson.GetBytes(body, "code").Int() != 200 {
-			switch gjson.GetBytes(body, "code").Int() {
-			case 501:
-				return "", ErrLangNotSupported
-			}
 			return "", fmt.Errorf("YandexTranslate:" + gjson.GetBytes(body, "message").String())
 		}
 		for _, result := range gjson.GetBytes(body, "text").Array() {

@@ -6,10 +6,9 @@ go 1.17
 require (
 	git.mills.io/prologic/bitcask v1.0.2
 	github.com/PuerkitoBio/goquery v1.7.0
-	github.com/emvi/iso-639-1 v1.0.1
 	github.com/go-errors/errors v1.4.1
 	github.com/go-resty/resty/v2 v2.7.0
-	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.0.2-0.20210820200834-309d612d7095
+	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/k0kubun/pp v3.0.1+incompatible
 	github.com/nicksnyder/go-i18n/v2 v2.1.2
@@ -27,7 +26,9 @@ require (
 	github.com/BurntSushi/toml v0.4.1 // indirect
 	github.com/abcum/lcp v0.0.0-20201209214815-7a3f3840be81 // indirect
 	github.com/andybalholm/cascadia v1.1.0 // indirect
+	github.com/emvi/iso-639-1 v1.0.1 // indirect
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
+	github.com/go-telegram-bot-api/telegram-bot-api v4.6.4+incompatible // indirect
 	github.com/gofrs/flock v0.8.1 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.2 // indirect
@@ -37,6 +38,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/plar/go-adaptive-radix-tree v1.0.4 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
+	github.com/technoweenie/multipartstreamer v1.0.1 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect

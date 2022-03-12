@@ -76,14 +76,14 @@ func GetDictionary(from, to, text string) ([]Dictionary, error) {
 }
 
 type SuggestionResult struct {
-	Items []SuggestionsItems `json:"items"`
+	Items []SuggestionsItem `json:"items"`
 	StartPos string `json:"startPos"`
 	HasNextPage bool `json:"hasNextPage"`
 	Prefix string `json:"prefix"`
 	TargetLanguageID int `json:"targetLanguageId"`
 	SourceLanguageID int `json:"sourceLanguageId"`
 }
-type SuggestionsItems struct {
+type SuggestionsItem struct {
 	Heading string `json:"heading"`
 	LingvoTranslations string `json:"lingvoTranslations"`
 	LingvoSoundFileName string `json:"lingvoSoundFileName"`

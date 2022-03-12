@@ -21,7 +21,6 @@ github.com/abcum/lcp
 github.com/andybalholm/cascadia
 # github.com/emvi/iso-639-1 v1.0.1
 ## explicit
-github.com/emvi/iso-639-1
 # github.com/go-errors/errors v1.4.1
 ## explicit; go 1.14
 github.com/go-errors/errors
@@ -31,8 +30,10 @@ github.com/go-resty/resty/v2
 # github.com/go-sql-driver/mysql v1.6.0
 ## explicit; go 1.10
 github.com/go-sql-driver/mysql
-# github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.0.2-0.20210820200834-309d612d7095
-## explicit; go 1.13
+# github.com/go-telegram-bot-api/telegram-bot-api v4.6.4+incompatible
+## explicit
+# github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
+## explicit; go 1.16
 github.com/go-telegram-bot-api/telegram-bot-api/v5
 # github.com/gofrs/flock v0.8.1
 ## explicit
@@ -74,6 +75,8 @@ github.com/robfig/cron
 # github.com/sirupsen/logrus v1.8.1
 ## explicit; go 1.13
 github.com/sirupsen/logrus
+# github.com/technoweenie/multipartstreamer v1.0.1
+## explicit
 # github.com/tidwall/gjson v1.13.0
 ## explicit; go 1.12
 github.com/tidwall/gjson
