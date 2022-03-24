@@ -16,9 +16,9 @@ import (
 )
 
 const (
-	DashBotAPIKey = "cjVjdWDRijXDk5kl9yGi5TTS9XImME7HbZMOg09F"
-	AdminID       = 579515224
-	botToken string = "1737819626:AAEJyD8fnSHdkh6VP3ePdwFkpEnrirLMHp4" //
+	DashBotAPIKey        = "cjVjdWDRijXDk5kl9yGi5TTS9XImME7HbZMOg09F"
+	AdminID              = 579515224
+	botToken      string = "1737819626:AAEJyD8fnSHdkh6VP3ePdwFkpEnrirLMHp4" //
 )
 
 var (
@@ -44,13 +44,12 @@ var WitAPIKeys = map[string]string{
 
 func Load() error {
 
-
 	// Initializing PostgreSQL DB
 	var err error
 	db, err = gorm.Open(mysql.Open("f0568401_user:NlEbEgda@tcp(141.8.193.236:3306)/f0568401_user?charset=utf8mb4&parseTime=True&loc=Local"), &gorm.Config{
-		SkipDefaultTransaction:                   true,
-		CreateBatchSize: 1000,
-		PrepareStmt: true,
+		SkipDefaultTransaction: true,
+		CreateBatchSize:        1000,
+		PrepareStmt:            true,
 	})
 	if err != nil {
 		panic(err)
@@ -62,7 +61,6 @@ func Load() error {
 	sqlDb.SetMaxOpenConns(24)
 	sqlDb.SetMaxIdleConns(24)
 	sqlDb.SetConnMaxLifetime(15 * time.Minute)
-
 
 	// Initializing bot
 	token := os.Getenv("BOT_TOKEN")
@@ -82,7 +80,6 @@ func Load() error {
 		return err
 	}
 
-
 	// Initializing analytics
 	analytics = dashbot.NewAPI(DashBotAPIKey, func(err error) {
 		pp.Println(err)
@@ -94,12 +91,11 @@ func Load() error {
 	if err = cronjob.AddFunc("@daily", func() {
 		if err = db.Model(&tables.UsersLogs{}).Exec("DELETE FROM users_logs WHERE date < (NOW() - INTERVAL 30 DAY)").Error; err != nil {
 			pp.Println(err)
-			bot.Send(tgbotapi.NewMessage(AdminID, fmt.Sprint(err) + "\n\nIT'S FROM config.go"))
+			bot.Send(tgbotapi.NewMessage(AdminID, fmt.Sprint(err)+"\n\nIT'S FROM config.go"))
 		}
 	}); err != nil {
 		panic(err)
 	}
-
 
 	return nil
 }

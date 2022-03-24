@@ -16,6 +16,11 @@ type Users struct {
 	Usings int `gorm:"default:0"`
 	Blocked bool `gorm:"default:false"`
 	LastActivity time.Time
+	Lang string `gorm:"-"` // internal
+}
+
+func (u *Users) SetLang(lang string) {
+	u.Lang = lang
 }
 
 func (u Users) Localize(key string, placeholders ...interface{}) string {
@@ -120,7 +125,7 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 		"Переводы": map[string]string{
 			"uk": "Переклади",
 			"pt": "Transferências",
-			"en": "Transfers",
+			"en": "Translations",
 			"de": "Übersetzungen",
 			"es": "Traducciones",
 			"it": "Traduzioni",
@@ -240,7 +245,7 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 	}
 
 	if v, ok := localization[key]; ok {
-		if v, ok := v[u.MyLang]; ok {
+		if v, ok := v[u.Lang]; ok {
 			return fmt.Sprintf(v, placeholders...)
 		}
 	}

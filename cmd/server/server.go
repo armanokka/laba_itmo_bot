@@ -19,11 +19,11 @@ func Run() error {
 	// Ports for Heroku
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "80"
+		port = "8080"
 	}
 	r.Handle("/", http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		fmt.Fprint(writer, "ok")
 	}))
 
-	return http.ListenAndServe(":" + port, r)
+	return http.ListenAndServe(":"+port, r)
 }

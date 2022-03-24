@@ -27,7 +27,7 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 		pp.Println("onInlineQuery: error", err)
 	}
 
-	user := tables.Users{MyLang: update.From.LanguageCode}
+	user := tables.Users{Lang: update.From.LanguageCode}
 
 	if update.Query == "" {
 		kbLoc := tgbotapi.NewInlineKeyboardMarkup(

@@ -7,7 +7,7 @@ import (
 )
 
 func (app App) onMyChatMember(update tgbotapi.ChatMemberUpdated) {
-	user := tables.Users{MyLang: update.From.LanguageCode}
+	user := tables.Users{Lang: update.From.LanguageCode}
 
 	//warn := func(err error) {
 	//	app.bot.Send(tgbotapi.NewMessage(update.From.ID, user.Localize("Произошла ошибка")))
