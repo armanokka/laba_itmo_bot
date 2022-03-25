@@ -140,9 +140,7 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 	}()
 
 	blocks := make([]interface{}, 0, 50)
-	keyboard := tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonSwitch("translate", "")))
+
 	from := ""
 	codesBlocks := make(map[string]int, 50) // мапа из кодов codes к соответствующим индексам blocks
 	for i, code := range codes[offset : offset+count] {
@@ -153,7 +151,7 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 			defer wg.Done()
 
 			title := langs[code].Name
-			if offset == 0 && i < 18 {
+			if offset == 0 && i <= 17 {
 				title += " 📌"
 			}
 			tr, err := translate2.GoogleTranslate("auto", code, update.Query)
@@ -165,6 +163,19 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 			if from != "" {
 				from = tr.FromLang
 			}
+
+			keyboard := tgbotapi.NewInlineKeyboardMarkup(
+				tgbotapi.NewInlineKeyboardRow(
+					tgbotapi.InlineKeyboardButton{
+						Text:                         "translate",
+						URL:                          nil,
+						LoginURL:                     nil,
+						CallbackData:                 nil,
+						SwitchInlineQuery:            nil,
+						SwitchInlineQueryCurrentChat: &tr.Text,
+						CallbackGame:                 nil,
+						Pay:                          false,
+					}))
 
 			mu.Lock()
 			blocks = append(blocks, tgbotapi.InlineQueryResultArticle{
