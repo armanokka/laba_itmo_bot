@@ -9,14 +9,14 @@ import (
 
 // Users is table in DB
 type Users struct {
-	ID     int64 `gorm:"primaryKey;index;not null"`
-	MyLang string
-	ToLang string
-	Act string
-	Usings int `gorm:"default:0"`
-	Blocked bool `gorm:"default:false"`
+	ID           int64 `gorm:"primaryKey;index;not null"`
+	MyLang       string
+	ToLang       string
+	Act          string
+	Usings       int  `gorm:"default:0"`
+	Blocked      bool `gorm:"default:false"`
 	LastActivity time.Time
-	Lang string `gorm:"-"` // internal
+	Lang         string `gorm:"-"` // internal
 }
 
 func (u *Users) SetLang(lang string) {
@@ -242,6 +242,18 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"ar": "الآن سوف تترجم من %s إلى %s والعودة مرة أخرى. إذا كنت ترغب في تغيير كتابة /بدء",
 			"ru": "Теперь я буду переводить с %s на %s и обратно. Если захочешь изменить, напишешь /start",
 		},
+		"не получилось перевести": map[string]string{
+			"de": "hat nicht funktioniert übersetzen",
+			"uk": "не вийшло перевести",
+			"it": "non è riuscito a tradurre",
+			"ar": "لم أستطع ترجمته",
+			"en": "couldn't translate it",
+			"es": "no pude traducir",
+			"uz": "tarjima qila olmadi",
+			"id": "tidak bisa menerjemahkannya",
+			"pt": "não conseguimos traduzir",
+			"ru": "не получилось перевести",
+		},
 	}
 
 	if v, ok := localization[key]; ok {
@@ -253,9 +265,9 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 }
 
 type UsersLogs struct {
-	ID int64 // fk users.id
-	Intent sql.NullString // varchar(25)
-	Text string // varchar(518)
+	ID      int64          // fk users.id
+	Intent  sql.NullString // varchar(25)
+	Text    string         // varchar(518)
 	FromBot bool
-	Date time.Time
+	Date    time.Time
 }

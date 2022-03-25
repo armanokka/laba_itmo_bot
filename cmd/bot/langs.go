@@ -1,8 +1,7 @@
 package bot
 
-
 type Lang struct {
-	Name string
+	Name  string
 	Emoji string
 }
 
@@ -879,4 +878,13 @@ var codes = []string{
 	"xh",
 	"yi",
 	"yo",
+}
+
+func getIndex(codes []string, code string) int {
+	for i, v := range codes {
+		if v == code {
+			return i
+		}
+	}
+	return 0
 }
