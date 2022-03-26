@@ -24,23 +24,22 @@ import (
 )
 
 type App struct {
-	bot *botapi.BotAPI
-	log *zap.Logger
+	bot       *botapi.BotAPI
+	log       *zap.Logger
 	db        repos.BotDB
 	analytics dashbot.DashBot
-	bc *bitcask.Bitcask
+	bc        *bitcask.Bitcask
 }
 
-func New(bot *botapi.BotAPI, db repos.BotDB, analytics dashbot.DashBot, logger *zap.Logger,  bc *bitcask.Bitcask) App {
+func New(bot *botapi.BotAPI, db repos.BotDB, analytics dashbot.DashBot, logger *zap.Logger, bc *bitcask.Bitcask) App {
 	return App{
 		bot:       bot,
 		db:        db,
 		analytics: analytics,
 		log:       logger,
-		bc: bc,
+		bc:        bc,
 	}
 }
-
 
 func (app App) Run(ctx context.Context) error {
 	app.bot.MakeRequest("deleteWebhook", map[string]string{})
@@ -58,7 +57,7 @@ func (app App) Run(ctx context.Context) error {
 				defer func() {
 					if err := recover(); err != nil {
 						app.log.Error("%w", zap.Any("error", err))
-						app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Panic:" + fmt.Sprint(err)))
+						app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Panic:"+fmt.Sprint(err)))
 					}
 				}()
 
@@ -85,11 +84,6 @@ func (app App) Run(ctx context.Context) error {
 							update.MyChatMember.From.LanguageCode = "en"
 						}
 						app.onMyChatMember(*update.MyChatMember)
-					} else if update.ChosenInlineResult != nil {
-						if update.ChosenInlineResult.From.LanguageCode == "" {
-							update.ChosenInlineResult.From.LanguageCode = "en"
-						}
-						app.chosenInlineResult(*update.ChosenInlineResult)
 					}
 				}()
 
@@ -111,8 +105,8 @@ func (app App) notifyAdmin(args ...interface{}) {
 	}
 	text += "\n\n" + string(debug.Stack())
 	if _, err := app.bot.Send(tgbotapi.MessageConfig{
-		BaseChat:              tgbotapi.BaseChat{
-			ChatID:                   config.AdminID,
+		BaseChat: tgbotapi.BaseChat{
+			ChatID: config.AdminID,
 		},
 		Text:                  text,
 		ParseMode:             "",
@@ -154,14 +148,13 @@ func (app App) notifyAdmin(args ...interface{}) {
 //	return nil
 //}
 
-
 func (app App) SuperTranslate(user tables.Users, from, to, text string, entities []tgbotapi.MessageEntity) (ret SuperTranslation, err error) {
 	text = applyEntitiesHtml(text, entities)
 	//text = html.EscapeString(text)
 
 	var (
-		rev = translate2.ReversoTranslation{}
-		dict = translate2.GoogleDictionaryResponse{}
+		rev         = translate2.ReversoTranslation{}
+		dict        = translate2.GoogleDictionaryResponse{}
 		suggestions *lingvo.SuggestionResult
 		//lingv []lingvo.Dictionary
 	)
@@ -271,7 +264,6 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 		}
 		return nil
 	})
-
 
 	if err = g.Wait(); err != nil {
 		return SuperTranslation{}, err

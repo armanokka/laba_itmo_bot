@@ -21,6 +21,8 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		pp.Println(err)
 	}
 
+	//user := tables.Users{Lang: callback.From.LanguageCode}
+
 	arr := strings.Split(callback.Data, ":")
 
 	defer func() {
@@ -28,7 +30,6 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			app.notifyAdmin(fmt.Errorf("%w", err))
 		}
 	}()
-
 
 	switch arr[0] {
 	case "none":
@@ -38,8 +39,8 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 	case "delete":
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
 		app.bot.Send(tgbotapi.DeleteMessageConfig{
-			ChatID:          callback.From.ID,
-			MessageID:       callback.Message.MessageID,
+			ChatID:    callback.From.ID,
+			MessageID: callback.Message.MessageID,
 		})
 		app.db.LogBotMessage(callback.From.ID, "cb_delete", "")
 		return
@@ -54,7 +55,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			return
 		}
 		go func() {
-			if err := app.sendSpeech(user ,arr[1], callback.Message.ReplyToMessage.Text, callback.ID); err != nil { // озвучиваем непереведенное сообщение
+			if err := app.sendSpeech(user, arr[1], callback.Message.ReplyToMessage.Text, callback.ID); err != nil { // озвучиваем непереведенное сообщение
 				warn(err)
 				return
 			}
@@ -106,11 +107,8 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			text = tr.TranslatedText
 		}
 
-
-
-
 		app.bot.Send(tgbotapi.MessageConfig{
-			BaseChat:              tgbotapi.BaseChat{
+			BaseChat: tgbotapi.BaseChat{
 				ChatID:                   callback.From.ID,
 				ChannelUsername:          "",
 				ReplyToMessageID:         callback.Message.MessageID,
@@ -156,11 +154,10 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 				count++
 			}
 		}
-		text = strings.NewReplacer("<em>","<b>", "</em>", "</b>").Replace(text)
-
+		text = strings.NewReplacer("<em>", "<b>", "</em>", "</b>").Replace(text)
 
 		if _, err = app.bot.Send(tgbotapi.MessageConfig{
-			BaseChat:              tgbotapi.BaseChat{
+			BaseChat: tgbotapi.BaseChat{
 				ChatID:                   callback.From.ID,
 				ChannelUsername:          "",
 				ReplyToMessageID:         callback.Message.MessageID,
@@ -183,8 +180,8 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 
 		var (
 			trscript translate2.YandexTranscriptionResponse
-			err error
-			rev translate2.ReversoTranslation
+			err      error
+			rev      translate2.ReversoTranslation
 		)
 		reversoTo := translate2.ReversoIso6392(arr[1])
 		reversoFrom := translate2.ReversoIso6392(arr[2])
@@ -212,8 +209,6 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			warn(err)
 			return
 		}
-
-
 
 		var text string
 		var wg sync.WaitGroup
@@ -272,7 +267,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		}
 
 		if _, err = app.bot.Send(tgbotapi.MessageConfig{
-			BaseChat:              tgbotapi.BaseChat{
+			BaseChat: tgbotapi.BaseChat{
 				ChatID:                   callback.From.ID,
 				ChannelUsername:          "",
 				ReplyToMessageID:         callback.Message.MessageID,
@@ -306,10 +301,10 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		from := arr[1]
 		to := arr[2]
 		if err := app.db.UpdateUserByMap(callback.From.ID, map[string]interface{}{
-			"my_lang": to,
-			"to_lang": from,
+			"my_lang":       to,
+			"to_lang":       from,
 			"last_activity": time.Now(),
-			"act": "",
+			"act":           "",
 		}); err != nil {
 			warn(err)
 			return
@@ -329,20 +324,20 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 
 		keyboard := tgbotapi.NewInlineKeyboardMarkup(
 			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("🔊 " + user.Localize("Озвучить"), fmt.Sprintf("speech_this_message_and_replied_one:%s:%s", from, to))))
+				tgbotapi.NewInlineKeyboardButtonData("🔊 "+user.Localize("Озвучить"), fmt.Sprintf("speech_this_message_and_replied_one:%s:%s", from, to))))
 		if answer.Examples {
-			keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0], tgbotapi.NewInlineKeyboardButtonData("💬 " + user.Localize("Примеры"), fmt.Sprintf("exm:%s:%s", from, to)))
+			keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0], tgbotapi.NewInlineKeyboardButtonData("💬 "+user.Localize("Примеры"), fmt.Sprintf("exm:%s:%s", from, to)))
 		}
 		if answer.Translations {
 			keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("📚 " + user.Localize("Переводы"), fmt.Sprintf("trs:%s:%s", from, to))))
+				tgbotapi.NewInlineKeyboardButtonData("📚 "+user.Localize("Переводы"), fmt.Sprintf("trs:%s:%s", from, to))))
 		}
 		if answer.Dictionary {
 			l := len(keyboard.InlineKeyboard) - 1
 			if l < 0 {
 				l = 0
 			}
-			keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData("ℹ️" + user.Localize("Словарь"), fmt.Sprintf("dict:%s", from)))
+			keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData("ℹ️"+user.Localize("Словарь"), fmt.Sprintf("dict:%s", from)))
 		}
 
 		//if answer.Suggestions {
@@ -351,7 +346,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		//}
 
 		if _, err = app.bot.Send(tgbotapi.MessageConfig{
-			BaseChat:              tgbotapi.BaseChat{
+			BaseChat: tgbotapi.BaseChat{
 				ChatID:                   callback.From.ID,
 				ChannelUsername:          "",
 				ReplyToMessageID:         callback.Message.ReplyToMessage.MessageID,
@@ -378,13 +373,13 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			warn(err)
 			return
 		}
-		if offset < 0 || offset > len(codes) - 1 {
+		if offset < 0 || offset > len(codes)-1 {
 			warn(fmt.Errorf("offset is too big, len(codes) is %d, offset ois %d", len(codes), offset))
 			return
 		}
 
 		count := 18
-		if offset + count > len(codes) - 1 {
+		if offset+count > len(codes)-1 {
 			count = len(codes) - 1 - offset
 		}
 
@@ -419,7 +414,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		}})
 		if err != nil {
 			app.bot.Send(tgbotapi.MessageConfig{
-				BaseChat:              tgbotapi.BaseChat{
+				BaseChat: tgbotapi.BaseChat{
 					ChatID:                   callback.From.ID,
 					ChannelUsername:          "",
 					ReplyToMessageID:         0,
@@ -433,15 +428,15 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 				DisableWebPagePreview: false,
 			})
 		}
-	//case "inline_translate": //arr[1] - lang
-	//	pp.Println(callback)
-	//	tr, err := translate2.MicrosoftTranslate("", arr[1], callback.Message.Text)
-	//	if err != nil {
-	//		warn(err)
-	//		return
-	//	}
-	//	app.bot.Send(tgbotapi.NewEditMessageText(callback.From.ID, callback.Message.MessageID, tr.TranslatedText))
-	//	default:
-	//	app.bot.Send(tgbotapi.NewMessage(callback.From.ID, "Action is expired. Send /start"))
+		//case "inline_translate": //arr[1] - lang
+		//	pp.Println(callback)
+		//	tr, err := translate2.MicrosoftTranslate("", arr[1], callback.Message.Text)
+		//	if err != nil {
+		//		warn(err)
+		//		return
+		//	}
+		//	app.bot.Send(tgbotapi.NewEditMessageText(callback.From.ID, callback.Message.MessageID, tr.TranslatedText))
+		//	default:
+		//	app.bot.Send(tgbotapi.NewMessage(callback.From.ID, "Action is expired. Send /start"))
 	}
 }
