@@ -304,6 +304,18 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"uz": "Muloqot yakunlandi",
 			"id": "Dialog selesai",
 		},
+		"Chat mode": map[string]string{
+			"id": "Modus chatting",
+			"it": "Modalità Chat",
+			"en": "Chat mode",
+			"uk": "Режим чату",
+			"uz": "Chat tartibi",
+			"pt": "Modo de bate-papo",
+			"ar": "وضع دردشة",
+			"ru": "Режим чата",
+			"de": "Chat-Modus",
+			"es": "El modo de Chat",
+		},
 	}
 
 	if v, ok := localization[key]; ok {

@@ -339,8 +339,17 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	ret.TranslatedText = html.UnescapeString(ret.TranslatedText)
 
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
-		//tgbotapi.NewInlineKeyboardRow(
-		//	tgbotapi.NewInlineKeyboardButtonSwitch()) // inline
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.InlineKeyboardButton{
+				Text:                         user.Localize("Chat mode"),
+				URL:                          nil,
+				LoginURL:                     nil,
+				CallbackData:                 nil,
+				SwitchInlineQuery:            &text,
+				SwitchInlineQueryCurrentChat: nil,
+				CallbackGame:                 nil,
+				Pay:                          false,
+			}), // inline
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("🔊 "+user.Localize("Озвучить"), fmt.Sprintf("speech_this_message_and_replied_one:%s:%s", from, to))))
 	if ret.Examples {
