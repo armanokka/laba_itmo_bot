@@ -32,6 +32,14 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 	}()
 
 	switch arr[0] {
+	case "cancel_mailing_act":
+		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, "OK"))
+		if err := app.db.UpdateUserByMap(callback.From.ID, map[string]interface{}{"act": ""}); err != nil {
+			warn(err)
+			return
+		}
+		app.bot.Send(tgbotapi.NewDeleteMessage(callback.From.ID, callback.Message.MessageID))
+		app.bot.Send(tgbotapi.NewDeleteMessage(callback.From.ID, callback.Message.ReplyToMessage.MessageID))
 	case "none":
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
 		app.db.LogBotMessage(callback.From.ID, "cb_none", "")

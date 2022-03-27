@@ -254,30 +254,17 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"pt": "não conseguimos traduzir",
 			"ru": "не получилось перевести",
 		},
-		"/report": map[string]string{
-			"en": "Here you can write <a href=\"tg://user?id=579515224\">me</a> (the creator of this translator) anything from a greeting card to a complaint :D\nWrite a message and wait for my response, don't get bored",
-			"it": "Qui è possibile scrivere <a href=\"tg://user?id=579515224\">a me</a> (il creatore di questo traduttore) qualsiasi cosa, da un biglietto di auguri alle lamentele :D\nScrivere il messaggio e attendere la mia risposta, non si annoia",
-			"pt": "Aqui você pode escrever <a href=\"tg://user?id=579515224\">- me</a> (criador do tradutor) qualquer coisa a partir de um cartão de felicitações a denúncia :D\nEscreva a sua mensagem e aguarde minha resposta, não faça tudo igual",
-			"ru": "Здесь вы можете написать <a href=\"tg://user?id=579515224\">мне</a> (создателю этого переводчика) что угодно, от поздравительной открытки до жалобы :D\nНапишите сообщение и дождитесь моего ответа, не скучайте",
-			"de": "Hier können Sie schreiben <a href=\"tg://user?id=579515224\">mir</a> (Schöpfer dieser übersetzer) was auch immer, von der Grußkarte bis Beschwerden :D\nSchreiben Sie Ihre Nachricht und warten Sie auf meine Antwort, verpassen Sie nicht",
-			"es": "Aquí usted puede escribir <a href=\"tg://user?id=579515224\">a mí</a> (creador de esta interpretación) cualquier cosa, desde una tarjeta de felicitación a la queja :D\nEscriba el mensaje y espere mi respuesta, no скучайте",
-			"uk": "Тут ви можете написати <a href=\"tg://user?id=579515224\">мені</a> (творцеві цього перекладача) що завгодно, від вітальної листівки до скарги :D\nНапишіть повідомлення і дочекайтеся моєї відповіді, не нудьгуйте",
-			"uz": "Bu erda siz <a href=\"tg://user?id=579515224\">menga</a> (ushbu tarjimonning yaratuvchisi) tabrik kartasidan shikoyatga qadar biror narsa yozishingiz mumkin: D\nXabarni yozing va javobimni kuting, zerikmang",
-			"id": "Di sini anda dapat menulis <a href=\"tg://user?id=579515224\">saya</a> (pencipta penerjemah ini) apa-apa dari kartu ucapan untuk keluhan :D\nMenulis pesan dan menunggu tanggapan saya, jangan bosan",
-			"ar": "هنا يمكنك أن تكتب <a href=\"tg://user?id=579515224\">لي</a> (خالق هذا المترجم) أي من بطاقات المعايدة إلى شكوى :D\nإرسال رسالة وانتظر ردي, لا تحصل على بالملل",
-		},
-
-		"Отменить": map[string]string{
-			"en": "Cancel",
-			"es": "Cancelar",
-			"uk": "Скасувати",
-			"ar": "إلغاء",
-			"pt": "Para cancelar",
-			"ru": "Отменить",
-			"de": "Stornieren",
-			"uz": "Bekor qilish",
-			"id": "Membatalkan",
-			"it": "Annullare",
+		"Report a bug or suggest a feature": map[string]string{
+			"en": "Report a bug or suggest a feature",
+			"es": "Informar de un error o sugerir una característica",
+			"uz": "Xato haqida xabar bering yoki xususiyatni taklif qiling",
+			"ru": "Сообщите об ошибке или предложите функцию",
+			"de": "Report a bug oder ein feature vorschlagen",
+			"uk": "Повідомте про помилку або запропонуйте функцію",
+			"id": "Melaporkan bug atau menyarankan fitur",
+			"it": "Segnalare un bug o suggerire una funzione",
+			"pt": "Comunicar um erro ou \" sugerir um recurso",
+			"ar": "تقرير الشوائب أو اقتراح ميزة",
 		},
 		"Завершить диалог": map[string]string{
 			"ru": "Завершить диалог",
@@ -291,7 +278,6 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"it": "Terminare il dialogo",
 			"ar": "في نهاية الحوار",
 		},
-
 		"Диалог завершен": map[string]string{
 			"it": "Conversazione",
 			"pt": "A conversa terminou",
@@ -332,4 +318,12 @@ type UsersLogs struct {
 	Text    string         // varchar(518)
 	FromBot bool
 	Date    time.Time
+}
+
+type Mailing struct {
+	ID int64 // fk users.id
+}
+
+func (Mailing) TableName() string {
+	return "mailing"
 }

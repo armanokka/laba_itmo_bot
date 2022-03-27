@@ -19,6 +19,7 @@ import (
 	"html"
 	"os"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -47,7 +48,7 @@ func (app App) Run(ctx context.Context) error {
 	app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Bot have started"))
 	g, ctx := errgroup.WithContext(ctx)
 	wg := sync.WaitGroup{}
-	g.Go(func() error {
+	g.Go(func() error { // бот
 		for {
 			select {
 			case <-ctx.Done():
@@ -89,6 +90,65 @@ func (app App) Run(ctx context.Context) error {
 
 			}
 		}
+	})
+	g.Go(func() error {
+		pp.Println("чекаем не завалялась ли рассылка")
+		exists, err := app.db.MailingExists()
+		if err != nil {
+			return err
+		}
+		if exists {
+			pp.Println("рассылка есть, продолжаю")
+			mailingMessageIDBytes, err := app.bc.Get([]byte("mailing_message_id"))
+			if err != nil {
+				return err
+			}
+			mailingMessageID, err := strconv.Atoi(string(mailingMessageIDBytes))
+			if err != nil {
+				return err
+			}
+			rows, err := app.db.GetMailersRows()
+			if err != nil {
+				return err
+			}
+
+			defer rows.Close()
+			for rows.Next() {
+				var id int64
+				if err = rows.Scan(&id); err != nil {
+					return err
+				}
+				if _, err = app.bot.Send(tgbotapi.CopyMessageConfig{
+					BaseChat: tgbotapi.BaseChat{
+						ChatID:                   id,
+						ChannelUsername:          "",
+						ReplyToMessageID:         0,
+						ReplyMarkup:              nil,
+						DisableNotification:      false,
+						AllowSendingWithoutReply: false,
+					},
+					FromChatID:          config.AdminID,
+					FromChannelUsername: "",
+					MessageID:           mailingMessageID,
+					Caption:             "",
+					ParseMode:           "",
+					CaptionEntities:     nil,
+				}); err != nil {
+					return err
+				}
+				if err = app.db.DeleteMailuser(id); err != nil {
+					return err
+				}
+			}
+
+			if err = app.db.DropMailings(); err != nil {
+				return err
+			}
+			app.bot.Send(tgbotapi.NewMessage(config.AdminID, "рассылка закончена"))
+		} else {
+			pp.Println("рассылок нет")
+		}
+		return nil
 	})
 	return g.Wait()
 }

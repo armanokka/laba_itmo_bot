@@ -26,7 +26,7 @@ func (db BotDB) CreateUser(user tables.Users) (err error) {
 	return db.Create(&user).Error
 }
 
-func (db BotDB) UpdateUser(id int64, updates tables.Users) (error) {
+func (db BotDB) UpdateUser(id int64, updates tables.Users) error {
 	return db.Model(&tables.Users{}).Where("id = ?", id).Updates(updates).Error
 }
 

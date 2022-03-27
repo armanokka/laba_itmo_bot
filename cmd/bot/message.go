@@ -98,7 +98,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			warn(err)
 			return
 		}
-		app.bot.Send(tgbotapi.NewMessage(config.AdminID, fmt.Sprintf("%s %s @%s закончил диалог с поддержкой", message.From.FirstName, message.From.LastName, message.From.UserName)))
 		return
 	}
 
@@ -127,59 +126,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			CaptionEntities:     nil,
 		}); err != nil {
 			warn(err)
-		}
-	}
-
-	switch user.Act {
-	case "setup_langs":
-		fromLang, err := translate.GoogleTranslate("auto", "en", cutStringUTF16(message.Text, 100))
-		if err != nil {
-			warn(err)
-		}
-		from := fromLang.FromLang
-
-		keyboard, err := buildLangsPagination(0, 18, fromLang.FromLang, fmt.Sprintf("setup_langs:%s:%s", from, "%s"), fmt.Sprintf("setup_langs_pagination:%s:0", from), fmt.Sprintf("setup_langs_pagination:%s:18", from))
-		if err != nil {
-			warn(err)
-		}
-		if _, err = app.bot.Send(tgbotapi.MessageConfig{
-			BaseChat: tgbotapi.BaseChat{
-				ChatID:                   message.From.ID,
-				ChannelUsername:          "",
-				ReplyToMessageID:         message.MessageID,
-				ReplyMarkup:              keyboard,
-				DisableNotification:      true,
-				AllowSendingWithoutReply: false,
-			},
-			Text:                  user.Localize("На какой язык перевести?"),
-			ParseMode:             "",
-			Entities:              nil,
-			DisableWebPagePreview: true,
-		}); err != nil {
-			pp.Println(err)
-		}
-		return
-	case "talk_to_support":
-		if _, err = app.bot.CopyMessage(tgbotapi.CopyMessageConfig{
-			BaseChat: tgbotapi.BaseChat{
-				ChatID:           config.AdminID,
-				ChannelUsername:  "",
-				ReplyToMessageID: 0,
-				ReplyMarkup: tgbotapi.NewInlineKeyboardMarkup(
-					tgbotapi.NewInlineKeyboardRow(
-						tgbotapi.NewInlineKeyboardButtonURL(message.From.FirstName, "tg://user?id="+strconv.FormatInt(message.From.ID, 10)))),
-				DisableNotification:      false,
-				AllowSendingWithoutReply: false,
-			},
-			FromChatID:          message.From.ID,
-			FromChannelUsername: "",
-			MessageID:           message.MessageID,
-			Caption:             "",
-			ParseMode:           "",
-			CaptionEntities:     nil,
-		}); err != nil {
-			warn(err)
-			return
 		}
 		return
 	}
@@ -251,7 +197,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				DisableNotification:      false,
 				AllowSendingWithoutReply: false,
 			},
-			Text:                  user.Localize("/report"),
+			Text:                  user.Localize("Report a bug or suggest a feature"),
 			ParseMode:             tgbotapi.ModeHTML,
 			Entities:              nil,
 			DisableWebPagePreview: true,
@@ -262,7 +208,146 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		if err = app.db.UpdateUser(message.From.ID, tables.Users{Act: "talk_to_support"}); err != nil {
 			warn(err)
 		}
-		app.bot.Send(tgbotapi.NewMessage(config.AdminID, fmt.Sprintf("%s %s @%s начал диалог с поддержкой", message.From.FirstName, message.From.LastName, message.From.UserName)))
+		return
+	case "mailing":
+		if err = app.db.UpdateUser(message.From.ID, tables.Users{Act: "mailing"}); err != nil {
+			warn(err)
+			return
+		}
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("отменить", "cancel_mailing_act"),
+			),
+		)
+
+		app.bot.Send(tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:                   message.From.ID,
+				ChannelUsername:          "",
+				ReplyToMessageID:         message.MessageID,
+				ReplyMarkup:              keyboard,
+				DisableNotification:      false,
+				AllowSendingWithoutReply: false,
+			},
+			Text:                  "отправь сообщение для рассылки",
+			ParseMode:             "",
+			Entities:              nil,
+			DisableWebPagePreview: false,
+		})
+		return
+	}
+
+	switch user.Act {
+	case "mailing":
+		if err := app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": ""}); err != nil {
+			warn(err)
+			return
+		}
+		app.bot.Send(tgbotapi.NewMessage(message.From.ID, "рассылка начата"))
+		if err = app.db.DropMailings(); err != nil {
+			warn(err)
+			return
+		}
+		if err = app.db.CreateMailingTable(); err != nil {
+			warn(err)
+			return
+		}
+		if err = app.bc.Put([]byte("mailing_message_id"), []byte(strconv.Itoa(message.MessageID))); err != nil {
+			warn(err)
+			return
+		}
+
+		rows, err := app.db.GetMailersRows()
+		if err != nil {
+			warn(err)
+			return
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var id int64
+			if err = rows.Scan(&id); err != nil {
+				warn(err)
+				return
+			}
+			if _, err = app.bot.Send(tgbotapi.CopyMessageConfig{
+				BaseChat: tgbotapi.BaseChat{
+					ChatID:                   id,
+					ChannelUsername:          "",
+					ReplyToMessageID:         0,
+					ReplyMarkup:              nil,
+					DisableNotification:      false,
+					AllowSendingWithoutReply: false,
+				},
+				FromChatID:          config.AdminID,
+				FromChannelUsername: "",
+				MessageID:           message.MessageID,
+				Caption:             "",
+				ParseMode:           "",
+				CaptionEntities:     nil,
+			}); err != nil {
+				pp.Println(err)
+			}
+			if err = app.db.DeleteMailuser(id); err != nil {
+				warn(err)
+			}
+		}
+		err = app.db.DropMailings()
+		if err != nil {
+			warn(err)
+			return
+		}
+		app.bot.Send(tgbotapi.NewMessage(message.From.ID, "рассылка закончена"))
+		return
+	case "setup_langs":
+		fromLang, err := translate.GoogleTranslate("auto", "en", cutStringUTF16(message.Text, 100))
+		if err != nil {
+			warn(err)
+		}
+		from := fromLang.FromLang
+
+		keyboard, err := buildLangsPagination(0, 18, fromLang.FromLang, fmt.Sprintf("setup_langs:%s:%s", from, "%s"), fmt.Sprintf("setup_langs_pagination:%s:0", from), fmt.Sprintf("setup_langs_pagination:%s:18", from))
+		if err != nil {
+			warn(err)
+		}
+		if _, err = app.bot.Send(tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:                   message.From.ID,
+				ChannelUsername:          "",
+				ReplyToMessageID:         message.MessageID,
+				ReplyMarkup:              keyboard,
+				DisableNotification:      true,
+				AllowSendingWithoutReply: false,
+			},
+			Text:                  user.Localize("На какой язык перевести?"),
+			ParseMode:             "",
+			Entities:              nil,
+			DisableWebPagePreview: true,
+		}); err != nil {
+			pp.Println(err)
+		}
+		return
+	case "talk_to_support":
+		if _, err = app.bot.CopyMessage(tgbotapi.CopyMessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:           config.AdminID,
+				ChannelUsername:  "",
+				ReplyToMessageID: 0,
+				ReplyMarkup: tgbotapi.NewInlineKeyboardMarkup(
+					tgbotapi.NewInlineKeyboardRow(
+						tgbotapi.NewInlineKeyboardButtonURL(message.From.FirstName, "tg://user?id="+strconv.FormatInt(message.From.ID, 10)))),
+				DisableNotification:      false,
+				AllowSendingWithoutReply: false,
+			},
+			FromChatID:          message.From.ID,
+			FromChannelUsername: "",
+			MessageID:           message.MessageID,
+			Caption:             "",
+			ParseMode:           "",
+			CaptionEntities:     nil,
+		}); err != nil {
+			warn(err)
+			return
+		}
 		return
 	}
 
