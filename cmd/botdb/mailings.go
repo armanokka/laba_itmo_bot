@@ -22,7 +22,7 @@ func (db BotDB) DropMailings() error {
 }
 
 func (db BotDB) CreateMailingTable() error {
-	return db.Model(&tables.Mailing{}).Exec(`CREATE TEMPORARY TABLE mailing SELECT id FROM users`).Error
+	return db.Model(&tables.Mailing{}).Exec(`CREATE TABLE mailing AS (SELECT id FROM users)`).Error
 }
 
 func (db BotDB) GetMailersRows() (rows *sql.Rows, err error) {
