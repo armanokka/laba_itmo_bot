@@ -67,68 +67,68 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	}
 	user.SetLang(message.From.LanguageCode)
 
-	switch message.Text {
-	case user.Localize("Завершить диалог"):
-		app.bot.Send(tgbotapi.MessageConfig{
-			BaseChat: tgbotapi.BaseChat{
-				ChatID:                   message.From.ID,
-				ChannelUsername:          "",
-				ReplyToMessageID:         0,
-				ReplyMarkup:              tgbotapi.NewRemoveKeyboard(false),
-				DisableNotification:      false,
-				AllowSendingWithoutReply: false,
-			},
-			Text:                  user.Localize("Диалог завершен"),
-			ParseMode:             "",
-			Entities:              nil,
-			DisableWebPagePreview: false,
-		})
-		app.bot.Send(tgbotapi.MessageConfig{
-			BaseChat: tgbotapi.BaseChat{
-				ChatID:                   message.From.ID,
-				ChannelUsername:          "",
-				ReplyToMessageID:         0,
-				ReplyMarkup:              tgbotapi.NewRemoveKeyboard(true),
-				DisableNotification:      true,
-				AllowSendingWithoutReply: false,
-			},
-			Text: user.Localize("Просто напиши мне текст, а я его переведу"),
-		})
-		if err := app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": ""}); err != nil {
-			warn(err)
-			return
-		}
-		return
-	}
+	//switch message.Text {
+	//case user.Localize("Завершить диалог"):
+	//	app.bot.Send(tgbotapi.MessageConfig{
+	//		BaseChat: tgbotapi.BaseChat{
+	//			ChatID:                   message.From.ID,
+	//			ChannelUsername:          "",
+	//			ReplyToMessageID:         0,
+	//			ReplyMarkup:              tgbotapi.NewRemoveKeyboard(false),
+	//			DisableNotification:      false,
+	//			AllowSendingWithoutReply: false,
+	//		},
+	//		Text:                  user.Localize("Диалог завершен"),
+	//		ParseMode:             "",
+	//		Entities:              nil,
+	//		DisableWebPagePreview: false,
+	//	})
+	//	app.bot.Send(tgbotapi.MessageConfig{
+	//		BaseChat: tgbotapi.BaseChat{
+	//			ChatID:                   message.From.ID,
+	//			ChannelUsername:          "",
+	//			ReplyToMessageID:         0,
+	//			ReplyMarkup:              tgbotapi.NewRemoveKeyboard(true),
+	//			DisableNotification:      true,
+	//			AllowSendingWithoutReply: false,
+	//		},
+	//		Text: user.Localize("Просто напиши мне текст, а я его переведу"),
+	//	})
+	//	if err := app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": ""}); err != nil {
+	//		warn(err)
+	//		return
+	//	}
+	//	return
+	//}
 
-	if message.From.ID == config.AdminID && message.ReplyToMessage != nil && message.ReplyToMessage.ReplyMarkup != nil {
-		id, err := strconv.ParseInt(strings.Split(*message.ReplyToMessage.ReplyMarkup.InlineKeyboard[0][0].URL, "=")[1], 10, 64)
-		if err != nil {
-			warn(err)
-			return
-		}
-		if _, err = app.bot.CopyMessage(tgbotapi.CopyMessageConfig{
-			BaseChat: tgbotapi.BaseChat{
-				ChatID:           id,
-				ChannelUsername:  "",
-				ReplyToMessageID: 0,
-				ReplyMarkup: tgbotapi.NewReplyKeyboard(
-					tgbotapi.NewKeyboardButtonRow(
-						tgbotapi.NewKeyboardButton(user.Localize("Завершить диалог")))),
-				DisableNotification:      false,
-				AllowSendingWithoutReply: false,
-			},
-			FromChatID:          message.From.ID,
-			FromChannelUsername: "",
-			MessageID:           message.MessageID,
-			Caption:             "",
-			ParseMode:           "",
-			CaptionEntities:     nil,
-		}); err != nil {
-			warn(err)
-		}
-		return
-	}
+	//if message.From.ID == config.AdminID && message.ReplyToMessage != nil && message.ReplyToMessage.ReplyMarkup != nil {
+	//	id, err := strconv.ParseInt(strings.Split(*message.ReplyToMessage.ReplyMarkup.InlineKeyboard[0][0].URL, "=")[1], 10, 64)
+	//	if err != nil {
+	//		warn(err)
+	//		return
+	//	}
+	//	if _, err = app.bot.CopyMessage(tgbotapi.CopyMessageConfig{
+	//		BaseChat: tgbotapi.BaseChat{
+	//			ChatID:           id,
+	//			ChannelUsername:  "",
+	//			ReplyToMessageID: 0,
+	//			ReplyMarkup: tgbotapi.NewReplyKeyboard(
+	//				tgbotapi.NewKeyboardButtonRow(
+	//					tgbotapi.NewKeyboardButton(user.Localize("Завершить диалог")))),
+	//			DisableNotification:      false,
+	//			AllowSendingWithoutReply: false,
+	//		},
+	//		FromChatID:          message.From.ID,
+	//		FromChannelUsername: "",
+	//		MessageID:           message.MessageID,
+	//		Caption:             "",
+	//		ParseMode:           "",
+	//		CaptionEntities:     nil,
+	//	}); err != nil {
+	//		warn(err)
+	//	}
+	//	return
+	//}
 
 	switch message.Command() {
 	case "start":
@@ -185,30 +185,30 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		}
 
 		return
-	case "report":
-		if _, err = app.bot.Send(tgbotapi.MessageConfig{
-			BaseChat: tgbotapi.BaseChat{
-				ChatID:           message.From.ID,
-				ChannelUsername:  "",
-				ReplyToMessageID: 0,
-				ReplyMarkup: tgbotapi.NewReplyKeyboard(
-					tgbotapi.NewKeyboardButtonRow(
-						tgbotapi.NewKeyboardButton(user.Localize("Завершить диалог")))),
-				DisableNotification:      false,
-				AllowSendingWithoutReply: false,
-			},
-			Text:                  user.Localize("Report a bug or suggest a feature"),
-			ParseMode:             tgbotapi.ModeHTML,
-			Entities:              nil,
-			DisableWebPagePreview: true,
-		}); err != nil {
-			warn(err)
-			return
-		}
-		if err = app.db.UpdateUser(message.From.ID, tables.Users{Act: "talk_to_support"}); err != nil {
-			warn(err)
-		}
-		return
+	//case "report":
+	//	if _, err = app.bot.Send(tgbotapi.MessageConfig{
+	//		BaseChat: tgbotapi.BaseChat{
+	//			ChatID:           message.From.ID,
+	//			ChannelUsername:  "",
+	//			ReplyToMessageID: 0,
+	//			ReplyMarkup: tgbotapi.NewReplyKeyboard(
+	//				tgbotapi.NewKeyboardButtonRow(
+	//					tgbotapi.NewKeyboardButton(user.Localize("Завершить диалог")))),
+	//			DisableNotification:      false,
+	//			AllowSendingWithoutReply: false,
+	//		},
+	//		Text:                  user.Localize("Report a bug or suggest a feature"),
+	//		ParseMode:             tgbotapi.ModeHTML,
+	//		Entities:              nil,
+	//		DisableWebPagePreview: true,
+	//	}); err != nil {
+	//		warn(err)
+	//		return
+	//	}
+	//	if err = app.db.UpdateUser(message.From.ID, tables.Users{Act: "talk_to_support"}); err != nil {
+	//		warn(err)
+	//	}
+	//	return
 	case "mailing":
 		if err = app.db.UpdateUser(message.From.ID, tables.Users{Act: "mailing"}); err != nil {
 			warn(err)
@@ -290,6 +290,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			if err = app.db.DeleteMailuser(id); err != nil {
 				warn(err)
 			}
+			time.Sleep(time.Second / 20)
 		}
 		err = app.db.DropMailings()
 		if err != nil {
@@ -326,29 +327,29 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			pp.Println(err)
 		}
 		return
-	case "talk_to_support":
-		if _, err = app.bot.CopyMessage(tgbotapi.CopyMessageConfig{
-			BaseChat: tgbotapi.BaseChat{
-				ChatID:           config.AdminID,
-				ChannelUsername:  "",
-				ReplyToMessageID: 0,
-				ReplyMarkup: tgbotapi.NewInlineKeyboardMarkup(
-					tgbotapi.NewInlineKeyboardRow(
-						tgbotapi.NewInlineKeyboardButtonURL(message.From.FirstName, "tg://user?id="+strconv.FormatInt(message.From.ID, 10)))),
-				DisableNotification:      false,
-				AllowSendingWithoutReply: false,
-			},
-			FromChatID:          message.From.ID,
-			FromChannelUsername: "",
-			MessageID:           message.MessageID,
-			Caption:             "",
-			ParseMode:           "",
-			CaptionEntities:     nil,
-		}); err != nil {
-			warn(err)
-			return
-		}
-		return
+		//case "talk_to_support":
+		//	if _, err = app.bot.CopyMessage(tgbotapi.CopyMessageConfig{
+		//		BaseChat: tgbotapi.BaseChat{
+		//			ChatID:           config.AdminID,
+		//			ChannelUsername:  "",
+		//			ReplyToMessageID: 0,
+		//			ReplyMarkup: tgbotapi.NewInlineKeyboardMarkup(
+		//				tgbotapi.NewInlineKeyboardRow(
+		//					tgbotapi.NewInlineKeyboardButtonURL(message.From.FirstName, "tg://user?id="+strconv.FormatInt(message.From.ID, 10)))),
+		//			DisableNotification:      false,
+		//			AllowSendingWithoutReply: false,
+		//		},
+		//		FromChatID:          message.From.ID,
+		//		FromChannelUsername: "",
+		//		MessageID:           message.MessageID,
+		//		Caption:             "",
+		//		ParseMode:           "",
+		//		CaptionEntities:     nil,
+		//	}); err != nil {
+		//		warn(err)
+		//		return
+		//	}
+		//	return
 	}
 
 	go app.bot.Send(tgbotapi.NewChatAction(message.From.ID, "typing"))

@@ -293,14 +293,6 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		}
 		app.bot.Send(tgbotapi.NewCallback(callback.ID, ""))
 		app.db.LogBotMessage(callback.From.ID, "cb_dict", text)
-	//case "l": // lingvo, arr[1] - from, arr[2] - to, arr[3] - text
-	//	text := strings.Join(arr[3:], ":")
-	//	res, err := lingvo.GetDictionary(arr[1], arr[2], text)
-	//	if err != nil {
-	//		warn(err)
-	//		return
-	//	}
-
 	case "setup_langs": // arr[1] - source language, arr[2] - direction to translate, in replied message there is source text
 		app.bot.Send(tgbotapi.NewChatAction(callback.From.ID, "typing"))
 
