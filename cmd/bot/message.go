@@ -431,8 +431,8 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				URL:                          nil,
 				LoginURL:                     nil,
 				CallbackData:                 nil,
-				SwitchInlineQuery:            &text,
-				SwitchInlineQueryCurrentChat: nil,
+				SwitchInlineQuery:            nil,
+				SwitchInlineQueryCurrentChat: &text,
 				CallbackGame:                 nil,
 				Pay:                          false,
 			}), // inline
