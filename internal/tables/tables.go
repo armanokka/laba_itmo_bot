@@ -302,6 +302,30 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"de": "Chat-Modus",
 			"es": "El modo de Chat",
 		},
+		"пример текста": map[string]string{
+			"es": "texto de ejemplo",
+			"uk": "приклад тексту",
+			"uz": "matn namunasi",
+			"ru": "пример текста",
+			"de": "Beispieltext",
+			"id": "contoh teks",
+			"it": "esempio di testo",
+			"pt": "texto de exemplo",
+			"ar": "النص عينة",
+			"en": "sample text",
+		},
+		"Как переводить сообщения, не выходя из чата": map[string]string{
+			"ru": "Как переводить сообщения, не выходя из чата",
+			"de": "Wie übersetzt man Nachrichten, ohne aus dem Chat",
+			"es": "Cómo traducir un mensaje sin salir de chat",
+			"uk": "Як переводити повідомлення, не виходячи з чату",
+			"it": "Come tradurre i messaggi, non lasciare la chat",
+			"en": "How to translate messages without leaving the chat",
+			"uz": "Suhbatdan chiqmasdan xabarlarni qanday tarjima qilish kerak",
+			"id": "Bagaimana menerjemahkan pesan tanpa meninggalkan obrolan",
+			"pt": "Como traduzir as mensagens sem sair do chat",
+			"ar": "كيفية ترجمة الرسائل دون ترك الدردشة",
+		},
 	}
 
 	if v, ok := localization[key]; ok {

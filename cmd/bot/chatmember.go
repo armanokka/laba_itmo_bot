@@ -14,7 +14,7 @@ func (app App) onMyChatMember(update tgbotapi.ChatMemberUpdated) {
 	//	app.notifyAdmin(err)
 	//}
 	defer func() {
-		if err := app.db.UpdateUserLastActivity(update.From.ID); err != nil {
+		if err := app.db.UpdateUserMetrics(update.From.ID, "chatmember:"+update.NewChatMember.Status); err != nil {
 			app.notifyAdmin(fmt.Errorf("%w", err))
 		}
 	}()

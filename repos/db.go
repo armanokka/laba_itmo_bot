@@ -18,10 +18,8 @@ type BotDB interface {
 	// UpdateUserByMap
 	// Errors: gorm.ErrRecordNotFound, unknown
 	UpdateUserByMap(id int64, updates map[string]interface{}) error
-	// UpdateUserLastActivity is a wrapper to UpdateUserByMap
-	UpdateUserLastActivity(id int64) error
-	// IncreaseUserUsings is a wrapper to UpdateUserByMap
-	IncreaseUserUsings(id int64) error
+	// UpdateUserMetrics is a union of UpdateUserLastActivity, IncreaseUserUsings and LogUserMessage
+	UpdateUserMetrics(id int64, message string) error
 
 	// GetAllUsers
 	// Errors: unknown

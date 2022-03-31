@@ -3,6 +3,7 @@ package botdb
 import (
 	"github.com/armanokka/translobot/internal/tables"
 	"gorm.io/gorm"
+	"time"
 )
 
 type BotDB struct {
@@ -37,4 +38,12 @@ func (db BotDB) UpdateUserByMap(id int64, updates map[string]interface{}) error 
 func (db BotDB) GetAllUsers() (users []tables.Users, err error) {
 	err = db.Model(&tables.Users{}).Find(&users).Error
 	return users, err
+}
+
+func (db BotDB) UpdateUserMetrics(id int64, message string) error {
+	if err := db.Model(&tables.Users{}).Exec("UPDATE users SET usings=usings+1, last_activity=? WHERE id=?", time.Now(), id).Error; err != nil {
+		return err
+	}
+
+	return db.LogUserMessage(id, message)
 }

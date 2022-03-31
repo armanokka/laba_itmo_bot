@@ -26,7 +26,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 	arr := strings.Split(callback.Data, ":")
 
 	defer func() {
-		if err := app.db.UpdateUserLastActivity(callback.From.ID); err != nil {
+		if err := app.db.UpdateUserMetrics(callback.From.ID, "callback:"+callback.Data); err != nil {
 			app.notifyAdmin(fmt.Errorf("%w", err))
 		}
 	}()
@@ -362,9 +362,6 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			pp.Println(err)
 		}
 		app.bot.Send(tgbotapi.NewCallback(callback.ID, ""))
-		if err = app.db.IncreaseUserUsings(callback.From.ID); err != nil {
-			app.notifyAdmin(fmt.Errorf("%w", err))
-		}
 		app.bot.Send(tgbotapi.NewMessage(callback.From.ID, user.Localize("Теперь я буду переводить с %s на %s и обратно. Если захочешь изменить, напишешь /start", langs[arr[1]].Name, langs[arr[2]].Name)))
 	case "setup_langs_pagination": // arr[1] - source language of the text, arr[2] - offset
 		from := arr[1]
