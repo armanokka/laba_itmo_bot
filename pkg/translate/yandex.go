@@ -67,6 +67,7 @@ func YandexTranslate(from, to, text string) (string, error) {
 
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
+			//if errors.Is(err, net.err)
 			return "", err
 		}
 

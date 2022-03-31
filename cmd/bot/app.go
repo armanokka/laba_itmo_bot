@@ -247,7 +247,7 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 
 	_, ok1 := lingvo.Lingvo[from]
 	_, ok2 := lingvo.Lingvo[to]
-	if ok1 && ok2 {
+	if ok1 && ok2 && len([]rune(lower)) < 50 {
 		g.Go(func() error {
 			suggestions, err = lingvo.Suggestions(from, to, lower, 1, 0)
 			if err != nil {
