@@ -14,6 +14,7 @@ import (
     "log"
     "math/rand"
     "net/http"
+    "reflect"
     "strconv"
     "strings"
     "unicode/utf16"
@@ -29,6 +30,25 @@ func cutStringUTF16 (text string, limit int) string {
         return string(utf16.Decode(points[:limit]))
     }
     return text
+}
+
+func parseKeyboard(messageText string) *tgbotapi.InlineKeyboardMarkup {
+    keyboard := tgbotapi.NewInlineKeyboardMarkup()
+    if messageText != "Empty" {
+        lines := strings.Split(messageText, "\n")
+        for _, line := range lines {
+            parts := strings.Split(line, "|")
+            if len(parts) != 2 {
+                continue
+            }
+            keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+                tgbotapi.NewInlineKeyboardButtonURL(parts[0], parts[1])))
+        }
+    }
+    if reflect.DeepEqual(keyboard, tgbotapi.NewInlineKeyboardMarkup()) {
+        return nil
+    }
+    return &keyboard
 }
 
 func in(arr []string, k string) bool {

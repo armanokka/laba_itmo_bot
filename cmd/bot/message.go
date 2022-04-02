@@ -170,7 +170,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				DisableNotification:      false,
 				AllowSendingWithoutReply: false,
 			},
-			Text:                  "отправь сообщение для рассылки",
+			Text:                  "отправь сообщение для рассылки\b\bбез клавиатуры",
 			ParseMode:             "",
 			Entities:              nil,
 			DisableWebPagePreview: false,
@@ -180,6 +180,40 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 
 	switch user.Act {
 	case "mailing":
+		if err = app.bc.Put([]byte("mailing_message_id"), []byte(strconv.Itoa(message.MessageID))); err != nil {
+			warn(err)
+			return
+		}
+		if err := app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": "mailing_keyboards"}); err != nil {
+			warn(err)
+			return
+		}
+		app.bot.Send(tgbotapi.MessageConfig{
+			BaseChat:              tgbotapi.BaseChat{
+				ChatID:                   message.From.ID,
+				ChannelUsername:          "",
+				ReplyToMessageID:         0,
+				ReplyMarkup:              tgbotapi.NewReplyKeyboard(tgbotapi.NewKeyboardButtonRow(
+					tgbotapi.NewKeyboardButton("Empty"))),
+				DisableNotification:      false,
+				AllowSendingWithoutReply: false,
+			},
+			Text:                  "теперь отправь мне кнопки\nтекст|ссылка\nтекст|ссылка",
+			ParseMode:             "",
+			Entities:              nil,
+			DisableWebPagePreview: false,
+		})
+		return
+	case "mailing_keyboards":
+		keyboard := &tgbotapi.InlineKeyboardMarkup{}
+		if message.Text != "Empty" {
+			keyboard = parseKeyboard(message.Text)
+			if err = app.bc.Put([]byte("mailing_keyboard_raw_text"), []byte(strconv.Itoa(message.MessageID))); err != nil {
+				warn(err)
+				return
+			}
+		}
+
 		if err := app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": ""}); err != nil {
 			warn(err)
 			return
@@ -193,10 +227,36 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			warn(err)
 			return
 		}
-		if err = app.bc.Put([]byte("mailing_message_id"), []byte(strconv.Itoa(message.MessageID))); err != nil {
+
+		mailingMessageId, err := app.bc.Get([]byte("mailing_message_id"))
+		if err != nil {
 			warn(err)
 			return
 		}
+		mailingMessageIdInt, err := strconv.Atoi(string(mailingMessageId))
+		if err != nil {
+			warn(err)
+			return
+		}
+
+
+		app.bot.Send(tgbotapi.CopyMessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:                   message.From.ID,
+				ChannelUsername:          "",
+				ReplyToMessageID:         0,
+				ReplyMarkup:              keyboard,
+				DisableNotification:      false,
+				AllowSendingWithoutReply: false,
+			},
+			FromChatID:          config.AdminID,
+			FromChannelUsername: "",
+			MessageID:           mailingMessageIdInt,
+			Caption:             "",
+			ParseMode:           "",
+			CaptionEntities:     nil,
+		})
+
 
 		rows, err := app.db.GetMailersRows()
 		if err != nil {
@@ -215,13 +275,13 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 					ChatID:                   id,
 					ChannelUsername:          "",
 					ReplyToMessageID:         0,
-					ReplyMarkup:              nil,
+					ReplyMarkup:              keyboard,
 					DisableNotification:      false,
 					AllowSendingWithoutReply: false,
 				},
 				FromChatID:          config.AdminID,
 				FromChannelUsername: "",
-				MessageID:           message.MessageID,
+				MessageID:           mailingMessageIdInt,
 				Caption:             "",
 				ParseMode:           "",
 				CaptionEntities:     nil,

@@ -107,6 +107,13 @@ func (app App) Run(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
+
+			mailing_keyboard_raw_text, err := app.bc.Get([]byte("mailing_keyboard_raw_text"))
+			if err != nil && !errors.Is(err, bitcask.ErrKeyNotFound) {
+				return err
+			}
+
+			keyboard := parseKeyboard(string(mailing_keyboard_raw_text))
 			rows, err := app.db.GetMailersRows()
 			if err != nil {
 				return err
@@ -123,7 +130,7 @@ func (app App) Run(ctx context.Context) error {
 						ChatID:                   id,
 						ChannelUsername:          "",
 						ReplyToMessageID:         0,
-						ReplyMarkup:              nil,
+						ReplyMarkup:              keyboard,
 						DisableNotification:      false,
 						AllowSendingWithoutReply: false,
 					},
