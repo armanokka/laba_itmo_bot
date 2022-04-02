@@ -49,7 +49,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				MyLang:       "",
 				ToLang:       "",
 				Act:          "setup_langs",
-				Usings:       1,
+				Usings:       0,
 				Blocked:      false,
 				LastActivity: time.Now(),
 			})
