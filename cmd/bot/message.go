@@ -464,6 +464,10 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData("ℹ️"+user.Localize("Словарь"), fmt.Sprintf("dict:%s", from)))
 	}
 
+	if len(message.Entities) == 0 {
+		ret.TranslatedText = "<code>" + ret.TranslatedText + "</code>"
+	}
+
 	if _, err = app.bot.Send(tgbotapi.MessageConfig{
 		BaseChat: tgbotapi.BaseChat{
 			ChatID:                   message.Chat.ID,
