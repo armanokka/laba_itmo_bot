@@ -339,7 +339,7 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 
 	if in(translate2.DeeplSupportedLangs, from) && in(translate2.DeeplSupportedLangs, to) {
 		g.Go(func() error {
-			tr, err := app.deepl.Translate(from, to, text)
+			tr, err := app.deepl.Translate(from, to, text, false)
 			if err != nil {
 				app.notifyAdmin(err)
 				return nil
