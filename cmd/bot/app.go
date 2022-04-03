@@ -341,7 +341,9 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 		g.Go(func() error {
 			tr, err := app.deepl.Translate(from, to, text)
 			if err != nil {
-				return err
+				app.notifyAdmin(err)
+				return nil
+				//return err
 			}
 			DeeplTr = tr
 			return nil
