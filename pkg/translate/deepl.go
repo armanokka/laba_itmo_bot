@@ -243,6 +243,7 @@ func Le(t, e float64) float64 {
 
 
 func (d *Deepl) Translate(from, to, text string) (string, error) {
+	text = strings.ReplaceAll(text, "\n", "<br>")
 	from, to = strings.ToUpper(from), strings.ToUpper(to)
 	parts := splitIntoChunksBySentences(text, 4999)
 	texts := make([]Texts, 0, len(parts))
@@ -302,6 +303,8 @@ func (d *Deepl) Translate(from, to, text string) (string, error) {
 	for _, v := range gjson.GetBytes(resp.Body(), "result.texts").Array() {
 		out += v.Get("text").String()
 	}
+	out = strings.ReplaceAll(text, "<br>", "\n")
+
 
 	for lang, weight := range gjson.GetBytes(resp.Body(), "params.lang.preference.weight").Map() {
 		d.weights[lang] = Le(d.weights[lang], weight.Float())
