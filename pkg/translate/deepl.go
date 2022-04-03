@@ -303,7 +303,7 @@ func (d *Deepl) Translate(from, to, text string) (string, error) {
 	for _, v := range gjson.GetBytes(resp.Body(), "result.texts").Array() {
 		out += v.Get("text").String()
 	}
-	out = strings.ReplaceAll(text, "<br>", "\n")
+	out = strings.ReplaceAll(out, "<br>", "\n")
 
 
 	for lang, weight := range gjson.GetBytes(resp.Body(), "params.lang.preference.weight").Map() {
