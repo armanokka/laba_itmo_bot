@@ -25,6 +25,7 @@ import (
 )
 
 type App struct {
+	deepl translate2.Deepl
 	bot       *botapi.BotAPI
 	log       *zap.Logger
 	db        repos.BotDB
@@ -32,8 +33,9 @@ type App struct {
 	bc        *bitcask.Bitcask
 }
 
-func New(bot *botapi.BotAPI, db repos.BotDB, analytics dashbot.DashBot, logger *zap.Logger, bc *bitcask.Bitcask) App {
+func New(bot *botapi.BotAPI, db repos.BotDB, analytics dashbot.DashBot, logger *zap.Logger, bc *bitcask.Bitcask, deepl translate2.Deepl) App {
 	return App{
+		deepl: deepl,
 		bot:       bot,
 		db:        db,
 		analytics: analytics,
@@ -114,6 +116,10 @@ func (app App) Run(ctx context.Context) error {
 			}
 
 			keyboard := parseKeyboard(string(mailing_keyboard_raw_text))
+			withKeyboard := false
+			if len(keyboard.InlineKeyboard) > 0 {
+				withKeyboard = true
+			}
 			rows, err := app.db.GetMailersRows()
 			if err != nil {
 				return err
@@ -125,24 +131,46 @@ func (app App) Run(ctx context.Context) error {
 				if err = rows.Scan(&id); err != nil {
 					return err
 				}
-				if _, err = app.bot.Send(tgbotapi.CopyMessageConfig{
-					BaseChat: tgbotapi.BaseChat{
-						ChatID:                   id,
-						ChannelUsername:          "",
-						ReplyToMessageID:         0,
-						ReplyMarkup:              keyboard,
-						DisableNotification:      false,
-						AllowSendingWithoutReply: false,
-					},
-					FromChatID:          config.AdminID,
-					FromChannelUsername: "",
-					MessageID:           mailingMessageID,
-					Caption:             "",
-					ParseMode:           "",
-					CaptionEntities:     nil,
-				}); err != nil {
-					return err
+				if withKeyboard {
+					if _, err = app.bot.Send(tgbotapi.CopyMessageConfig{
+						BaseChat: tgbotapi.BaseChat{
+							ChatID:                   id,
+							ChannelUsername:          "",
+							ReplyToMessageID:         0,
+							ReplyMarkup:              keyboard,
+							DisableNotification:      false,
+							AllowSendingWithoutReply: false,
+						},
+						FromChatID:          config.AdminID,
+						FromChannelUsername: "",
+						MessageID:           mailingMessageID,
+						Caption:             "",
+						ParseMode:           "",
+						CaptionEntities:     nil,
+					}); err != nil {
+						return err
+					}
+				} else {
+					if _, err = app.bot.Send(tgbotapi.CopyMessageConfig{
+						BaseChat: tgbotapi.BaseChat{
+							ChatID:                   id,
+							ChannelUsername:          "",
+							ReplyToMessageID:         0,
+							ReplyMarkup:              nil,
+							DisableNotification:      false,
+							AllowSendingWithoutReply: false,
+						},
+						FromChatID:          config.AdminID,
+						FromChannelUsername: "",
+						MessageID:           mailingMessageID,
+						Caption:             "",
+						ParseMode:           "",
+						CaptionEntities:     nil,
+					}); err != nil {
+						return err
+					}
 				}
+
 				if err = app.db.DeleteMailuser(id); err != nil {
 					return err
 				}
@@ -223,11 +251,25 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 		rev         = translate2.ReversoTranslation{}
 		dict        = translate2.GoogleDictionaryResponse{}
 		suggestions *lingvo.SuggestionResult
+		LingvoTr string
+		YandexTr string
+		DeeplTr string
+		MicrosoftTr string
+		GoogleTr string
 		//lingv []lingvo.Dictionary
 	)
 
 	l := len(text)
 	lower := strings.ToLower(text)
+
+	if from == "auto" {
+		tr, err := translate2.GoogleTranslate(from, to, cutStringUTF16(text, 100))
+		if err != nil {
+			return SuperTranslation{}, errors.WrapPrefix(err, "g.Go: translate2.GoogleTranslate", 1)
+		}
+		from = tr.FromLang
+	}
+
 	g, _ := errgroup.WithContext(context.Background())
 
 	if l < 100 {
@@ -264,13 +306,8 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 		})
 	}
 
-	if from == "auto" {
-		tr, err := translate2.GoogleTranslate(from, to, cutStringUTF16(text, 100))
-		if err != nil {
-			return SuperTranslation{}, errors.WrapPrefix(err, "g.Go: translate2.GoogleTranslate", 1)
-		}
-		from = tr.FromLang
-	}
+
+
 
 	g.Go(func() error {
 		if len(text) < 50 {
@@ -282,8 +319,7 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 					}
 					out += r.Translations
 				}
-				ret.TranslatedText = out
-				pp.Println("translated via lingvo")
+				LingvoTr = out
 				return nil
 			}
 			if v, err := lingvo.GetDictionary(user.ToLang, user.MyLang, lower); err == nil && len(v) > 0 {
@@ -294,43 +330,57 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 					}
 					out += r.Translations
 				}
-				ret.TranslatedText = out
-				pp.Println("translated via lingvo")
+				LingvoTr = out
 				return nil
 			}
 		}
+		return nil
+	})
 
-		_, ok1 = translate2.YandexSupportedLanguages[from]
-		_, ok2 = translate2.YandexSupportedLanguages[to]
-		if ok1 && ok2 {
+	if in(translate2.DeeplSupportedLangs, from) && in(translate2.DeeplSupportedLangs, to) {
+		g.Go(func() error {
+			tr, err := app.deepl.Translate(from, to, text)
+			if err != nil {
+				return err
+			}
+			DeeplTr = tr
+			return nil
+		})
+	}
+
+	_, ok1 = translate2.YandexSupportedLanguages[from]
+	_, ok2 = translate2.YandexSupportedLanguages[to]
+	if ok1 && ok2 {
+		g.Go(func() error {
 			tr, err := translate2.YandexTranslate(from, to, text)
 			if err != nil {
 				return err
 			}
-			ret.TranslatedText = tr
-			pp.Println("translated via yandex")
+			YandexTr = tr
 			return nil
-		}
-
+		})
+	} else {
 		if html.UnescapeString(text) != html.EscapeString(text) { // есть html теги
-			tr, err := translate2.MicrosoftTranslate(from, to, text)
-			if err != nil {
-				return err
-			}
-			ret.TranslatedText = tr.TranslatedText
-			pp.Println("translated via microsoft")
-			return nil
+			g.Go(func() error {
+				tr, err := translate2.MicrosoftTranslate(from, to, text)
+				if err != nil {
+					return err
+				}
+				MicrosoftTr = tr.TranslatedText
+				return nil
+			})
+
 		} else {
-			tr, err := translate2.GoogleTranslate(from, to, text)
-			if err != nil {
-				return err
-			}
-			ret.TranslatedText = tr.Text
-			pp.Println("translated via google")
-			return nil
+			g.Go(func() error {
+				tr, err := translate2.GoogleTranslate(from, to, text)
+				if err != nil {
+					return err
+				}
+				GoogleTr = tr.Text
+				return nil
+			})
 		}
-		return nil
-	})
+	}
 
 	if err = g.Wait(); err != nil {
 		return SuperTranslation{}, err
@@ -351,6 +401,32 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 
 	if suggestions != nil && len(suggestions.Items) > 0 {
 		ret.Suggestions = true
+	}
+
+	switch {
+	case DeeplTr != "":
+		ret.TranslatedText = DeeplTr
+		pp.Println("translated via deepl")
+		break
+	case LingvoTr != "":
+		ret.TranslatedText = LingvoTr
+		pp.Println("translated via lingvo")
+
+		break
+	case YandexTr != "":
+		ret.TranslatedText = YandexTr
+		pp.Println("translated via yandex")
+
+		break
+	case GoogleTr != "":
+		ret.TranslatedText = GoogleTr
+		pp.Println("translated via google")
+
+		break
+	case MicrosoftTr != "":
+		ret.TranslatedText = MicrosoftTr
+		pp.Println("translated via microsoft")
+
 	}
 
 	return ret, nil

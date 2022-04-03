@@ -18,8 +18,8 @@ import (
 const (
 	DashBotAPIKey        = "cjVjdWDRijXDk5kl9yGi5TTS9XImME7HbZMOg09F"
 	AdminID              = 579515224
-	botToken      string = "1737819626:AAEJyD8fnSHdkh6VP3ePdwFkpEnrirLMHp4" // production
-	//botToken string = "1934369237:AAFbys0srOUaH4VozGgHusacCAa5lYf0TCo" // home
+	//botToken      string = "1737819626:AAEJyD8fnSHdkh6VP3ePdwFkpEnrirLMHp4" // production
+	botToken string = "1934369237:AAFbys0srOUaH4VozGgHusacCAa5lYf0TCo" // home
 )
 
 var (
@@ -45,11 +45,11 @@ var WitAPIKeys = map[string]string{
 
 func Load() error {
 
-	// Initializing PostgreSQL DB
+	// Initializing MySQL DB
 	var err error
 	db, err = gorm.Open(mysql.Open("f0568401_user:NlEbEgda@tcp(141.8.193.236:3306)/f0568401_user?charset=utf8mb4&parseTime=True&loc=Local"), &gorm.Config{
 		SkipDefaultTransaction: true,
-		CreateBatchSize:        1000,
+		CreateBatchSize:        5000,
 		PrepareStmt:            true,
 	})
 	if err != nil {

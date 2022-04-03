@@ -213,12 +213,28 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				return
 			}
 		}
-
+		var withKeyboard bool
+		if len(keyboard.InlineKeyboard) > 0 {
+			withKeyboard = true
+		}
 		if err := app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": ""}); err != nil {
 			warn(err)
 			return
 		}
-		app.bot.Send(tgbotapi.NewMessage(message.From.ID, "рассылка начата"))
+		app.bot.Send(tgbotapi.MessageConfig{
+			BaseChat:              tgbotapi.BaseChat{
+				ChatID:                   message.From.ID,
+				ChannelUsername:          "",
+				ReplyToMessageID:         0,
+				ReplyMarkup:              tgbotapi.NewRemoveKeyboard(false),
+				DisableNotification:      false,
+				AllowSendingWithoutReply: false,
+			},
+			Text:                  "рассылка начата",
+			ParseMode:             "",
+			Entities:              nil,
+			DisableWebPagePreview: false,
+		})
 		if err = app.db.DropMailings(); err != nil {
 			warn(err)
 			return
@@ -239,23 +255,43 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			return
 		}
 
+		if withKeyboard {
+			app.bot.Send(tgbotapi.CopyMessageConfig{
+				BaseChat: tgbotapi.BaseChat{
+					ChatID:                   message.From.ID,
+					ChannelUsername:          "",
+					ReplyToMessageID:         0,
+					ReplyMarkup:              keyboard,
+					DisableNotification:      false,
+					AllowSendingWithoutReply: false,
+				},
+				FromChatID:          config.AdminID,
+				FromChannelUsername: "",
+				MessageID:           mailingMessageIdInt,
+				Caption:             "",
+				ParseMode:           "",
+				CaptionEntities:     nil,
+			})
+		} else {
+			app.bot.Send(tgbotapi.CopyMessageConfig{
+				BaseChat: tgbotapi.BaseChat{
+					ChatID:                   message.From.ID,
+					ChannelUsername:          "",
+					ReplyToMessageID:         0,
+					ReplyMarkup:              nil,
+					DisableNotification:      false,
+					AllowSendingWithoutReply: false,
+				},
+				FromChatID:          config.AdminID,
+				FromChannelUsername: "",
+				MessageID:           mailingMessageIdInt,
+				Caption:             "",
+				ParseMode:           "",
+				CaptionEntities:     nil,
+			})
+		}
 
-		app.bot.Send(tgbotapi.CopyMessageConfig{
-			BaseChat: tgbotapi.BaseChat{
-				ChatID:                   message.From.ID,
-				ChannelUsername:          "",
-				ReplyToMessageID:         0,
-				ReplyMarkup:              keyboard,
-				DisableNotification:      false,
-				AllowSendingWithoutReply: false,
-			},
-			FromChatID:          config.AdminID,
-			FromChannelUsername: "",
-			MessageID:           mailingMessageIdInt,
-			Caption:             "",
-			ParseMode:           "",
-			CaptionEntities:     nil,
-		})
+
 
 
 		rows, err := app.db.GetMailersRows()
@@ -270,24 +306,46 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				warn(err)
 				return
 			}
-			if _, err = app.bot.Send(tgbotapi.CopyMessageConfig{
-				BaseChat: tgbotapi.BaseChat{
-					ChatID:                   id,
-					ChannelUsername:          "",
-					ReplyToMessageID:         0,
-					ReplyMarkup:              keyboard,
-					DisableNotification:      false,
-					AllowSendingWithoutReply: false,
-				},
-				FromChatID:          config.AdminID,
-				FromChannelUsername: "",
-				MessageID:           mailingMessageIdInt,
-				Caption:             "",
-				ParseMode:           "",
-				CaptionEntities:     nil,
-			}); err != nil {
-				pp.Println(err)
+			if withKeyboard {
+				if _, err = app.bot.Send(tgbotapi.CopyMessageConfig{
+					BaseChat: tgbotapi.BaseChat{
+						ChatID:                   id,
+						ChannelUsername:          "",
+						ReplyToMessageID:         0,
+						ReplyMarkup:              keyboard,
+						DisableNotification:      false,
+						AllowSendingWithoutReply: false,
+					},
+					FromChatID:          config.AdminID,
+					FromChannelUsername: "",
+					MessageID:           mailingMessageIdInt,
+					Caption:             "",
+					ParseMode:           "",
+					CaptionEntities:     nil,
+				}); err != nil {
+					pp.Println(err)
+				}
+			} else {
+				if _, err = app.bot.Send(tgbotapi.CopyMessageConfig{
+					BaseChat: tgbotapi.BaseChat{
+						ChatID:                   id,
+						ChannelUsername:          "",
+						ReplyToMessageID:         0,
+						ReplyMarkup:              nil,
+						DisableNotification:      false,
+						AllowSendingWithoutReply: false,
+					},
+					FromChatID:          config.AdminID,
+					FromChannelUsername: "",
+					MessageID:           mailingMessageIdInt,
+					Caption:             "",
+					ParseMode:           "",
+					CaptionEntities:     nil,
+				}); err != nil {
+					pp.Println(err)
+				}
 			}
+
 			if err = app.db.DeleteMailuser(id); err != nil {
 				warn(err)
 			}

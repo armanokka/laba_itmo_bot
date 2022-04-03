@@ -8,6 +8,7 @@ import (
 	"github.com/armanokka/translobot/cmd/botdb"
 	"github.com/armanokka/translobot/cmd/server"
 	"github.com/armanokka/translobot/internal/config"
+	"github.com/armanokka/translobot/pkg/translate"
 	"github.com/k0kubun/pp"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -56,10 +57,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	d, err := translate.NewDeepl()
+	if err != nil {
+		panic(err)
+	}
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
-		return boto.New(botAPI, botdb.New(db), analytics, log, bc).Run(ctx)
+		return boto.New(botAPI, botdb.New(db), analytics, log, bc, d).Run(ctx)
 	})
 
 	g.Go(func() error {
