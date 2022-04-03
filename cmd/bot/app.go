@@ -404,14 +404,13 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 	}
 
 	switch {
-	case DeeplTr != "":
-		ret.TranslatedText = DeeplTr
-		pp.Println("translated via deepl")
-		break
 	case LingvoTr != "":
 		ret.TranslatedText = LingvoTr
 		pp.Println("translated via lingvo")
-
+		break
+	case DeeplTr != "":
+		ret.TranslatedText = DeeplTr
+		pp.Println("translated via deepl")
 		break
 	case YandexTr != "":
 		ret.TranslatedText = YandexTr
