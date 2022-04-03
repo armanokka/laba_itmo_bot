@@ -295,7 +295,7 @@ func (d *Deepl) Translate(from, to, text string) (string, error) {
 		return "", err
 	}
 	if gjson.GetBytes(resp.Body(), "error").Exists() {
-		return "", fmt.Errorf(gjson.GetBytes(resp.Body(), "error.message").String())
+		return "", fmt.Errorf("Deepl error\nInput text[%s-%s]:%s\n\n%s", from, to, text, gjson.GetBytes(resp.Body(), "error.message").String())
 	}
 
 
