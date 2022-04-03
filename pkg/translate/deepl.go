@@ -242,7 +242,7 @@ func Le(t, e float64) float64 {
 }
 
 
-func (d *Deepl) Translate(from, to, text string) (string, error) {
+func (d *Deepl) Translate(from, to, text string, withWeights bool) (string, error) {
 	text = strings.ReplaceAll(text, "\n", "<br>")
 	from, to = strings.ToUpper(from), strings.ToUpper(to)
 	parts := splitIntoChunksBySentences(text, 4999)
@@ -255,22 +255,45 @@ func (d *Deepl) Translate(from, to, text string) (string, error) {
 	}
 
 	id := d.getId()
-	data, err := json.Marshal(DeeplRequest{
-		Jsonrpc: "2.0",
-		Method:  "LMT_handle_texts",
-		Params: Params{
-			Texts:     texts,
-			Splitting: "newlines",
-			Html: "enabled",
-			Lang: Lang{
-				TargetLang:             to,
-				SourceLangUserSelected: from,
-				Preference:             Preference{Weight: d.weights},
+	data := make([]byte, 0, 1024)
+	var err error
+
+	if !withWeights {
+		data, err = json.Marshal(DeeplRequest{
+			Jsonrpc: "2.0",
+			Method:  "LMT_handle_texts",
+			Params: Params{
+				Texts:     texts,
+				Html: "enabled",
+				Splitting: "newlines",
+				Lang: Lang{
+					TargetLang:             to,
+					SourceLangUserSelected: "auto",
+					Preference:             Preference{Weight: map[string]float64{}},
+				},
+				Timestamp: time.Now().Unix(),
 			},
-			Timestamp: time.Now().Unix(),
-		},
-		ID: id,
-	})
+			ID: id,
+		})
+	} else {
+		data, err = json.Marshal(DeeplRequest{
+			Jsonrpc: "2.0",
+			Method:  "LMT_handle_texts",
+			Params: Params{
+				Texts:     texts,
+				Splitting: "newlines",
+				Html: "enabled",
+				Lang: Lang{
+					TargetLang:             to,
+					SourceLangUserSelected: from,
+					Preference:             Preference{Weight: d.weights},
+				},
+				Timestamp: time.Now().Unix(),
+			},
+			ID: id,
+		})
+	}
+
 	if err != nil {
 		return "", err
 	}
@@ -281,10 +304,7 @@ func (d *Deepl) Translate(from, to, text string) (string, error) {
 		data = []byte(strings.ReplaceAll(string(data), `"method":"`, `"method": "`))
 	}
 
-	client := resty.New()
-
-
-	resp, err := client.R().
+	resp, err := d.client.R().
 		SetHeaders(d.headers).
 		SetBody(data).
 		SetContentLength(true).
@@ -303,7 +323,7 @@ func (d *Deepl) Translate(from, to, text string) (string, error) {
 	for _, v := range gjson.GetBytes(resp.Body(), "result.texts").Array() {
 		out += v.Get("text").String()
 	}
-	out = strings.ReplaceAll(out, "<br>", "\n")
+	out = strings.ReplaceAll(text, "<br>", "\n")
 
 
 	for lang, weight := range gjson.GetBytes(resp.Body(), "params.lang.preference.weight").Map() {
@@ -311,7 +331,7 @@ func (d *Deepl) Translate(from, to, text string) (string, error) {
 	}
 
 
-	resp, err = client.R().SetHeaders(d.headers).SetBody(DeeplStatisticsReq{
+	resp, err = d.client.R().SetHeaders(d.headers).SetBody(DeeplStatisticsReq{
 		EventID:   60001,
 		SessionID: d.sessionId,
 		UserInfos: UserInfos{UserType: 1},
