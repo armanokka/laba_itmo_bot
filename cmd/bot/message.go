@@ -69,6 +69,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 
 	switch message.Command() {
 	case "start":
+	case "help":
 		app.bot.Send(tgbotapi.MessageConfig{
 			BaseChat: tgbotapi.BaseChat{
 				ChatID:                   message.From.ID,
