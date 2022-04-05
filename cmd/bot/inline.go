@@ -15,8 +15,31 @@ import (
 	"unicode"
 )
 
-func RemoveIndex(s []interface{}, index int) []interface{} {
-	return append(s[:index], s[index+1:]...)
+func removeArticles(articles []interface{}, codes ...string) []interface{} {
+	for i, v := range articles {
+		article := v.(tgbotapi.InlineQueryResultArticle)
+		for _, code := range codes {
+			if strings.HasPrefix(article.Title, langs[code].Name) {
+				articles = removeIndex(articles, i)
+			}
+		}
+
+	}
+	return articles
+}
+
+func getArticle(articles []interface{}, code string) interface{} {
+	for _, v := range articles {
+		article := v.(tgbotapi.InlineQueryResultArticle)
+		if strings.HasPrefix(article.Title, langs[code].Name) {
+			return v
+		}
+	}
+	return -1
+}
+
+func removeIndex(obj []interface{}, idx int) []interface{} {
+	return append(obj[:idx], obj[idx+1:]...)
 }
 
 func Title(s string) string {
@@ -25,13 +48,10 @@ func Title(s string) string {
 		return ""
 	}
 	runes[0] = unicode.ToUpper(runes[0])
-	s = string(runes)
-	runes = nil
-	return s
+	return string(runes)
 }
 
 func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
-	go app.analytics.User(update.Query, update.From)
 	update.Query = Title(update.Query)
 	warn := func(err error) {
 		app.bot.AnswerInlineQuery(tgbotapi.InlineConfig{
@@ -142,7 +162,7 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 	blocks := make([]interface{}, 0, 50)
 
 	from := ""
-	codesBlocks := make(map[string]int, 50) // мапа из кодов codes к соответствующим индексам blocks
+	codesBlocks := make(map[string][]int, 50) // мапа из кодов codes к соответствующим индексам blocks
 	for i, code := range codes[offset : offset+count] {
 		code := code
 		i := i
@@ -160,7 +180,7 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 				//tr.Text = user.Localize("не получилось перевести")
 				return
 			}
-			if from != "" {
+			if from == "" {
 				from = tr.FromLang
 			}
 
@@ -194,19 +214,25 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 				ThumbWidth:  0,
 				ThumbHeight: 0,
 			})
-			codesBlocks[code] = len(blocks) - 1
+			codesBlocks[code] = append(codesBlocks[code], len(blocks)-1)
 			mu.Unlock()
 		}()
 	}
 	wg.Wait()
 
-	if offset == 0 && user.MyLang != "" {
+	blocks = removeArticles(blocks, from)
+
+	if offset == 0 && user.Usings > 0 {
 		nextOffset -= 2
 		for i, lang := range []string{user.MyLang, user.ToLang} {
-			block := blocks[codesBlocks[lang]].(tgbotapi.InlineQueryResultArticle)
+			if lang == from {
+				continue
+			}
+			block := getArticle(blocks, lang).(tgbotapi.InlineQueryResultArticle)
+			blocks = removeArticles(blocks, lang)
 			block.Title = strings.TrimSuffix(block.Title, " 📌")
 			block.Title += " 🙍‍♂️"
-			block.ID = strconv.Itoa(-1 + -i)
+			block.ID = strconv.Itoa(-1 - i)
 			blocks = append(blocks, block)
 		}
 	}
@@ -248,6 +274,7 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 		pp.Println(blocks)
 	}
 
+	app.analytics.User(update.Query, update.From)
 	app.analytics.Bot(update.From.ID, "Inline succeeded", "Inline succeeded")
 	if user.MyLang != "" { // user exists
 		if err = app.db.UpdateUserMetrics(update.From.ID, "inline:"+update.Query); err != nil {

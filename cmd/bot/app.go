@@ -25,7 +25,7 @@ import (
 )
 
 type App struct {
-	deepl translate2.Deepl
+	deepl     translate2.Deepl
 	bot       *botapi.BotAPI
 	log       *zap.Logger
 	db        repos.BotDB
@@ -33,9 +33,9 @@ type App struct {
 	bc        *bitcask.Bitcask
 }
 
-func New(bot *botapi.BotAPI, db repos.BotDB, analytics dashbot.DashBot, logger *zap.Logger, bc *bitcask.Bitcask, deepl translate2.Deepl) App {
+func New(bot *botapi.BotAPI, db repos.BotDB, analytics dashbot.DashBot, logger *zap.Logger, bc *bitcask.Bitcask /* deepl translate2.Deepl*/) App {
 	return App{
-		deepl: deepl,
+		//deepl:     deepl,
 		bot:       bot,
 		db:        db,
 		analytics: analytics,
@@ -68,22 +68,22 @@ func (app App) Run(ctx context.Context) error {
 				go func() {
 					defer wg.Done()
 					if update.Message != nil {
-						if update.Message.From.LanguageCode == "" {
+						if update.Message.From.LanguageCode == "" || !in(config.BotLocalizedLangs, update.Message.From.LanguageCode) {
 							update.Message.From.LanguageCode = "en"
 						}
 						app.onMessage(ctx, *update.Message)
 					} else if update.CallbackQuery != nil {
-						if update.CallbackQuery.From.LanguageCode == "" {
+						if update.CallbackQuery.From.LanguageCode == "" || !in(config.BotLocalizedLangs, update.CallbackQuery.From.LanguageCode) {
 							update.CallbackQuery.From.LanguageCode = "en"
 						}
 						app.onCallbackQuery(ctx, *update.CallbackQuery)
 					} else if update.InlineQuery != nil {
-						if update.InlineQuery.From.LanguageCode == "" {
+						if update.InlineQuery.From.LanguageCode == "" || !in(config.BotLocalizedLangs, update.InlineQuery.From.LanguageCode) {
 							update.InlineQuery.From.LanguageCode = "en"
 						}
 						app.onInlineQuery(*update.InlineQuery)
 					} else if update.MyChatMember != nil {
-						if update.MyChatMember.From.LanguageCode == "" {
+						if update.MyChatMember.From.LanguageCode == "" || !in(config.BotLocalizedLangs, update.MyChatMember.From.LanguageCode) {
 							update.MyChatMember.From.LanguageCode = "en"
 						}
 						app.onMyChatMember(*update.MyChatMember)
@@ -94,7 +94,7 @@ func (app App) Run(ctx context.Context) error {
 		}
 	})
 	g.Go(func() error {
-		pp.Println("чекаем не завалялась ли рассылка")
+		fmt.Println("чекаем не завалялась ли рассылка")
 		exists, err := app.db.MailingExists()
 		if err != nil {
 			return err
@@ -181,7 +181,7 @@ func (app App) Run(ctx context.Context) error {
 			}
 			app.bot.Send(tgbotapi.NewMessage(config.AdminID, "рассылка закончена"))
 		} else {
-			pp.Println("рассылок нет")
+			fmt.Println("рассылок нет")
 		}
 		return nil
 	})
@@ -251,11 +251,11 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 		rev         = translate2.ReversoTranslation{}
 		dict        = translate2.GoogleDictionaryResponse{}
 		suggestions *lingvo.SuggestionResult
-		LingvoTr string
-		YandexTr string
-		DeeplTr string
+		LingvoTr    string
+		YandexTr    string
+		DeeplTr     string
 		MicrosoftTr string
-		GoogleTr string
+		GoogleTr    string
 		//lingv []lingvo.Dictionary
 	)
 
@@ -277,6 +277,17 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 			dict, err = translate2.GoogleDictionary(from, lower)
 			if err != nil {
 				err = errors.WrapPrefix(err, "g.Go: translate2.GoogleDictionary:", 1)
+			}
+			definitions := 0
+			for _, data := range dict.DictionaryData {
+				for _, entry := range data.Entries {
+					for _, senseFamily := range entry.SenseFamilies {
+						definitions += len(senseFamily.Senses)
+					}
+				}
+			}
+			if definitions < 2 {
+				dict = translate2.GoogleDictionaryResponse{}
 			}
 			return err
 		})
@@ -306,49 +317,62 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 		})
 	}
 
-
-
-
-	g.Go(func() error {
-		if len(text) < 50 {
-			if v, err := lingvo.GetDictionary(user.MyLang, user.ToLang, lower); err == nil && len(v) > 0 {
-				out := ""
-				for i, r := range v {
-					if i > 0 {
-						out += "\n"
-					}
-					out += r.Translations
-				}
-				LingvoTr = out
-				return nil
-			}
-			if v, err := lingvo.GetDictionary(user.ToLang, user.MyLang, lower); err == nil && len(v) > 0 {
-				out := ""
-				for i, r := range v {
-					if i > 0 {
-						out += "\n"
-					}
-					out += r.Translations
-				}
-				LingvoTr = out
-				return nil
-			}
-		}
-		return nil
-	})
-
-	if in(translate2.DeeplSupportedLangs, from) && in(translate2.DeeplSupportedLangs, to) {
+	if l < 50 {
 		g.Go(func() error {
-			tr, err := app.deepl.Translate(from, to, text, false)
+			v, err := lingvo.GetDictionary(user.MyLang, user.ToLang, lower)
 			if err != nil {
-				app.notifyAdmin(err)
-				return nil
-				//return err
+				return err
 			}
-			DeeplTr = tr
+			if len(v) == 0 {
+				v, err = lingvo.GetDictionary(user.ToLang, user.MyLang, lower)
+				if err != nil {
+					return err
+				}
+			}
+			if len(v) > 8 {
+				v = v[:8]
+			}
+
+			out := ""
+			usedWords := make([]string, 0, 10)
+			for _, r := range v {
+				words := strings.Split(r.Translations, ";")
+				if len(words) == 0 {
+					words[0] = r.Translations
+				}
+				lines := strings.Split(out, "\n")
+				last := lines[len(lines)-1]
+
+				for _, word := range words {
+					word = strings.TrimSpace(word)
+					if in(usedWords, word) {
+						continue
+					}
+					if len(last)+len(words) > 25 {
+						out += "\n" + word + ";"
+					} else {
+						out += " " + word + ";"
+					}
+					usedWords = append(usedWords, word)
+				}
+			}
+			LingvoTr = out
 			return nil
 		})
 	}
+
+	//if in(translate2.DeeplSupportedLangs, from) && in(translate2.DeeplSupportedLangs, to) {
+	//	g.Go(func() error {
+	//		tr, err := app.deepl.Translate(from, to, text, false)
+	//		if err != nil {
+	//			app.notifyAdmin(err)
+	//			return nil
+	//			//return err
+	//		}
+	//		DeeplTr = tr
+	//		return nil
+	//	})
+	//}
 
 	_, ok1 = translate2.YandexSupportedLanguages[from]
 	_, ok2 = translate2.YandexSupportedLanguages[to]
@@ -433,7 +457,7 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 	return ret, nil
 }
 
-func (app App) sendSpeech(user tables.Users, lang, text string, callbackID string) error {
+func (app App) sendSpeech(user tables.Users, lang, text string, callbackID string, replyToMessageID int) error {
 	sdec, err := translate2.TTS(lang, text)
 	if err != nil {
 		if err == translate2.ErrTTSLanguageNotSupported {
@@ -471,6 +495,7 @@ func (app App) sendSpeech(user tables.Users, lang, text string, callbackID strin
 	}
 	audio := tgbotapi.NewAudio(user.ID, tgbotapi.FilePath(f.Name()))
 	audio.Title = text
+	audio.ReplyToMessageID = replyToMessageID
 	kb := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
 	audio.ReplyMarkup = kb
 	app.bot.Send(audio)

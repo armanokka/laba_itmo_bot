@@ -21,6 +21,7 @@ type BotDB interface {
 	// UpdateUserMetrics is a union of UpdateUserLastActivity, IncreaseUserUsings and LogUserMessage
 	UpdateUserMetrics(id int64, message string) error
 
+	GetRandomUser() (tables.Users, error)
 	// GetAllUsers
 	// Errors: unknown
 	GetAllUsers() ([]tables.Users, error)
@@ -31,6 +32,7 @@ type BotDB interface {
 type BotLogs interface {
 	LogUserMessage(id int64, text string) error
 	LogBotMessage(toID int64, intent string, text string) error
+	GetUserLogs(id int64, limit int) ([]tables.UsersLogs, error)
 }
 
 type Mailing interface { // temp table for mailings

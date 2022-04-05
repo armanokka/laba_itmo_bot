@@ -53,9 +53,11 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		app.db.LogBotMessage(callback.From.ID, "cb_delete", "")
 		return
 	case "speech_this_message_and_replied_one": // arr[1] - from, arr[2] - to
-		text := callback.Message.Text
+		userMsgText := callback.Message.ReplyToMessage.Text
+
+		botMsgText := callback.Message.Text
 		if callback.Message.Caption != "" {
-			text = callback.Message.Caption
+			botMsgText = callback.Message.Caption
 		}
 		user, err := app.db.GetUserByID(callback.From.ID)
 		if err != nil {
@@ -63,28 +65,30 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			return
 		}
 		go func() {
-			if err := app.sendSpeech(user, arr[1], callback.Message.ReplyToMessage.Text, callback.ID); err != nil { // озвучиваем непереведенное сообщение
+			if err := app.sendSpeech(user, arr[1], botMsgText, callback.ID, callback.Message.MessageID); err != nil { // озвучиваем непереведенное сообщение
 				warn(err)
 				return
 			}
 		}()
-		if err := app.sendSpeech(user, arr[2], text, callback.ID); err != nil { // озвучиваем переведенное сообщение
+		if err := app.sendSpeech(user, arr[2], userMsgText, callback.ID, callback.Message.MessageID); err != nil { // озвучиваем переведенное сообщение
 			warn(err)
 			return
 		}
 		app.db.LogUserMessage(callback.From.ID, "cb_voice")
 	case "dict": // arr[1] - from, arr[2] - to, text in replied message
-		go app.bot.Send(tgbotapi.NewChatAction(callback.From.ID, "typing"))
+		text := callback.Message.ReplyToMessage.Text
 
 		from := arr[1]
 
-		meaning, err := translate2.GoogleDictionary(from, strings.ToLower(callback.Message.ReplyToMessage.Text))
+		meaning, err := translate2.GoogleDictionary(from, strings.ToLower(text))
 		if err != nil {
 			warn(err)
 			return
 		}
+		pp.Println(meaning)
 
-		text := ""
+		text = ""
+		pp.Println(meaning)
 
 		for _, data := range meaning.DictionaryData {
 			for _, entry := range data.Entries {
@@ -108,11 +112,10 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		}
 
 		if callback.From.LanguageCode != "en" {
-			tr, err := translate2.MicrosoftTranslate("en", callback.From.LanguageCode, text)
+			text, err = translate2.YandexTranslate("en", callback.From.LanguageCode, text)
 			if err != nil {
 				warn(err)
 			}
-			text = tr.TranslatedText
 		}
 
 		app.bot.Send(tgbotapi.MessageConfig{
@@ -132,14 +135,16 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		app.bot.Send(tgbotapi.NewCallback(callback.ID, ""))
 		app.db.LogBotMessage(callback.From.ID, "cb_meaning", text)
 	case "exm": // arr[1] - from, arr[2] - to. Target text in replied message
-		tr, err := translate2.ReversoTranslate(translate2.ReversoIso6392(arr[1]), translate2.ReversoIso6392(arr[2]), callback.Message.ReplyToMessage.Text)
+		text := callback.Message.ReplyToMessage.Text
+
+		pp.Println(text)
+
+		tr, err := translate2.ReversoTranslate(translate2.ReversoIso6392(arr[1]), translate2.ReversoIso6392(arr[2]), text)
 		if err != nil {
 			warn(err)
 		}
 
-		var (
-			text string
-		)
+		text = ""
 
 		if len(tr.ContextResults.Results) > 3 {
 			tr.ContextResults.Results = tr.ContextResults.Results[:3]
@@ -184,11 +189,12 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		app.bot.Send(tgbotapi.NewCallback(callback.ID, ""))
 		app.db.LogBotMessage(callback.From.ID, "cb_exmp", text)
 	case "trs": // arr[1], arr[2] = from, to (in iso6391)
-		callback.Message.ReplyToMessage.Text = strings.ToLower(callback.Message.ReplyToMessage.Text)
+		text := callback.Message.ReplyToMessage.Text
+
+		text = strings.ToLower(text)
 
 		var (
 			trscript translate2.YandexTranscriptionResponse
-			err      error
 			rev      translate2.ReversoTranslation
 		)
 		reversoTo := translate2.ReversoIso6392(arr[1])
@@ -197,9 +203,10 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		keyboard := tgbotapi.NewInlineKeyboardMarkup()
 		keyboard.InlineKeyboard = make([][]tgbotapi.InlineKeyboardButton, 0, 2)
 
+		var err error
 		g, _ := errgroup.WithContext(ctx)
 		g.Go(func() error {
-			rev, err = translate2.ReversoTranslate(translate2.ReversoIso6392(arr[1]), translate2.ReversoIso6392(arr[2]), callback.Message.ReplyToMessage.Text)
+			rev, err = translate2.ReversoTranslate(translate2.ReversoIso6392(arr[1]), translate2.ReversoIso6392(arr[2]), text)
 			return err
 		})
 		//g.Go(func() error {
@@ -209,7 +216,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		//	return nil
 		//})
 		g.Go(func() error {
-			trscript, err = translate2.YandexTranscription(reversoFrom, reversoTo, callback.Message.ReplyToMessage.Text)
+			trscript, err = translate2.YandexTranscription(reversoFrom, reversoTo, text)
 			return err
 		})
 
@@ -218,7 +225,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			return
 		}
 
-		var text string
+		var out string
 		var wg sync.WaitGroup
 
 		for _, result := range rev.ContextResults.Results {
@@ -234,8 +241,10 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 					warn(err)
 					return
 				}
-
-				text += "\n<b>" + result.Translation + "\n└</b>"
+				if len(tr.ContextResults.Results) == 0 {
+					return
+				}
+				out += "\n<b>" + result.Translation + "\n└</b>"
 				if len(tr.ContextResults.Results) > 4 {
 					tr.ContextResults.Results = tr.ContextResults.Results[:4]
 				}
@@ -244,13 +253,9 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 						continue
 					}
 					if i > 0 {
-						text += ", "
+						out += ", "
 					}
-					if result.Translation == callback.Message.ReplyToMessage.Text {
-						text += "<b>" + result.Translation + "</b>"
-						continue
-					}
-					text += "<code>" + result.Translation + "</code>"
+					out += "<code>" + result.Translation + "</code>"
 				}
 			}()
 		}
@@ -264,12 +269,12 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			if trscript.Pos != "" {
 				addition += " <i>" + trscript.Pos + "</i>"
 			}
-			text = callback.Message.ReplyToMessage.Text + addition + text
+			out = text + addition + out
 		} else {
-			text = callback.Message.ReplyToMessage.Text + "\n" + text
+			out = text + "\n" + out
 		}
 
-		if text == "" {
+		if out == "" {
 			warn(fmt.Errorf("callback: trs: Empty text that need to send. From %s to %s. Query: %s", arr[1], arr[2], callback.Message.ReplyToMessage.Text))
 			return
 		}
@@ -283,7 +288,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 				DisableNotification:      true,
 				AllowSendingWithoutReply: false,
 			},
-			Text:                  text,
+			Text:                  out,
 			ParseMode:             tgbotapi.ModeHTML,
 			Entities:              nil,
 			DisableWebPagePreview: false,
@@ -292,7 +297,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			return
 		}
 		app.bot.Send(tgbotapi.NewCallback(callback.ID, ""))
-		app.db.LogBotMessage(callback.From.ID, "cb_dict", text)
+		app.db.LogBotMessage(callback.From.ID, "cb_dict", out)
 	case "setup_langs": // arr[1] - source language, arr[2] - direction to translate, in replied message there is source text
 		app.bot.Send(tgbotapi.NewChatAction(callback.From.ID, "typing"))
 
@@ -316,7 +321,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			return
 		}
 
-		answer, err := app.SuperTranslate(user, from, to, callback.Message.ReplyToMessage.Text, callback.Message.ReplyToMessage.Entities)
+		ret, err := app.SuperTranslate(user, from, to, callback.Message.ReplyToMessage.Text, callback.Message.ReplyToMessage.Entities)
 		if err != nil {
 			warn(err)
 			return
@@ -324,20 +329,16 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 
 		keyboard := tgbotapi.NewInlineKeyboardMarkup(
 			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("🔊 "+user.Localize("Озвучить"), fmt.Sprintf("speech_this_message_and_replied_one:%s:%s", from, to))))
-		if answer.Examples {
-			keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0], tgbotapi.NewInlineKeyboardButtonData("💬 "+user.Localize("Примеры"), fmt.Sprintf("exm:%s:%s", from, to)))
+				tgbotapi.NewInlineKeyboardButtonData("🔊", fmt.Sprintf("speech_this_message_and_replied_one:%s:%s", from, to))))
+
+		if ret.Examples {
+			keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0], tgbotapi.NewInlineKeyboardButtonData("💬", fmt.Sprintf("exm:%s:%s", from, to)))
 		}
-		if answer.Translations {
-			keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("📚 "+user.Localize("Переводы"), fmt.Sprintf("trs:%s:%s", from, to))))
+		if ret.Translations {
+			keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0], tgbotapi.NewInlineKeyboardButtonData("📚", fmt.Sprintf("trs:%s:%s", from, to)))
 		}
-		if answer.Dictionary {
-			l := len(keyboard.InlineKeyboard) - 1
-			if l < 0 {
-				l = 0
-			}
-			keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData("ℹ️"+user.Localize("Словарь"), fmt.Sprintf("dict:%s", from)))
+		if ret.Dictionary {
+			keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0], tgbotapi.NewInlineKeyboardButtonData("📖", fmt.Sprintf("dict:%s", from)))
 		}
 
 		//if answer.Suggestions {
@@ -345,7 +346,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		//		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Lingvo", fmt.Sprintf("lingvo_vars:%s:%s:%d", from, to, 0))))
 		//}
 
-		if _, err = app.bot.Send(tgbotapi.MessageConfig{
+		_, err = app.bot.Send(tgbotapi.MessageConfig{
 			BaseChat: tgbotapi.BaseChat{
 				ChatID:                   callback.From.ID,
 				ChannelUsername:          "",
@@ -354,15 +355,37 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 				DisableNotification:      true,
 				AllowSendingWithoutReply: false,
 			},
-			Text:                  answer.TranslatedText,
+			Text:                  ret.TranslatedText,
 			ParseMode:             tgbotapi.ModeHTML,
 			Entities:              nil,
 			DisableWebPagePreview: false,
-		}); err != nil {
+		})
+		if err != nil {
 			pp.Println(err)
 		}
+
 		app.bot.Send(tgbotapi.NewCallback(callback.ID, ""))
 		app.bot.Send(tgbotapi.NewMessage(callback.From.ID, user.Localize("Теперь я буду переводить с %s на %s и обратно. Если захочешь изменить, напишешь /start", langs[arr[1]].Name, langs[arr[2]].Name)))
+
+		app.bot.Send(tgbotapi.VideoConfig{
+			BaseFile: tgbotapi.BaseFile{
+				BaseChat: tgbotapi.BaseChat{
+					ChatID:                   callback.From.ID,
+					ChannelUsername:          "",
+					ReplyToMessageID:         0,
+					ReplyMarkup:              nil,
+					DisableNotification:      false,
+					AllowSendingWithoutReply: false,
+				},
+				File: tgbotapi.FilePath("inline.mp4"),
+			},
+			Thumb:             nil,
+			Duration:          0,
+			Caption:           user.Localize("Как переводить еще удобнее"),
+			ParseMode:         "",
+			CaptionEntities:   nil,
+			SupportsStreaming: false,
+		})
 	case "setup_langs_pagination": // arr[1] - source language of the text, arr[2] - offset
 		from := arr[1]
 		offset, err := strconv.Atoi(arr[2])

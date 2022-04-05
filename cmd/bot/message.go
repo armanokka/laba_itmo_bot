@@ -25,13 +25,16 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, user.Localize("Произошла ошибка")))
 		app.notifyAdmin(err)
 	}
-	app.analytics.User(message.Text, message.From)
 
 	if message.Chat.ID < 0 {
 		return
 	}
 
 	defer func() {
+		app.analytics.User(message.Text, message.From)
+		if message.Caption != "" {
+			message.Text = message.Caption
+		}
 		if err := app.db.UpdateUserMetrics(message.From.ID, message.Text); err != nil {
 			app.notifyAdmin(fmt.Errorf("%w", err))
 		}
@@ -77,37 +80,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			},
 			Text: user.Localize("Просто напиши мне текст, а я его переведу"),
 		})
-		query := user.Localize("пример текста")
-		app.bot.Send(tgbotapi.VideoConfig{
-			BaseFile: tgbotapi.BaseFile{
-				BaseChat: tgbotapi.BaseChat{
-					ChatID:           message.From.ID,
-					ChannelUsername:  "",
-					ReplyToMessageID: 0,
-					ReplyMarkup: tgbotapi.NewInlineKeyboardMarkup(
-						tgbotapi.NewInlineKeyboardRow(
-							tgbotapi.InlineKeyboardButton{
-								Text:                         user.Localize("Chat mode"),
-								URL:                          nil,
-								LoginURL:                     nil,
-								CallbackData:                 nil,
-								SwitchInlineQuery:            &query,
-								SwitchInlineQueryCurrentChat: nil,
-								CallbackGame:                 nil,
-								Pay:                          false,
-							})),
-					DisableNotification:      false,
-					AllowSendingWithoutReply: false,
-				},
-				File: tgbotapi.FilePath("inline.mp4"),
-			},
-			Thumb:             nil,
-			Duration:          0,
-			Caption:           user.Localize("Как переводить сообщения, не выходя из чата"),
-			ParseMode:         "",
-			CaptionEntities:   nil,
-			SupportsStreaming: false,
-		})
+
 		if err = app.db.UpdateUser(message.From.ID, tables.Users{Act: "setup_langs"}); err != nil {
 			warn(err)
 		}
@@ -176,6 +149,48 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			DisableWebPagePreview: false,
 		})
 		return
+	case "analytics":
+		user, err := app.db.GetRandomUser()
+		if err != nil {
+			warn(err)
+			return
+		}
+		fmt.Println("Getting logs for", user.ID)
+		logs, err := app.db.GetUserLogs(user.ID, 10)
+		if err != nil {
+			warn(err)
+			return
+		}
+		msg := ""
+		for _, log := range logs {
+			if log.FromBot {
+				msg += "🤖: "
+				switch log.Intent.String {
+				case "cb_meaning":
+					msg += "<i>Lookup meaning</i>"
+				case "cb_exmp":
+					msg += "<i>Open examples</i>"
+				case "cb_dict":
+					msg += "<i>Lookup in dictionary</i>"
+				case "bot_was_blocked":
+					msg += "<i>Bot was blocked</i>"
+				case "bot_was_unblocked":
+					msg += "<i>Bot was unblocked</i>"
+				case "inline_succeeded":
+					msg += "<i>Inline query was handled</i>"
+				}
+				msg += " " + log.Text
+			} else {
+				msg += "👤:" + log.Text
+			}
+
+			msg += "\n"
+
+		}
+		if _, err = app.bot.Send(tgbotapi.NewMessage(message.From.ID, msg)); err != nil {
+			fmt.Println(err)
+		}
+		return
 	}
 
 	switch user.Act {
@@ -189,11 +204,11 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			return
 		}
 		app.bot.Send(tgbotapi.MessageConfig{
-			BaseChat:              tgbotapi.BaseChat{
-				ChatID:                   message.From.ID,
-				ChannelUsername:          "",
-				ReplyToMessageID:         0,
-				ReplyMarkup:              tgbotapi.NewReplyKeyboard(tgbotapi.NewKeyboardButtonRow(
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:           message.From.ID,
+				ChannelUsername:  "",
+				ReplyToMessageID: 0,
+				ReplyMarkup: tgbotapi.NewReplyKeyboard(tgbotapi.NewKeyboardButtonRow(
 					tgbotapi.NewKeyboardButton("Empty"))),
 				DisableNotification:      false,
 				AllowSendingWithoutReply: false,
@@ -222,7 +237,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			return
 		}
 		app.bot.Send(tgbotapi.MessageConfig{
-			BaseChat:              tgbotapi.BaseChat{
+			BaseChat: tgbotapi.BaseChat{
 				ChatID:                   message.From.ID,
 				ChannelUsername:          "",
 				ReplyToMessageID:         0,
@@ -290,9 +305,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				CaptionEntities:     nil,
 			})
 		}
-
-
-
 
 		rows, err := app.db.GetMailersRows()
 		if err != nil {
@@ -437,38 +449,19 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.InlineKeyboardButton{
-				Text:                         user.Localize("Chat mode"),
-				URL:                          nil,
-				LoginURL:                     nil,
-				CallbackData:                 nil,
-				SwitchInlineQuery:            nil,
-				SwitchInlineQueryCurrentChat: &text,
-				CallbackGame:                 nil,
-				Pay:                          false,
-			}), // inline
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("🔊 "+user.Localize("Озвучить"), fmt.Sprintf("speech_this_message_and_replied_one:%s:%s", from, to))))
+			tgbotapi.NewInlineKeyboardButtonData("🔊", fmt.Sprintf("speech_this_message_and_replied_one:%s:%s", from, to))))
+
 	if ret.Examples {
-		keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0], tgbotapi.NewInlineKeyboardButtonData("💬 "+user.Localize("Примеры"), fmt.Sprintf("exm:%s:%s", from, to)))
+		keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0], tgbotapi.NewInlineKeyboardButtonData("💬", fmt.Sprintf("exm:%s:%s", from, to)))
 	}
 	if ret.Translations {
-		keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("📚 "+user.Localize("Переводы"), fmt.Sprintf("trs:%s:%s", from, to))))
+		keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0], tgbotapi.NewInlineKeyboardButtonData("📚", fmt.Sprintf("trs:%s:%s", from, to)))
 	}
 	if ret.Dictionary {
-		l := len(keyboard.InlineKeyboard) - 1
-		if l < 0 {
-			l = 0
-		}
-		keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData("ℹ️"+user.Localize("Словарь"), fmt.Sprintf("dict:%s", from)))
+		keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0], tgbotapi.NewInlineKeyboardButtonData("📖", fmt.Sprintf("dict:%s", from)))
 	}
 
-	if len(message.Entities) == 0 {
-		ret.TranslatedText = "<code>" + ret.TranslatedText + "</code>"
-	}
-
-	if _, err = app.bot.Send(tgbotapi.MessageConfig{
+	_, err = app.bot.Send(tgbotapi.MessageConfig{
 		BaseChat: tgbotapi.BaseChat{
 			ChatID:                   message.Chat.ID,
 			ChannelUsername:          "",
@@ -481,8 +474,10 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		ParseMode:             tgbotapi.ModeHTML,
 		Entities:              nil,
 		DisableWebPagePreview: false,
-	}); err != nil {
+	})
+	if err != nil {
 		pp.Println(err)
+		return
 	}
 
 	app.analytics.Bot(user.ID, ret.TranslatedText, "Translated")
@@ -515,4 +510,5 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			}
 		}()
 	}
+
 }

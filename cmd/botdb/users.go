@@ -14,6 +14,11 @@ func New(conn *gorm.DB) BotDB {
 	return BotDB{conn}
 }
 
+func (db BotDB) GetRandomUser() (users tables.Users, err error) {
+	err = db.Model(&tables.Users{}).Order("RAND()").Limit(1).Find(&users).Error
+	return users, err
+}
+
 func (db BotDB) GetUserByID(id int64) (tables.Users, error) {
 	var user tables.Users
 	req := db.Model(&tables.Users{}).Where("id = ?", id).Find(&user)
