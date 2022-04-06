@@ -8,6 +8,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
 	"gorm.io/gorm"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -64,6 +65,7 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 		})
 		app.notifyAdmin(err)
 		pp.Println("onInlineQuery: error", err)
+		pp.Println(string(debug.Stack()))
 	}
 
 	user := tables.Users{Lang: update.From.LanguageCode}

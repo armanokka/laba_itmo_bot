@@ -483,7 +483,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		DisableWebPagePreview: false,
 	})
 	if err != nil {
-		pp.Println(err)
+		pp.Println(fmt.Errorf("Error:\n%s->%s\n%s", from, to, text))
 		return
 	}
 
