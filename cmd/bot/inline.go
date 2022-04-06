@@ -16,14 +16,17 @@ import (
 )
 
 func removeArticles(articles []interface{}, codes ...string) []interface{} {
+	trash := make([]int, 0, len(codes)+5)
 	for i, v := range articles {
 		article := v.(tgbotapi.InlineQueryResultArticle)
 		for _, code := range codes {
 			if strings.HasPrefix(article.Title, langs[code].Name) {
-				articles = removeIndex(articles, i)
+				trash = append(trash, i)
 			}
 		}
-
+	}
+	for m, i := range trash {
+		articles = removeIndex(articles, i-m)
 	}
 	return articles
 }
@@ -35,7 +38,7 @@ func getArticle(articles []interface{}, code string) interface{} {
 			return v
 		}
 	}
-	return -1
+	return nil
 }
 
 func removeIndex(obj []interface{}, idx int) []interface{} {
@@ -162,7 +165,6 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 	blocks := make([]interface{}, 0, 50)
 
 	from := ""
-	codesBlocks := make(map[string][]int, 50) // мапа из кодов codes к соответствующим индексам blocks
 	for i, code := range codes[offset : offset+count] {
 		code := code
 		i := i
@@ -214,7 +216,6 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 				ThumbWidth:  0,
 				ThumbHeight: 0,
 			})
-			codesBlocks[code] = append(codesBlocks[code], len(blocks)-1)
 			mu.Unlock()
 		}()
 	}
@@ -228,12 +229,16 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 			if lang == from {
 				continue
 			}
-			block := getArticle(blocks, lang).(tgbotapi.InlineQueryResultArticle)
+			block := getArticle(blocks, lang)
+			if block == nil {
+				continue
+			}
+			article := block.(tgbotapi.InlineQueryResultArticle)
 			blocks = removeArticles(blocks, lang)
-			block.Title = strings.TrimSuffix(block.Title, " 📌")
-			block.Title += " 🙍‍♂️"
-			block.ID = strconv.Itoa(-1 - i)
-			blocks = append(blocks, block)
+			article.Title = strings.TrimSuffix(article.Title, " 📌")
+			article.Title += " 🙍‍♂️"
+			article.ID = strconv.Itoa(-1 - i)
+			blocks = append(blocks, article)
 		}
 	}
 

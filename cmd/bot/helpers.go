@@ -9,6 +9,7 @@ import (
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/go-errors/errors"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/paul-mannino/go-fuzzywuzzy"
 	"io"
 	"io/ioutil"
 	"log"
@@ -19,10 +20,6 @@ import (
 	"strings"
 	"unicode/utf16"
 )
-
-func format(i int64) string {
-	return strconv.FormatInt(i, 10)
-}
 
 // cutString cut string using runes by limit
 func cutStringUTF16(text string, limit int) string {
@@ -57,6 +54,22 @@ func in(arr []string, keys ...string) bool {
 		exists := false
 		for _, v := range arr {
 			if k == v {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			return false
+		}
+	}
+	return true
+}
+
+func inFuzzy(arr []string, keys ...string) bool {
+	for _, k := range keys {
+		exists := false
+		for _, v := range arr {
+			if k == v || fuzzy.EditDistance(k, v) == 1 {
 				exists = true
 				break
 			}

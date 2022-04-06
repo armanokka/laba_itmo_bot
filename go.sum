@@ -272,6 +272,8 @@ github.com/nicksnyder/go-i18n/v2 v2.1.2 h1:QHYxcUJnGHBaq7XbvgunmZ2Pn0focXFqTD61C
 github.com/nicksnyder/go-i18n/v2 v2.1.2/go.mod h1:d++QJC9ZVf7pa48qrsRWhMJ5pSHIPmS3OLqK1niyLxs=
 github.com/oklog/ulid v1.3.1/go.mod h1:CirwcVhetQ6Lv90oh/F+FBtV6XMibvdAFo93nm5qn4U=
 github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
+github.com/paul-mannino/go-fuzzywuzzy v0.0.0-20200127021948-54652b135d0e h1:UMX/0xkc/jcivgGjoBumSA1YwxT3eq6rYeWOOEuPU38=
+github.com/paul-mannino/go-fuzzywuzzy v0.0.0-20200127021948-54652b135d0e/go.mod h1:AMWhKRluACdXhJMWJiVOuqwmZvJOcdmjgbla/9zOKzE=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
 github.com/pelletier/go-toml v1.9.3/go.mod h1:u1nR/EPcESfeI/szUZKdtJ0xRNbUoANCkoOuaOx1Y+c=
 github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=

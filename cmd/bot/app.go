@@ -351,7 +351,7 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 
 				for _, word := range words {
 					word = strings.TrimSpace(word)
-					if in(usedWords, word) {
+					if inFuzzy(usedWords, word) {
 						continue
 					}
 					if len(last)+len(words) > 25 {
