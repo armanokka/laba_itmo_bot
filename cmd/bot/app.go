@@ -94,6 +94,12 @@ func (app App) Run(ctx context.Context) error {
 		}
 	})
 	g.Go(func() error {
+		defer func() {
+			if err := recover(); err != nil {
+				app.log.Error("%w", zap.Any("error", err))
+				app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Panic:"+fmt.Sprint(err)))
+			}
+		}()
 		fmt.Println("чекаем не завалялась ли рассылка")
 		exists, err := app.db.MailingExists()
 		if err != nil {
@@ -128,6 +134,9 @@ func (app App) Run(ctx context.Context) error {
 			defer rows.Close()
 			for rows.Next() {
 				var id int64
+				if rows.Err() != nil {
+					return rows.Err()
+				}
 				if err = rows.Scan(&id); err != nil {
 					return err
 				}
@@ -315,9 +324,6 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 			}
 			return err
 		})
-	}
-
-	if l < 50 {
 		g.Go(func() error {
 			v, err := lingvo.GetDictionary(user.MyLang, user.ToLang, lower)
 			if err != nil {
