@@ -2,17 +2,19 @@ package lingvo
 
 type Dictionary struct {
 	DictionaryName string `json:"dictionaryName"`
-	SourceLanguage int `json:"sourceLanguage"`
-	TargetLanguage int `json:"targetLanguage"`
-	Heading string `json:"heading"`
+	SourceLanguage int    `json:"sourceLanguage"`
+	TargetLanguage int    `json:"targetLanguage"`
+	Heading        string `json:"heading"`
 	ComplexHeading string `json:"complexHeading"`
-	Transcription string `json:"transcription"`
-	SoundFileName string `json:"soundFileName"`
-	Translations string `json:"translations"`
-	Examples string `json:"examples"`
-	Comment string `json:"comment"`
-	PartOfSpeech string `json:"partOfSpeech"`
+	Transcription  string `json:"transcription"`
+	SoundFileName  string `json:"soundFileName"`
+	Translations   string `json:"translations"`
+	Examples       string `json:"examples"`
+	Comment        string `json:"comment"`
+	PartOfSpeech   string `json:"partOfSpeech"`
 }
+
+var LingvoDictionaryLangs = []string{"en", "hu", "el", "da", "es", "it", "kk", "zh", "la", "de", "nl", "no", "pl", "pt", "ru", "tt", "tr", "uk", "fi", "fr"}
 
 var Lingvo = map[string]int{
 	"zh": 1028,
@@ -39,14 +41,14 @@ var Lingvo = map[string]int{
 
 type TutorCard struct {
 	DictionaryName string `json:"dictionaryName"`
-	SourceLanguage int `json:"sourceLanguage"`
-	TargetLanguage int `json:"targetLanguage"`
-	Heading string `json:"heading"`
+	SourceLanguage int    `json:"sourceLanguage"`
+	TargetLanguage int    `json:"targetLanguage"`
+	Heading        string `json:"heading"`
 	ComplexHeading string `json:"complexHeading"`
-	Transcription string `json:"transcription"`
-	SoundFileName string `json:"soundFileName"`
-	Translations string `json:"translations"`
-	Examples string `json:"examples"`
-	Comment string `json:"comment"`
-	PartOfSpeech string `json:"partOfSpeech"`
+	Transcription  string `json:"transcription"`
+	SoundFileName  string `json:"soundFileName"`
+	Translations   string `json:"translations"`
+	Examples       string `json:"examples"`
+	Comment        string `json:"comment"`
+	PartOfSpeech   string `json:"partOfSpeech"`
 }

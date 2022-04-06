@@ -417,11 +417,16 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 
-	from, err := translate.DetectLanguageGoogle(cutStringUTF16(text, 100))
+	from, err := translate.DetectLanguageYandex(cutStringUTF16(text, 100))
 	if err != nil {
 		warn(err)
 		return
 	}
+	if strings.Contains(from, "-") {
+		parts := strings.Split(from, "-")
+		from = parts[0]
+	}
+	fmt.Println("detected lang", from)
 
 	if from == "" {
 		from = "auto"

@@ -268,7 +268,7 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 		//lingv []lingvo.Dictionary
 	)
 
-	l := len(text)
+	l := len([]rune(text))
 	lower := strings.ToLower(text)
 
 	if from == "auto" {
@@ -316,14 +316,14 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 
 	_, ok1 := lingvo.Lingvo[from]
 	_, ok2 := lingvo.Lingvo[to]
-	if ok1 && ok2 && len([]rune(lower)) < 50 {
+	if ok1 && ok2 && l < 50 {
 		g.Go(func() error {
 			suggestions, err = lingvo.Suggestions(from, to, lower, 1, 0)
-			if err != nil {
-				err = errors.WrapPrefix(err, "g.Go: lingvo.Suggestions:", 1)
-			}
 			return err
 		})
+	}
+
+	if l < 50 && in(lingvo.LingvoDictionaryLangs, user.MyLang, user.ToLang) {
 		g.Go(func() error {
 			v, err := lingvo.GetDictionary(user.MyLang, user.ToLang, lower)
 			if err != nil {

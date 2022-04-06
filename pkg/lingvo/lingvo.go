@@ -7,8 +7,6 @@ import (
 	"net/url"
 )
 
-
-
 func TutorCards(from, to, text string) (*[]TutorCard, error) {
 	srcLang, ok := Lingvo[from]
 	if !ok {
@@ -22,11 +20,11 @@ func TutorCards(from, to, text string) (*[]TutorCard, error) {
 	dst := fmt.Sprintf("https://api.lingvolive.com/Translation/tutor-cards?text=%s&srcLang=%d&dstLang=%d", url.PathEscape(text), srcLang, dstLang)
 
 	res, err := resty.R().SetHeaders(map[string]string{
-		"User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36",
-		"Origin": "https://www.lingvolive.com",
-		"Referrer": "https://www.lingvolive.com/",
-		"Host": "api.lingvolive.com",
-		"Accept": "application/json, text/plain, */*",
+		"User-Agent":      "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36",
+		"Origin":          "https://www.lingvolive.com",
+		"Referrer":        "https://www.lingvolive.com/",
+		"Host":            "api.lingvolive.com",
+		"Accept":          "application/json, text/plain, */*",
 		"Accept-Language": "ru-ru",
 		//"LL-GA-ClientId": "1865379537.1639590360",
 		"Connection": "keep-alive",
@@ -55,11 +53,11 @@ func GetDictionary(from, to, text string) ([]Dictionary, error) {
 	dst := fmt.Sprintf("https://api.lingvolive.com/Translation/tutor-cards?text=%s&srcLang=%d&dstLang=%d", url.PathEscape(text), srcLang, dstLang)
 
 	res, err := resty.R().SetHeaders(map[string]string{
-		"User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36",
-		"Origin": "https://www.lingvolive.com",
-		"Referrer": "https://www.lingvolive.com/",
-		"Host": "api.lingvolive.com",
-		"Accept": "application/json, text/plain, */*",
+		"User-Agent":      "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36",
+		"Origin":          "https://www.lingvolive.com",
+		"Referrer":        "https://www.lingvolive.com/",
+		"Host":            "api.lingvolive.com",
+		"Accept":          "application/json, text/plain, */*",
 		"Accept-Language": "ru-ru",
 		//"LL-GA-ClientId": "1865379537.1639590360",
 		"Connection": "keep-alive",
@@ -76,23 +74,23 @@ func GetDictionary(from, to, text string) ([]Dictionary, error) {
 }
 
 type SuggestionResult struct {
-	Items []SuggestionsItem `json:"items"`
-	StartPos string `json:"startPos"`
-	HasNextPage bool `json:"hasNextPage"`
-	Prefix string `json:"prefix"`
-	TargetLanguageID int `json:"targetLanguageId"`
-	SourceLanguageID int `json:"sourceLanguageId"`
+	Items            []SuggestionsItem `json:"items"`
+	StartPos         string            `json:"startPos"`
+	HasNextPage      bool              `json:"hasNextPage"`
+	Prefix           string            `json:"prefix"`
+	TargetLanguageID int               `json:"targetLanguageId"`
+	SourceLanguageID int               `json:"sourceLanguageId"`
 }
 type SuggestionsItem struct {
-	Heading string `json:"heading"`
-	LingvoTranslations string `json:"lingvoTranslations"`
-	LingvoSoundFileName string `json:"lingvoSoundFileName"`
-	SocialTranslations interface{} `json:"socialTranslations"`
-	LingvoDictionaryName string `json:"lingvoDictionaryName"`
-	Type string `json:"type"`
-	SrcLangID int `json:"srcLangId"`
-	DstLangID int `json:"dstLangId"`
-	Source string `json:"source"`
+	Heading              string      `json:"heading"`
+	LingvoTranslations   string      `json:"lingvoTranslations"`
+	LingvoSoundFileName  string      `json:"lingvoSoundFileName"`
+	SocialTranslations   interface{} `json:"socialTranslations"`
+	LingvoDictionaryName string      `json:"lingvoDictionaryName"`
+	Type                 string      `json:"type"`
+	SrcLangID            int         `json:"srcLangId"`
+	DstLangID            int         `json:"dstLangId"`
+	Source               string      `json:"source"`
 }
 
 func Suggestions(from, to, text string, count, offset int) (*SuggestionResult, error) {
@@ -107,17 +105,17 @@ func Suggestions(from, to, text string, count, offset int) (*SuggestionResult, e
 
 	dst := fmt.Sprintf("https://api.lingvolive.com/Translation/WordListPart?prefix=%s&srcLang=%d&dstLang=%d&pageSize=%d&startIndex=%d", url.PathEscape(text), srcLang, dstLang, count, offset)
 	res, err := resty.R().SetHeaders(map[string]string{
-		"User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36",
-		"Origin": "https://www.lingvolive.com",
-		"Referrer": "https://www.lingvolive.com/",
-		"Host": "api.lingvolive.com",
-		"Accept": "application/json, text/plain, */*",
+		"User-Agent":      "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36",
+		"Origin":          "https://www.lingvolive.com",
+		"Referrer":        "https://www.lingvolive.com/",
+		"Host":            "api.lingvolive.com",
+		"Accept":          "application/json, text/plain, */*",
 		"Accept-Language": "ru-ru",
 		//"LL-GA-ClientId": "1865379537.1639590360",
 		"Connection": "keep-alive",
 	}).Get(dst)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("lingvo.suggestions:\n%s\n%s", res.String(), err.Error())
 	}
 
 	var out SuggestionResult
@@ -126,4 +124,3 @@ func Suggestions(from, to, text string, count, offset int) (*SuggestionResult, e
 	}
 	return &out, nil
 }
-

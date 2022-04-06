@@ -80,3 +80,34 @@ func YandexTranslate(from, to, text string) (string, error) {
 	}
 	return out, nil
 }
+
+func DetectLanguageYandex(text string) (string, error) {
+	req, err := http.NewRequest("GET", `https://translate.yandex.net/api/v1/tr.json/detect?sid=`+generateSid()+`-0-0&srv=tr-text&text=`+url.PathEscape(text)+`&options=1&yu=9527670361648278346&yum=1648283397624970429`, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header["Content-Type"] = []string{"application/json; charset=UTF-16"}
+	req.Header["Accept-Language"] = []string{"ru,en;q=0.9"}
+	req.Header["User-aAent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.174 YaBrowser/22.1.5.810 Yowser/2.5 Safari/537.36"}
+	req.Header["origin"] = []string{"https://stackoverflow.com"}
+	req.Header["referrer"] = []string{"https://stackoverflow.com/"}
+	req.Header["sec-fetch-site"] = []string{"cross-site"}
+	req.Header["sec-fetch-mode"] = []string{"cors"}
+	req.Header["sec-fetch-dest"] = []string{"empty"}
+	req.Header["sec-ch-ua-mobile"] = []string{"?0"}
+	req.Header["sec-ch-ua"] = []string{`" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"`}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	if gjson.GetBytes(body, "code").Int() != 200 {
+		return "", fmt.Errorf(gjson.GetBytes(body, "message").String())
+	}
+	return gjson.GetBytes(body, "lang").String(), nil
+}
