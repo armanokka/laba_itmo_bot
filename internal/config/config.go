@@ -18,7 +18,7 @@ import (
 const (
 	DashBotAPIKey        = "cjVjdWDRijXDk5kl9yGi5TTS9XImME7HbZMOg09F"
 	AdminID              = 579515224
-	botToken      string = "1737819626:AAEJyD8fnSHdkh6VP3ePdwFkpEnrirLMHp4" // production
+	botToken      string = "1737819626:AAHxpILplsDRqQgpi8p4SMQ3lKz67123Zuk" // production
 	//botToken string = "1934369237:AAFbys0srOUaH4VozGgHusacCAa5lYf0TCo" // home
 )
 
