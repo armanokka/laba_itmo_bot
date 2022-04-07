@@ -10,8 +10,6 @@ import (
 	"github.com/robfig/cron"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"os"
-	"strings"
 	"time"
 )
 
@@ -19,7 +17,6 @@ const (
 	DashBotAPIKey        = "cjVjdWDRijXDk5kl9yGi5TTS9XImME7HbZMOg09F"
 	AdminID              = 579515224
 	botToken      string = "1737819626:AAHxpILplsDRqQgpi8p4SMQ3lKz67123Zuk" // production
-	
 	//botToken string = "1934369237:AAFbys0srOUaH4VozGgHusacCAa5lYf0TCo" // home
 )
 
@@ -64,13 +61,7 @@ func Load() error {
 	sqlDb.SetMaxIdleConns(24)
 	sqlDb.SetConnMaxLifetime(15 * time.Minute)
 
-	// Initializing bot
-	token := os.Getenv("BOT_TOKEN")
-	if token == "" {
-		token = strings.TrimSpace(botToken)
-	}
-
-	api, err := tgbotapi.NewBotAPI(token)
+	api, err := tgbotapi.NewBotAPI(botToken)
 	if err != nil {
 		panic(err)
 	}
