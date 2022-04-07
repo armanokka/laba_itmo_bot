@@ -2,11 +2,13 @@ package bot
 
 import (
 	"fmt"
+	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
 	translate2 "github.com/armanokka/translobot/pkg/translate"
 	"github.com/go-errors/errors"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"runtime/debug"
 	"sort"
@@ -17,6 +19,7 @@ import (
 )
 
 func removeArticles(articles []interface{}, codes ...string) []interface{} {
+
 	trash := make([]int, 0, len(codes)+5)
 	for i, v := range articles {
 		article := v.(tgbotapi.InlineQueryResultArticle)
@@ -56,6 +59,13 @@ func Title(s string) string {
 }
 
 func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
+	defer func() {
+		if err := recover(); err != nil {
+			app.log.Error("%w", zap.Any("error", err))
+			app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Panic:"+fmt.Sprint(err)))
+		}
+	}()
+
 	update.Query = Title(update.Query)
 	warn := func(err error) {
 		app.bot.AnswerInlineQuery(tgbotapi.InlineConfig{

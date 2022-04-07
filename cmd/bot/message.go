@@ -9,6 +9,7 @@ import (
 	"github.com/armanokka/translobot/pkg/translate"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"html"
 	"net/url"
@@ -20,6 +21,13 @@ import (
 )
 
 func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
+	defer func() {
+		if err := recover(); err != nil {
+			app.log.Error("%w", zap.Any("error", err))
+			app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Panic:"+fmt.Sprint(err)))
+		}
+	}()
+
 	user := tables.Users{Lang: message.From.LanguageCode}
 
 	warn := func(err error) {
@@ -469,8 +477,10 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0], tgbotapi.NewInlineKeyboardButtonData("📖", fmt.Sprintf("dict:%s", from)))
 	}
 
+	keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0], tgbotapi.NewInlineKeyboardButtonData("⚠️", fmt.Sprintf("do_you_like_translation:%s:%s", from, to)))
+
 	for _, part := range translate.SplitIntoChunksBySentences(ret.TranslatedText, 4000) {
-		_, err = app.bot.Send(tgbotapi.MessageConfig{
+		msg, err := app.bot.Send(tgbotapi.MessageConfig{
 			BaseChat: tgbotapi.BaseChat{
 				ChatID:                   message.Chat.ID,
 				ChannelUsername:          "",
@@ -488,6 +498,10 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			pp.Println("Error:", err.Error())
 			pp.Println(fmt.Errorf("Error:\n%s->%s\n%s", from, to, text))
 			pp.Println(string(debug.Stack()))
+			return
+		}
+		if err = app.bc.PutWithTTL([]byte(strconv.Itoa(msg.MessageID)), []byte(text), 24*time.Hour); err != nil {
+			warn(err)
 			return
 		}
 	}

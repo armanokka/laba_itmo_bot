@@ -2,10 +2,15 @@ package bot
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"git.mills.io/prologic/bitcask"
+	"github.com/armanokka/translobot/internal/config"
+	"github.com/armanokka/translobot/internal/tables"
 	translate2 "github.com/armanokka/translobot/pkg/translate"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"reflect"
 	"strconv"
@@ -15,13 +20,19 @@ import (
 )
 
 func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQuery) {
+	defer func() {
+		if err := recover(); err != nil {
+			app.log.Error("%w", zap.Any("error", err))
+			app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Panic:"+fmt.Sprint(err)))
+		}
+	}()
 	warn := func(err error) {
 		app.bot.Send(tgbotapi.NewCallback(callback.ID, "Error, sorry"))
 		app.notifyAdmin(err)
 		pp.Println(err)
 	}
 
-	//user := tables.Users{Lang: callback.From.LanguageCode}
+	user := tables.Users{Lang: callback.From.LanguageCode}
 
 	arr := strings.Split(callback.Data, ":")
 
@@ -32,6 +43,83 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 	}()
 
 	switch arr[0] {
+	case "do_you_like_translation": // arr[1] - from, arr[2] - to
+		_, err := app.bc.Get([]byte(strconv.Itoa(callback.Message.MessageID)))
+		if err != nil {
+			if errors.Is(err, bitcask.ErrKeyNotFound) || errors.Is(err, bitcask.ErrKeyExpired) {
+				app.bot.AnswerCallbackQuery(tgbotapi.CallbackConfig{
+					CallbackQueryID: callback.ID,
+					Text:            user.Localize("Время ожидания жалобы на перевод истекло. Переведите сообщение еще раз"),
+					ShowAlert:       true,
+					URL:             "",
+					CacheTime:       0,
+				})
+			}
+		}
+		pp.Println(callback)
+
+		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
+		app.bot.Send(tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:           callback.From.ID,
+				ChannelUsername:  "",
+				ReplyToMessageID: callback.Message.MessageID,
+				ReplyMarkup: tgbotapi.NewInlineKeyboardMarkup(
+					tgbotapi.NewInlineKeyboardRow(
+						tgbotapi.NewInlineKeyboardButtonData("👍", fmt.Sprintf("delete:%s", user.Localize("Спасибо!"))),
+						tgbotapi.NewInlineKeyboardButtonData("👎", fmt.Sprintf("report_translation:%s:%s", arr[1], arr[2])))),
+				DisableNotification:      false,
+				AllowSendingWithoutReply: false,
+			},
+			Text:                  user.Localize("Вас устраивает этот перевод?"),
+			ParseMode:             "",
+			Entities:              nil,
+			DisableWebPagePreview: false,
+		})
+	case "report_translation": // arr[1] - from, arr[2] - to, text in replied message
+		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("OK", "delete")))
+		app.bot.Send(tgbotapi.EditMessageTextConfig{
+			BaseEdit: tgbotapi.BaseEdit{
+				ChatID:          callback.From.ID,
+				ChannelUsername: "",
+				MessageID:       callback.Message.MessageID,
+				InlineMessageID: "",
+				ReplyMarkup:     &keyboard,
+			},
+			Text:                  user.Localize("Мы учли ваш голос\nВаши отзывы помогут нам улучшить сервис"),
+			ParseMode:             "",
+			Entities:              nil,
+			DisableWebPagePreview: false,
+		})
+		input, err := app.bc.Get([]byte(strconv.Itoa(callback.Message.ReplyToMessage.MessageID)))
+		if err != nil {
+			warn(err)
+			return
+		}
+		text := fmt.Sprintf("⚠ Жалоба на перевод\n<b>%s->%s</b>\n<b>Input:</b>\n%s\n<b>Output:</b>\n%s", arr[1], arr[2], string(input), callback.Message.ReplyToMessage.Text)
+		for _, part := range translate2.SplitIntoChunksBySentences(text, 4000) {
+			if _, err := app.bot.Send(tgbotapi.MessageConfig{
+				BaseChat: tgbotapi.BaseChat{
+					ChatID:                   config.AdminID,
+					ChannelUsername:          "",
+					ReplyToMessageID:         0,
+					ReplyMarkup:              nil,
+					DisableNotification:      false,
+					AllowSendingWithoutReply: false,
+				},
+				Text:                  part,
+				ParseMode:             tgbotapi.ModeHTML,
+				Entities:              nil,
+				DisableWebPagePreview: false,
+			}); err != nil {
+				pp.Println(err)
+				app.notifyAdmin(err)
+			}
+		}
+
 	case "cancel_mailing_act":
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, "OK"))
 		if err := app.db.UpdateUserByMap(callback.From.ID, map[string]interface{}{"act": ""}); err != nil {
@@ -44,8 +132,12 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
 		app.db.LogBotMessage(callback.From.ID, "cb_none", "")
 		return
-	case "delete":
-		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
+	case "delete": // arr[1] - text for callback query
+		text := ""
+		if len(arr) > 1 {
+			text = strings.Join(arr[1:], ":")
+		}
+		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, text))
 		app.bot.Send(tgbotapi.DeleteMessageConfig{
 			ChatID:    callback.From.ID,
 			MessageID: callback.Message.MessageID,
