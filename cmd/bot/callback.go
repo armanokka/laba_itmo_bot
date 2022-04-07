@@ -56,7 +56,6 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 				})
 			}
 		}
-		pp.Println(callback)
 
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
 		app.bot.Send(tgbotapi.MessageConfig{

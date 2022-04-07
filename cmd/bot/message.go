@@ -435,7 +435,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		parts := strings.Split(from, "-")
 		from = parts[0]
 	}
-	fmt.Println("detected lang", from)
 
 	if from == "" {
 		from = "auto"
