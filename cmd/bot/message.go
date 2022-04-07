@@ -13,6 +13,7 @@ import (
 	"html"
 	"net/url"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -468,23 +469,27 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0], tgbotapi.NewInlineKeyboardButtonData("📖", fmt.Sprintf("dict:%s", from)))
 	}
 
-	_, err = app.bot.Send(tgbotapi.MessageConfig{
-		BaseChat: tgbotapi.BaseChat{
-			ChatID:                   message.Chat.ID,
-			ChannelUsername:          "",
-			ReplyToMessageID:         message.MessageID,
-			ReplyMarkup:              keyboard,
-			DisableNotification:      true,
-			AllowSendingWithoutReply: false,
-		},
-		Text:                  ret.TranslatedText,
-		ParseMode:             tgbotapi.ModeHTML,
-		Entities:              nil,
-		DisableWebPagePreview: false,
-	})
-	if err != nil {
-		pp.Println(fmt.Errorf("Error:\n%s->%s\n%s", from, to, text))
-		return
+	for _, part := range translate.SplitIntoChunksBySentences(ret.TranslatedText, 4000) {
+		_, err = app.bot.Send(tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:                   message.Chat.ID,
+				ChannelUsername:          "",
+				ReplyToMessageID:         message.MessageID,
+				ReplyMarkup:              keyboard,
+				DisableNotification:      true,
+				AllowSendingWithoutReply: false,
+			},
+			Text:                  part,
+			ParseMode:             tgbotapi.ModeHTML,
+			Entities:              nil,
+			DisableWebPagePreview: false,
+		})
+		if err != nil {
+			pp.Println("Error:", err.Error())
+			pp.Println(fmt.Errorf("Error:\n%s->%s\n%s", from, to, text))
+			pp.Println(string(debug.Stack()))
+			return
+		}
 	}
 
 	app.analytics.Bot(user.ID, ret.TranslatedText, "Translated")

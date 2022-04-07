@@ -54,7 +54,10 @@ func (app App) Run(ctx context.Context) error {
 		for {
 			select {
 			case <-ctx.Done():
+				pp.Println("Stopping receiving updates...")
+				app.bot.StopReceivingUpdates()
 				wg.Wait()
+				pp.Println("Waiting for goroutines finishing...")
 				return ctx.Err()
 			case update := <-updates:
 				defer func() {

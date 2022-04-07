@@ -46,8 +46,24 @@ func main() {
 	log, _ := zap.NewProduction()
 	defer log.Sync()
 
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, os.Interrupt, syscall.SIGQUIT, syscall.SIGHUP)
-	defer cancel()
+	signalChanel := make(chan os.Signal, 1)
+	signal.Notify(signalChanel,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT)
+	defer signal.Stop(signalChanel)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		signal := <-signalChanel
+		//switch t := signal.(type) {
+		//case syscall.SIGHUP:
+		//	//reread config...
+		//}
+		pp.Println("Received", signal.String())
+		cancel()
+	}()
 
 	db := config.DB()
 	botAPI := config.BotAPI()
@@ -67,10 +83,11 @@ func main() {
 	})
 
 	g.Go(func() error {
-		return server.Run()
+		return server.Run(ctx)
 	})
 
-	if err := g.Wait(); err != nil {
+	if err := g.Wait(); err != nil && err != context.Canceled {
 		panic(err)
 	}
+	pp.Println("Program stopped gracefully.")
 }

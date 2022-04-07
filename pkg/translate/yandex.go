@@ -28,12 +28,11 @@ func YandexTranslate(from, to, text string) (string, error) {
 	if _, ok := YandexSupportedLanguages[to]; !ok {
 		return "", ErrLangNotSupported
 	}
-	parts := splitIntoChunksBySentences(text, 1800)
-
+	parts := SplitIntoChunksBySentences(text, 1800)
 	out := ""
 	for _, part := range parts {
 		params := url.Values{}
-		for _, chunk := range splitIntoChunksBySentences(part, 400) {
+		for _, chunk := range SplitIntoChunksBySentences(part, 400) {
 			params.Add("text", chunk)
 		}
 

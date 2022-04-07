@@ -41,10 +41,10 @@ var DeeplSupportedLangs = []string{
 }
 
 type Deepl struct {
-	client *resty.Client
+	client                       *resty.Client
 	sessionId, userId, userAgent string
-	headers                              map[string]string
-	weights map[string]float64
+	headers                      map[string]string
+	weights                      map[string]float64
 }
 
 func (d Deepl) getId() int64 {
@@ -56,23 +56,21 @@ func (d Deepl) isReplace(id int64) bool {
 	return (id+3)%13 == 0 || (id+5)%29 == 0
 }
 
-
-
 func NewDeepl() (Deepl, error) {
 	d := Deepl{
-		client: resty.New(),
+		client:    resty.New(),
 		sessionId: "821b2aeb-1074-44b7-9285-0cadc8999715",
 		userId:    "6346616a-cb7f-4e8a-a0c7-d4c4dafd7d01",
 		userAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.60 Safari/537.36",
-		headers: nil,
-		weights:  nil,
+		headers:   nil,
+		weights:   nil,
 	}
 	d.headers = map[string]string{
 		"accept":          "*/*",
 		"accept-encoding": "gzip, deflate, br",
 		"accept-language": "uk-UA,uk;q=0.9,en-US;q=0.8,en;q=0.7",
 		"Authorization":   "None",
-		"Cookie": "", // добавится в loadWeightsAndCookies
+		"Cookie":          "", // добавится в loadWeightsAndCookies
 		"Content-Type":    "application/json; charset=utf-8",
 		"origin":          "chrome-extension://cofdbpoegempjloogbagkncekinflcnj",
 		"referer":         "https://www.deepl.com/",
@@ -95,10 +93,10 @@ func (d *Deepl) loadWeightsAndCookies() error {
 		Jsonrpc: "2.0",
 		Method:  "LMT_handle_texts",
 		Params: Params{
-			Texts:     []Texts{{
+			Texts: []Texts{{
 				Text: "Пример",
 			}},
-			Html: "enabled",
+			Html:      "enabled",
 			Splitting: "newlines",
 			Lang: Lang{
 				TargetLang:             "en",
@@ -121,7 +119,6 @@ func (d *Deepl) loadWeightsAndCookies() error {
 		data = []byte(strings.ReplaceAll(string(data), `"method":"`, `"method": "`))
 	}
 
-
 	resp, err := d.client.R().
 		SetHeaders(d.headers).
 		SetBody(data).
@@ -131,7 +128,7 @@ func (d *Deepl) loadWeightsAndCookies() error {
 		return err
 	}
 	if resp.StatusCode() != 200 {
-		return fmt.Errorf("Deepl loadWeightsAndCookies: not 200 http code. Response:"+resp.String())
+		return fmt.Errorf("Deepl loadWeightsAndCookies: not 200 http code. Response:" + resp.String())
 	}
 
 	for _, cookie := range resp.Cookies() {
@@ -140,7 +137,7 @@ func (d *Deepl) loadWeightsAndCookies() error {
 	pp.Println("Deepl: updated headers:", d.headers["Cookie"])
 
 	weights := make(map[string]float64, 12)
-	for k, v  := range gjson.GetBytes(resp.Body(), "result.detectedLanguages").Map() {
+	for k, v := range gjson.GetBytes(resp.Body(), "result.detectedLanguages").Map() {
 		if k == "unsupported" {
 			continue
 		}
@@ -170,8 +167,6 @@ type DeeplRequest struct {
 type Texts struct {
 	Text string `json:"text"`
 }
-
-
 
 type Weight struct {
 	BG float64 `json:"BG"`
@@ -208,7 +203,7 @@ type Lang struct {
 	Preference             Preference `json:"preference"`
 }
 type Params struct {
-	Html string `json:"html,omitempty"` //enabled
+	Html      string  `json:"html,omitempty"` //enabled
 	Texts     []Texts `json:"texts"`
 	Splitting string  `json:"splitting"`
 	Lang      Lang    `json:"lang"`
@@ -237,15 +232,14 @@ type TranslationRequestData struct {
 }
 
 func Le(t, e float64) float64 {
-	const n = 1e-5;
+	const n = 1e-5
 	return n * math.Floor(float64((0.97*t+e)/n))
 }
-
 
 func (d *Deepl) Translate(from, to, text string, withWeights bool) (string, error) {
 	text = strings.ReplaceAll(text, "\n", "<br>")
 	from, to = strings.ToUpper(from), strings.ToUpper(to)
-	parts := splitIntoChunksBySentences(text, 4999)
+	parts := SplitIntoChunksBySentences(text, 4999)
 	texts := make([]Texts, 0, len(parts))
 	for i, part := range parts {
 		texts = append(texts, Texts{
@@ -264,7 +258,7 @@ func (d *Deepl) Translate(from, to, text string, withWeights bool) (string, erro
 			Method:  "LMT_handle_texts",
 			Params: Params{
 				Texts:     texts,
-				Html: "enabled",
+				Html:      "enabled",
 				Splitting: "newlines",
 				Lang: Lang{
 					TargetLang:             to,
@@ -282,7 +276,7 @@ func (d *Deepl) Translate(from, to, text string, withWeights bool) (string, erro
 			Params: Params{
 				Texts:     texts,
 				Splitting: "newlines",
-				Html: "enabled",
+				Html:      "enabled",
 				Lang: Lang{
 					TargetLang:             to,
 					SourceLangUserSelected: from,
@@ -318,18 +312,15 @@ func (d *Deepl) Translate(from, to, text string, withWeights bool) (string, erro
 		return "", fmt.Errorf("Deepl error\nInput text[%s-%s]:%s\n\n%s", from, to, text, gjson.GetBytes(resp.Body(), "error.message").String())
 	}
 
-
 	out := ""
 	for _, v := range gjson.GetBytes(resp.Body(), "result.texts").Array() {
 		out += v.Get("text").String()
 	}
 	out = strings.ReplaceAll(out, "<br>", "\n")
 
-
 	for lang, weight := range gjson.GetBytes(resp.Body(), "params.lang.preference.weight").Map() {
 		d.weights[lang] = Le(d.weights[lang], weight.Float())
 	}
-
 
 	resp, err = d.client.R().SetHeaders(d.headers).SetBody(DeeplStatisticsReq{
 		EventID:   60001,
@@ -350,7 +341,6 @@ func (d *Deepl) Translate(from, to, text string, withWeights bool) (string, erro
 	if err != nil {
 		return "", err
 	}
-
 
 	return out, err
 }
