@@ -14,6 +14,7 @@ import (
 	"github.com/go-errors/errors"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
+	fuzzy "github.com/paul-mannino/go-fuzzywuzzy"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"html"
@@ -404,18 +405,17 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 				MicrosoftTr = tr.TranslatedText
 				return nil
 			})
-
-		} else {
-			g.Go(func() error {
-				tr, err := translate2.GoogleTranslate(from, to, text)
-				if err != nil {
-					return err
-				}
-				GoogleTr = tr.Text
-				return nil
-			})
 		}
 	}
+
+	g.Go(func() error {
+		tr, err := translate2.GoogleTranslate(from, to, text)
+		if err != nil {
+			return err
+		}
+		GoogleTr = tr.Text
+		return nil
+	})
 
 	if err = g.Wait(); err != nil {
 		return SuperTranslation{}, err
@@ -449,6 +449,9 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 		break
 	case YandexTr != "":
 		ret.TranslatedText = YandexTr
+		if fuzzy.EditDistance(YandexTr, text) < 2 {
+			ret.TranslatedText = GoogleTr
+		}
 		pp.Println("translated via yandex")
 
 		break
@@ -470,7 +473,7 @@ func (app App) sendSpeech(user tables.Users, lang, text string, callbackID strin
 	sdec, err := translate2.TTS(lang, text)
 	if err != nil {
 		if err == translate2.ErrTTSLanguageNotSupported {
-			call := tgbotapi.NewCallback(callbackID, user.Localize("%s не поддерживается", langs[lang].Name))
+			call := tgbotapi.NewCallback(callbackID, user.Localize("%s не поддерживается", langs[user.Lang][lang]))
 			call.ShowAlert = true
 			app.bot.AnswerCallbackQuery(call)
 			return nil

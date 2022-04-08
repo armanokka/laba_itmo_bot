@@ -18,13 +18,13 @@ import (
 	"unicode"
 )
 
-func removeArticles(articles []interface{}, codes ...string) []interface{} {
+func removeArticles(user tables.Users, articles []interface{}, codes ...string) []interface{} {
 
 	trash := make([]int, 0, len(codes)+5)
 	for i, v := range articles {
 		article := v.(tgbotapi.InlineQueryResultArticle)
 		for _, code := range codes {
-			if strings.HasPrefix(article.Title, langs[code].Name) {
+			if strings.HasPrefix(article.Title, langs[user.Lang][code]) {
 				trash = append(trash, i)
 			}
 		}
@@ -35,10 +35,10 @@ func removeArticles(articles []interface{}, codes ...string) []interface{} {
 	return articles
 }
 
-func getArticle(articles []interface{}, code string) interface{} {
+func getArticle(user tables.Users, articles []interface{}, code string) interface{} {
 	for _, v := range articles {
 		article := v.(tgbotapi.InlineQueryResultArticle)
-		if strings.HasPrefix(article.Title, langs[code].Name) {
+		if strings.HasPrefix(article.Title, langs[user.Lang][code]) {
 			return v
 		}
 	}
@@ -146,14 +146,14 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 		}
 	}
 
-	if offset > len(codes)-1 {
+	if offset > len(codes[user.Lang])-1 {
 		warn(fmt.Errorf("слишком большое смещение: %d", offset))
 		return
 	}
 
 	count := 50
-	if offset+count > len(codes)-1 {
-		count = len(codes) - 1 - offset
+	if offset+count > len(codes[user.Lang])-1 {
+		count = len(codes[user.Lang]) - 1 - offset
 	}
 
 	nextOffset := offset + count
@@ -172,20 +172,21 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 				return
 			}
 		}
+		user.SetLang(update.From.LanguageCode)
 	}()
 
 	blocks := make([]interface{}, 0, 50)
 
 	from := ""
-	for i, code := range codes[offset : offset+count] {
+	for i, code := range codes[user.Lang][offset : offset+count] {
 		code := code
 		i := i
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 
-			title := langs[code].Name
-			if offset == 0 && i <= 17 {
+			title := langs[user.Lang][code]
+			if offset == 0 && i < 19 {
 				title += " 📌"
 			}
 			tr, err := translate2.GoogleTranslate("auto", code, update.Query)
@@ -233,7 +234,7 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 	}
 	wg.Wait()
 
-	blocks = removeArticles(blocks, from)
+	blocks = removeArticles(user, blocks, from)
 
 	if offset == 0 && user.Usings > 0 {
 		nextOffset -= 2
@@ -241,12 +242,12 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 			if lang == from {
 				continue
 			}
-			block := getArticle(blocks, lang)
+			block := getArticle(user, blocks, lang)
 			if block == nil {
 				continue
 			}
 			article := block.(tgbotapi.InlineQueryResultArticle)
-			blocks = removeArticles(blocks, lang)
+			blocks = removeArticles(user, blocks, lang)
 			article.Title = strings.TrimSuffix(article.Title, " 📌")
 			article.Title += " 🙍‍♂️"
 			article.ID = strconv.Itoa(-1 - i)
@@ -255,7 +256,9 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 	}
 
 	sort.Slice(blocks, func(i, j int) bool {
-		id1, err := strconv.Atoi(blocks[i].(tgbotapi.InlineQueryResultArticle).ID)
+		block1 := blocks[i].(tgbotapi.InlineQueryResultArticle)
+
+		id1, err := strconv.Atoi(block1.ID)
 		if err != nil {
 			warn(err)
 			return false

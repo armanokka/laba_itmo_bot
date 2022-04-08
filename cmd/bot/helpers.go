@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/armanokka/translobot/internal/config"
+	"github.com/armanokka/translobot/internal/tables"
 	"github.com/go-errors/errors"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/paul-mannino/go-fuzzywuzzy"
@@ -344,19 +345,19 @@ func WitAiSpeech(wav io.Reader, lang string, bits int) (string, error) {
 	return result.Text, nil
 }
 
-func BuildSupportedLanguagesKeyboard() (tgbotapi.InlineKeyboardMarkup, error) {
+func BuildSupportedLanguagesKeyboard(user tables.Users) (tgbotapi.InlineKeyboardMarkup, error) {
 	keyboard := tgbotapi.NewInlineKeyboardMarkup()
 	for i, code := range config.BotLocalizedLangs {
-		lang, ok := langs[code]
+		lang, ok := langs[user.Lang][code]
 		if !ok {
 			return tgbotapi.InlineKeyboardMarkup{}, errors.New("no such code " + code + " in langs")
 		}
 
 		if i%2 == 0 {
-			keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang.Emoji+" "+lang.Name, "set_bot_lang_and_register:"+code)))
+			keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang, "set_bot_lang_and_register:"+code)))
 		} else {
 			l := len(keyboard.InlineKeyboard) - 1
-			keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(lang.Emoji+" "+lang.Name, "set_bot_lang_and_register:"+code))
+			keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(lang, "set_bot_lang_and_register:"+code))
 		}
 	}
 	return keyboard, nil
@@ -382,28 +383,31 @@ func reverse(arr []string) []string {
 
 // buildLangsPagination создает пагинацию как говорил F d
 // в калбак передайте что-то типа set_my_lang:%s, где %s станет код выбранного языка
-func buildLangsPagination(offset int, count int, exceptLang, buttonSelectLangCallback, buttonBackCallback, buttonNextCallback string) (tgbotapi.InlineKeyboardMarkup, error) {
-	if offset < 0 || offset > len(codes)-1 {
+func buildLangsPagination(user tables.Users, offset int, count int, exceptLang, buttonSelectLangCallback, buttonBackCallback, buttonNextCallback string) (tgbotapi.InlineKeyboardMarkup, error) {
+	if offset < 0 || offset > len(codes[user.Lang])-1 {
 		return tgbotapi.InlineKeyboardMarkup{}, nil
 	}
 	out := tgbotapi.NewInlineKeyboardMarkup()
 
 	if count == 0 {
-		offset -= 18
-		count += 18
+		offset -= 19
+		count += 19
 	}
-	for i, code := range codes[offset : offset+count] {
+	for i, code := range codes[user.Lang][offset : offset+count] {
 		if code == exceptLang {
 			continue
 		}
-		lang, ok := langs[code]
+		lang, ok := langs[user.Lang][code]
+		if i+offset < 19 {
+			lang += " 📌"
+		}
 		if !ok {
 			return tgbotapi.InlineKeyboardMarkup{}, fmt.Errorf("не нашел %s в langs", code)
 		}
 
 		callback := fmt.Sprintf(buttonSelectLangCallback, code)
 
-		btn := tgbotapi.NewInlineKeyboardButtonData(lang.Name, callback)
+		btn := tgbotapi.NewInlineKeyboardButtonData(lang, callback)
 		if i%3 == 0 {
 			out.InlineKeyboard = append(out.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(btn))
 		} else {

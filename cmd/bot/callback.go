@@ -411,6 +411,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			warn(err)
 			return
 		}
+		user.SetLang(callback.From.LanguageCode)
 
 		ret, err := app.SuperTranslate(user, from, to, callback.Message.ReplyToMessage.Text, callback.Message.ReplyToMessage.Entities)
 		if err != nil {
@@ -456,7 +457,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		}
 
 		app.bot.Send(tgbotapi.NewCallback(callback.ID, ""))
-		app.bot.Send(tgbotapi.NewMessage(callback.From.ID, user.Localize("Теперь я буду переводить с %s на %s и обратно. Если захочешь изменить, напишешь /start", langs[arr[1]].Name, langs[arr[2]].Name)))
+		app.bot.Send(tgbotapi.NewMessage(callback.From.ID, user.Localize("Теперь я буду переводить с %s на %s и обратно. Если захочешь изменить, напишешь /start", langs[user.Lang][arr[1]], langs[user.Lang][arr[2]])))
 
 		app.bot.Send(tgbotapi.VideoConfig{
 			BaseFile: tgbotapi.BaseFile{
@@ -484,14 +485,14 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			warn(err)
 			return
 		}
-		if offset < 0 || offset > len(codes)-1 {
-			warn(fmt.Errorf("offset is too big, len(codes) is %d, offset ois %d", len(codes), offset))
+		if offset < 0 || offset > len(codes[user.Lang])-1 {
+			warn(fmt.Errorf("offset is too big, len(codes[user.Lang]) is %d, offset ois %d", len(codes[user.Lang]), offset))
 			return
 		}
 
 		count := 18
-		if offset+count > len(codes)-1 {
-			count = len(codes) - 1 - offset
+		if offset+count > len(codes[user.Lang])-1 {
+			count = len(codes[user.Lang]) - 1 - offset
 		}
 
 		if count == 0 {
@@ -503,7 +504,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		if back < 0 {
 			back = 0
 		}
-		kb, err := buildLangsPagination(offset, count, arr[1],
+		kb, err := buildLangsPagination(user, offset, count, arr[1],
 			fmt.Sprintf("setup_langs:%s:%s", from, "%s"),
 			fmt.Sprintf("setup_langs_pagination:%s:%d", from, back),
 			fmt.Sprintf("setup_langs_pagination:%s:%d", from, offset+count))
