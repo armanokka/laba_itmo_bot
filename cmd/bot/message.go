@@ -388,7 +388,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		}
 		from := fromLang.FromLang
 
-		keyboard, err := buildLangsPagination(user, 0, 18, fromLang.FromLang, fmt.Sprintf("setup_langs:%s:%s", from, "%s"), fmt.Sprintf("setup_langs_pagination:%s:0", from), fmt.Sprintf("setup_langs_pagination:%s:19", from))
+		keyboard, err := buildLangsPagination(user, 0, 18, fromLang.FromLang, fmt.Sprintf("setup_langs:%s:%s", from, "%s"), fmt.Sprintf("setup_langs_pagination:%s:0", from), fmt.Sprintf("setup_langs_pagination:%s:18", from))
 		if err != nil {
 			warn(err)
 		}
