@@ -3,6 +3,7 @@ package botdb
 import (
 	"github.com/armanokka/translobot/internal/tables"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"time"
 )
 
@@ -29,7 +30,10 @@ func (db BotDB) GetUserByID(id int64) (tables.Users, error) {
 }
 
 func (db BotDB) CreateUser(user tables.Users) (err error) {
-	return db.Create(&user).Error
+	return db.Clauses(clause.Locking{
+		Strength: "SHARE",
+		Table:    clause.Table{Name: clause.CurrentTable},
+	}).Create(&user).Error
 }
 
 func (db BotDB) UpdateUser(id int64, updates tables.Users) error {

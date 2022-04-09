@@ -94,6 +94,14 @@ type SuggestionsItem struct {
 }
 
 func Suggestions(from, to, text string, count, offset int) (*SuggestionResult, error) {
+	tr, err := suggestions(from, to, text, count, offset)
+	if err != nil {
+		tr, err = suggestions(from, to, text, count, offset)
+	}
+	return tr, err
+}
+
+func suggestions(from, to, text string, count, offset int) (*SuggestionResult, error) {
 	srcLang, ok := Lingvo[from]
 	if !ok {
 		return nil, fmt.Errorf("lingvo.Suggestions: no such code %s", from)

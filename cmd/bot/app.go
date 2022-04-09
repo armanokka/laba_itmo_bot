@@ -259,16 +259,16 @@ func (app App) notifyAdmin(args ...interface{}) {
 func (app App) SuperTranslate(user tables.Users, from, to, text string, entities []tgbotapi.MessageEntity) (ret SuperTranslation, err error) {
 	text = applyEntitiesHtml(text, entities)
 	//text = html.EscapeString(text)
-
 	var (
-		rev         = translate2.ReversoTranslation{}
-		dict        = translate2.GoogleDictionaryResponse{}
-		suggestions *lingvo.SuggestionResult
-		LingvoTr    string
-		YandexTr    string
-		DeeplTr     string
-		MicrosoftTr string
-		GoogleTr    string
+		rev            = translate2.ReversoTranslation{}
+		dict           = translate2.GoogleDictionaryResponse{}
+		suggestions    *lingvo.SuggestionResult
+		LingvoTr       string
+		YandexTr       string
+		DeeplTr        string
+		MicrosoftTr    string
+		GoogleFromToTr string
+		GoogleToFromTr string
 		//lingv []lingvo.Dictionary
 	)
 
@@ -282,6 +282,7 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 		}
 		from = tr.FromLang
 	}
+	pp.Println(from, "->", to)
 
 	g, _ := errgroup.WithContext(context.Background())
 
@@ -354,6 +355,9 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 				last := lines[len(lines)-1]
 
 				for _, word := range words {
+					if word == "" {
+						continue
+					}
 					word = strings.TrimSpace(word)
 					if inFuzzy(usedWords, word) {
 						continue
@@ -413,7 +417,15 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 		if err != nil {
 			return err
 		}
-		GoogleTr = tr.Text
+		GoogleFromToTr = tr.Text
+		return nil
+	})
+	g.Go(func() error {
+		tr, err := translate2.GoogleTranslate(to, from, text)
+		if err != nil {
+			return err
+		}
+		GoogleToFromTr = tr.Text
 		return nil
 	})
 
@@ -448,15 +460,20 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 		pp.Println("translated via deepl")
 		break
 	case YandexTr != "":
-		ret.TranslatedText = YandexTr
-		if fuzzy.EditDistance(YandexTr, text) < 2 {
-			ret.TranslatedText = GoogleTr
+		if fuzzy.EditDistance(text, GoogleFromToTr) < fuzzy.EditDistance(text, YandexTr) {
+			ret.TranslatedText = YandexTr
+			pp.Println("translated via yandex")
+			break
 		}
-		pp.Println("translated via yandex")
-
-		break
-	case GoogleTr != "":
-		ret.TranslatedText = GoogleTr
+		fallthrough
+	case GoogleToFromTr != "":
+		fallthrough
+	case GoogleFromToTr != "":
+		if fuzzy.EditDistance(text, GoogleFromToTr) > fuzzy.EditDistance(text, GoogleToFromTr) {
+			ret.TranslatedText = GoogleFromToTr
+		} else {
+			ret.TranslatedText = GoogleToFromTr
+		}
 		pp.Println("translated via google")
 
 		break

@@ -27,7 +27,6 @@ import (
 	"time"
 )
 
-
 func FlexibleTranslate(from, to, text string) (string, error) {
 	if len(text) < 50 {
 		if v, err := lingvo.GetDictionary(from, to, text); err == nil && len(v) > 0 {
@@ -146,12 +145,11 @@ func DetectLanguageGoogle(text string) (string, error) {
 		req.Header["sec-ch-ua"] = []string{`" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"`}
 		req.Header["user-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.101 Safari/537.36"}
 
-
 		return http.DefaultClient.Do(req)
 	}
 
 	var res *http.Response
-	for i:=0;i<3;i++ {
+	for i := 0; i < 3; i++ {
 		var err error
 		res, err = request()
 		if err == nil && res.StatusCode == 200 {
@@ -277,8 +275,6 @@ func ttsRequest(lang, text string) (string, error) {
 	return out.TranslateTTS[0], err
 }
 
-
-
 func splitIntoChunks(s string, chunkLength int) []string {
 	length := len(s)
 
@@ -292,7 +288,7 @@ func splitIntoChunks(s string, chunkLength int) []string {
 	for i := range chunks {
 		from := i * chunkLength
 		var to int
-		if length < from + chunkLength {
+		if length < from+chunkLength {
 			to = length
 		} else {
 			to = from + chunkLength
@@ -336,7 +332,6 @@ func generateTkk(needNew bool) (string, error) {
 		}
 	}
 
-
 	res, err := http.DefaultClient.Get("https://translate.googleapis.com/translate_a/element.js")
 	if err != nil {
 		return "", err
@@ -352,17 +347,16 @@ func generateTkk(needNew bool) (string, error) {
 
 	i1 := strings.Index(text, "c._ctkk='") + len("c._ctkk='")
 	i2 := strings.Index(text[i1:], "'")
-	tkk := text[i1:i1+i2]
+	tkk := text[i1 : i1+i2]
 	if _, err = f.WriteString(tkk); err != nil {
 		return "", err
 	}
 	return tkk, nil
 }
 
-
 func getTk(tkk string, text string) (string, error) {
 	resp, err := resty.New().R().SetFormData(map[string]string{
-		"tkk": tkk,
+		"tkk":  tkk,
 		"text": text,
 	}).Post(fmt.Sprintf("http://ancient-springs-54230.herokuapp.com/tkk.php"))
 	if err != nil {
@@ -370,7 +364,6 @@ func getTk(tkk string, text string) (string, error) {
 	}
 	return resp.String(), nil
 }
-
 
 func GoogleHTMLTranslate(from, to, text string) (GoogleHTMLTranslation, error) {
 	text = strings.ReplaceAll(text, "\n", "<br>")
@@ -393,9 +386,9 @@ func GoogleHTMLTranslate(from, to, text string) (GoogleHTMLTranslation, error) {
 
 	uri := fmt.Sprintf("https://translate.googleapis.com/translate_a/t?anno=3&client=te_lib&format=html&v=1.0&key=AIzaSyBOti4mM-6x9WDnZIjIeyEU21OpBXqWBgw&logld=vTE_20220201&sl=" + from + "&tl=" + to + "&tc=1&sr=1&tk=" + tk + "&mode=1")
 	resp, err := resty.New().R().SetHeaders(map[string]string{
-		"authority": "translate.googleapis.com",
-		"origin": "https://stackoverflow.com/",
-		"referrer": "https://stackoverflow.com/",
+		"authority":    "translate.googleapis.com",
+		"origin":       "https://stackoverflow.com/",
+		"referrer":     "https://stackoverflow.com/",
 		"content-type": "application/x-www-form-urlencoded; charset=UTF-16",
 	}).SetFormDataFromValues(formData).Post(uri)
 
@@ -470,7 +463,7 @@ func GoogleHTMLTranslate(from, to, text string) (GoogleHTMLTranslation, error) {
 }
 
 func GoogleTranslate(from, to, text string) (*TranslateGoogleAPIResponse, error) {
-	text = cutString(text, 100)
+	//text = cutString(text, 100)
 	buf := new(bytes.Buffer)
 	buf.WriteString("async=translate,sl:" + url.QueryEscape(from) + ",tl:" + url.QueryEscape(to) + ",st:" + url.QueryEscape(text) + ",id:1624032860465,qc:true,ac:true,_id:tw-async-translate,_pms:s,_fmt:pc,format:html")
 	req, err := http.NewRequest("POST", "https://www.google.com/async/translate?vet=12ahUKEwjFh8rkyaHxAhXqs4sKHYvmAqAQqDgwAHoECAIQJg..i&ei=SMbMYMXDKernrgSLzYuACg&yv=3", buf)
@@ -527,7 +520,6 @@ func GoogleTranslate(from, to, text string) (*TranslateGoogleAPIResponse, error)
 	return result, err
 }
 
-
 func windows1251ToUtf8(s string) (string, error) {
 	sr := strings.NewReader(s)
 	tr := transform.NewReader(sr, charmap.Windows1251.NewDecoder())
@@ -535,9 +527,8 @@ func windows1251ToUtf8(s string) (string, error) {
 	return string(buf), err
 }
 
-
 // cutString cut string using runes by limit
-func cutString (text string, limit int) string {
+func cutString(text string, limit int) string {
 	runes := []rune(text)
 	if len(runes) > limit {
 		return string(runes[:limit])
@@ -556,12 +547,11 @@ func ReversoTranslate(from, to, text string) (ReversoTranslation, error) {
 		return ReversoTranslation{}, SameLangsWerePassed
 	}
 
-
 	j, err := json.Marshal(ReversoRequestTranslate{
-		Input:   text,
-		From:    from,
-		To:      to,
-		Format:  "text",
+		Input:  text,
+		From:   from,
+		To:     to,
+		Format: "text",
 		Options: ReversoRequestTranslateOptions{
 			Origin:            "translation.web",
 			SentenceSplitter:  true,
@@ -585,7 +575,6 @@ func ReversoTranslate(from, to, text string) (ReversoTranslation, error) {
 	req.Header.Add("X-Requested-With", "XMLHttpRequest")
 	req.Header.Add("Content-Length", strconv.Itoa(len(text)))
 
-
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return ReversoTranslation{}, err
@@ -608,7 +597,7 @@ func ReversoTranslate(from, to, text string) (ReversoTranslation, error) {
 
 // ReversoSupportedLangs returns list of supported languages by Reverso, where first string is code in  ISO639-2/T and second is code in ISO639-1
 func ReversoSupportedLangs() map[string]string {
-		return reversoSupportedLangs
+	return reversoSupportedLangs
 }
 
 func ReversoQueryService(sourceText, sourceLang, targetText, targetLang string) (ReversoQueryResponse, error) {
@@ -636,9 +625,9 @@ func ReversoQueryService(sourceText, sourceLang, targetText, targetLang string) 
 		//req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36")
 		//
 		req.Header = http.Header{
-			"Content-Type": []string{"application/json; charset=UTF-8"},
+			"Content-Type":    []string{"application/json; charset=UTF-8"},
 			"Accept-Language": []string{"en-US,en;q=0.8"},
-			"User-Agent": []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36"},
+			"User-Agent":      []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36"},
 		}
 		return http.DefaultClient.Do(req)
 	}
@@ -657,13 +646,10 @@ func ReversoQueryService(sourceText, sourceLang, targetText, targetLang string) 
 	return ret, nil
 }
 
-
-
-
 func GoogleTranslateSingle(from, to, text string) (GoogleTranslateSingleResult, error) {
 	var res *http.Response
 	var err error
-	req, err := http.NewRequest("POST", "https://translate.googleapis.com/translate_a/single?dt=t&dt=bd&dt=qc&dt=rm&dt=ex&client=gtx&sl=" + url.PathEscape(from) + "&tl=" + url.PathEscape(to) + "&q=" + url.PathEscape(text) + "&dj=1&dt=at&ie=UTF-16&oe=UTF-16&otf=2&srcrom=1&ssel=0&tsel=0", nil)
+	req, err := http.NewRequest("POST", "https://translate.googleapis.com/translate_a/single?dt=t&dt=bd&dt=qc&dt=rm&dt=ex&client=gtx&sl="+url.PathEscape(from)+"&tl="+url.PathEscape(to)+"&q="+url.PathEscape(text)+"&dj=1&dt=at&ie=UTF-16&oe=UTF-16&otf=2&srcrom=1&ssel=0&tsel=0", nil)
 	req.Header["host"] = []string{"translate.googleapis.com"}
 	req.Header["content-type"] = []string{"application/json; charset=UTF-8"}
 	req.Header["sec-fetch-site"] = []string{"cross-site"}
@@ -674,7 +660,7 @@ func GoogleTranslateSingle(from, to, text string) (GoogleTranslateSingleResult, 
 	req.Header["user-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36"}
 	req.Header["x-client-data"] = []string{"CI+2yQEIpLbJAQjBtskBCKmdygEIq9HKAQjv8ssBCJ75ywEItP/LAQjnhMwBCLWFzAEI2IXMAQjLicwB"}
 	req.Header["connection"] = []string{"keep-alive"}
-	for i:=0;i<3;i++ {
+	for i := 0; i < 3; i++ {
 		res, err = http.DefaultClient.Do(req)
 		if err == nil && res.StatusCode == 200 {
 			break
@@ -695,10 +681,10 @@ func GoogleTranslateSingle(from, to, text string) (GoogleTranslateSingleResult, 
 
 func GetSamples(from, to, source, translation string) (GetSamplesResponse, error) {
 	j, err := json.Marshal(getSamplesRequest{
-		Direction: from + "-" + to,
-		Source:    source,
+		Direction:   from + "-" + to,
+		Source:      source,
 		Translation: translation,
-		AppID:     "26ad41b9-102f-57b8-5cb4-3dcf1dbf7cad",
+		AppID:       "26ad41b9-102f-57b8-5cb4-3dcf1dbf7cad",
 	})
 	if err != nil {
 		return GetSamplesResponse{}, err
@@ -714,7 +700,7 @@ func GetSamples(from, to, source, translation string) (GetSamplesResponse, error
 	req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36")
 
 	var res *http.Response
-	for i:=0;i<3;i++ {
+	for i := 0; i < 3; i++ {
 		res, err = http.DefaultClient.Do(req)
 		//body, err := ioutil.ReadAll(res.Body)
 		//pp.Println(string(body))
@@ -734,9 +720,8 @@ func GetSamples(from, to, source, translation string) (GetSamplesResponse, error
 	return result, nil
 }
 
-
 func GoogleDictionary(lang, text string) (GoogleDictionaryResponse, error) {
-	req, err := http.NewRequest("GET", "https://content-dictionaryextension-pa.googleapis.com/v1/dictionaryExtensionData?term=" + url.PathEscape(text) + "&corpus=" + url.PathEscape(lang) + "&key=AIzaSyA6EEtrDCfBkHV8uU2lgGY-N383ZgAOo7Y", nil)
+	req, err := http.NewRequest("GET", "https://content-dictionaryextension-pa.googleapis.com/v1/dictionaryExtensionData?term="+url.PathEscape(text)+"&corpus="+url.PathEscape(lang)+"&key=AIzaSyA6EEtrDCfBkHV8uU2lgGY-N383ZgAOo7Y", nil)
 	if err != nil {
 		return GoogleDictionaryResponse{}, err
 	}
@@ -744,7 +729,7 @@ func GoogleDictionary(lang, text string) (GoogleDictionaryResponse, error) {
 	req.Header.Add("X-Origin", "chrome-extension://mgijmajocgfcbeboacabfgobmjgjcoja")
 
 	var res *http.Response
-	for i:=0;i<3;i++ {
+	for i := 0; i < 3; i++ {
 		res, err = http.DefaultClient.Do(req)
 		//body, err := ioutil.ReadAll(res.Body)
 		//pp.Println(string(body))
@@ -761,7 +746,7 @@ func GoogleDictionary(lang, text string) (GoogleDictionaryResponse, error) {
 
 func YandexTranscription(from, to, text string) (YandexTranscriptionResponse, error) {
 	fromto := url.PathEscape(from) + "-" + url.PathEscape(to)
-	req, err := http.NewRequest("GET", "https://dictionary.yandex.net/dicservice.json/lookupMultiple?ui=en&srv=tr-text&text=" + url.PathEscape(text) + "&type=regular,syn,ant,deriv&lang=" + fromto + "&flags=7591&dict=" + fromto, nil)
+	req, err := http.NewRequest("GET", "https://dictionary.yandex.net/dicservice.json/lookupMultiple?ui=en&srv=tr-text&text="+url.PathEscape(text)+"&type=regular,syn,ant,deriv&lang="+fromto+"&flags=7591&dict="+fromto, nil)
 	if err != nil {
 		return YandexTranscriptionResponse{}, err
 	}
@@ -779,7 +764,7 @@ func YandexTranscription(from, to, text string) (YandexTranscriptionResponse, er
 	req.Header["user-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36"}
 
 	var res *http.Response
-	for i:=0;i<3;i++ {
+	for i := 0; i < 3; i++ {
 		res, err = http.DefaultClient.Do(req)
 		if err == nil {
 			break
@@ -792,13 +777,13 @@ func YandexTranscription(from, to, text string) (YandexTranscriptionResponse, er
 
 	if code, ok := result["code"]; ok {
 		return YandexTranscriptionResponse{
-			StatusCode:    code.(float64),
+			StatusCode: code.(float64),
 		}, nil
 	}
 
 	if _, ok := result[fromto]; !ok {
 		return YandexTranscriptionResponse{
-			StatusCode:    -2,
+			StatusCode: -2,
 		}, nil
 	}
 	data, _ := json.Marshal(result[fromto])
@@ -809,7 +794,7 @@ func YandexTranscription(from, to, text string) (YandexTranscriptionResponse, er
 	}
 	if len(out.Regular) == 0 {
 		return YandexTranscriptionResponse{
-			StatusCode:    -1,
+			StatusCode: -1,
 		}, nil
 	}
 
@@ -836,7 +821,7 @@ func ReversoSuggestions(from, to, text string) (ReversoSuggestionsResponse, erro
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36")
 	var res *http.Response
-	for i:=0;i<3;i++ {
+	for i := 0; i < 3; i++ {
 		res, err = http.DefaultClient.Do(req)
 		if err == nil {
 			break
@@ -850,7 +835,7 @@ func ReversoSuggestions(from, to, text string) (ReversoSuggestionsResponse, erro
 }
 
 type MicrosoftTranslation struct {
-	From string
+	From           string
 	TranslatedText string
 }
 
@@ -862,21 +847,21 @@ func MicrosoftTranslate(from, to, text string) (MicrosoftTranslation, error) { /
 		return MicrosoftTranslation{}, err
 	}
 	params.Set("texts", string(texts))
-	params.Set("to", `"` + to + `"`)
+	params.Set("to", `"`+to+`"`)
 	params.Set("loc", "en")
 	params.Set("ctr", "")
 	params.Set("ref", "WidgetV3")
 	rand.Seed(time.Now().UnixNano())
-	params.Set("rgp", strconv.FormatInt(int64(math.Floor(1e9 * rand.Float64())), 16))
+	params.Set("rgp", strconv.FormatInt(int64(math.Floor(1e9*rand.Float64())), 16))
 
-	req, err := http.NewRequest("GET", "https://api.microsofttranslator.com/v2/ajax.svc/TranslateArray?" + params.Encode(), nil)
+	req, err := http.NewRequest("GET", "https://api.microsofttranslator.com/v2/ajax.svc/TranslateArray?"+params.Encode(), nil)
 	if err != nil {
 		return MicrosoftTranslation{}, err
 	}
 	req.Header["Content-Type"] = []string{"application/json; charset=UTF-8"}
 	req.Header["Accept-Language"] = []string{"ru-RU,ru;q=0.9"}
 	req.Header["Accept"] = []string{"application/json, text/javascript, */*; q=0.01"}
-	req.Header["User-aAent"] =  []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.174 YaBrowser/22.1.5.810 Yowser/2.5 Safari/537.36"}
+	req.Header["User-aAent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.174 YaBrowser/22.1.5.810 Yowser/2.5 Safari/537.36"}
 	req.Header["origin"] = []string{"https://stackoverflow.com"}
 	req.Header["referrer"] = []string{"https://stackoverflow.com/"}
 	req.Header["sec-fetch-site"] = []string{"cross-site"}

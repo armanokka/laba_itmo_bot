@@ -22,6 +22,14 @@ func generateSid() string {
 }
 
 func YandexTranslate(from, to, text string) (string, error) {
+	tr, err := yandexTranslate(from, to, text)
+	if err != nil {
+		tr, err = yandexTranslate(from, to, text)
+	}
+	return tr, err
+}
+
+func yandexTranslate(from, to, text string) (string, error) {
 	if _, ok := YandexSupportedLanguages[from]; !ok {
 		return "", ErrLangNotSupported
 	}
