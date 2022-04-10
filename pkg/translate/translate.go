@@ -11,8 +11,6 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/k0kubun/pp"
 	"github.com/tidwall/gjson"
-	"golang.org/x/text/encoding/charmap"
-	"golang.org/x/text/transform"
 	"html"
 	"io/ioutil"
 	"math"
@@ -124,6 +122,14 @@ func FlexibleTranslate(from, to, text string) (string, error) {
 //}
 
 func DetectLanguageGoogle(text string) (string, error) {
+	d, err := detectLanguageGoogle(text)
+	if err != nil {
+		d, err = detectLanguageGoogle(text)
+	}
+	return d, err
+}
+
+func detectLanguageGoogle(text string) (string, error) {
 	buf := new(bytes.Buffer)
 	request := func() (*http.Response, error) {
 		buf.WriteString("async=translate,sl:auto,tl:en,st:" + url.QueryEscape(text) + ",id:1624032860465,qc:true,ac:true,_id:tw-async-translate,_pms:s,_fmt:pc")
@@ -463,6 +469,14 @@ func GoogleHTMLTranslate(from, to, text string) (GoogleHTMLTranslation, error) {
 }
 
 func GoogleTranslate(from, to, text string) (*TranslateGoogleAPIResponse, error) {
+	tr, err := googleTranslate(from, to, text)
+	if err != nil {
+		tr, err = googleTranslate(from, to, text)
+	}
+	return tr, err
+}
+
+func googleTranslate(from, to, text string) (*TranslateGoogleAPIResponse, error) {
 	//text = cutString(text, 100)
 	buf := new(bytes.Buffer)
 	buf.WriteString("async=translate,sl:" + url.QueryEscape(from) + ",tl:" + url.QueryEscape(to) + ",st:" + url.QueryEscape(text) + ",id:1624032860465,qc:true,ac:true,_id:tw-async-translate,_pms:s,_fmt:pc,format:html")
@@ -518,13 +532,6 @@ func GoogleTranslate(from, to, text string) (*TranslateGoogleAPIResponse, error)
 		result.Images = append(result.Images, link)
 	})
 	return result, err
-}
-
-func windows1251ToUtf8(s string) (string, error) {
-	sr := strings.NewReader(s)
-	tr := transform.NewReader(sr, charmap.Windows1251.NewDecoder())
-	buf, err := ioutil.ReadAll(tr)
-	return string(buf), err
 }
 
 // cutString cut string using runes by limit

@@ -87,8 +87,15 @@ func yandexTranslate(from, to, text string) (string, error) {
 	}
 	return out, nil
 }
-
 func DetectLanguageYandex(text string) (string, error) {
+	d, err := detectLanguageYandex(text)
+	if err != nil {
+		d, err = detectLanguageGoogle(text)
+	}
+	return d, err
+}
+
+func detectLanguageYandex(text string) (string, error) {
 	req, err := http.NewRequest("GET", `https://translate.yandex.net/api/v1/tr.json/detect?sid=`+generateSid()+`-0-0&srv=tr-text&text=`+url.PathEscape(text)+`&options=1&yu=9527670361648278346&yum=1648283397624970429`, nil)
 	if err != nil {
 		return "", err
@@ -114,7 +121,7 @@ func DetectLanguageYandex(text string) (string, error) {
 		return "", err
 	}
 	if gjson.GetBytes(body, "code").Int() != 200 {
-		return "", fmt.Errorf(gjson.GetBytes(body, "message").String())
+		return "", fmt.Errorf("detectLanguageYandex: %s\nBody:%s", gjson.GetBytes(body, "message").String(), string(body))
 	}
 	return gjson.GetBytes(body, "lang").String(), nil
 }
