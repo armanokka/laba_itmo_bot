@@ -20,6 +20,7 @@ import (
 )
 
 func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQuery) {
+	log := app.log.With(zap.Int64("id", callback.From.ID))
 	defer func() {
 		if err := recover(); err != nil {
 			app.log.Error("%w", zap.Any("error", err))
@@ -98,6 +99,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			warn(err)
 			return
 		}
+		log.Info("user reported translation", zap.String("input", string(input)), zap.String("output", callback.Message.ReplyToMessage.Text))
 		text := fmt.Sprintf("⚠ Жалоба на перевод\n<b>%s->%s</b>\n<b>Input:</b>\n%s\n<b>Output:</b>\n%s", arr[1], arr[2], string(input), callback.Message.ReplyToMessage.Text)
 		for _, part := range translate2.SplitIntoChunksBySentences(text, 4000) {
 			if _, err := app.bot.Send(tgbotapi.MessageConfig{
@@ -114,7 +116,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 				Entities:              nil,
 				DisableWebPagePreview: false,
 			}); err != nil {
-				pp.Println(err)
+				log.Error("app.bot.Send", zap.Error(err))
 				app.notifyAdmin(err)
 			}
 		}
@@ -176,10 +178,8 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			warn(err)
 			return
 		}
-		pp.Println(meaning)
 
 		text = ""
-		pp.Println(meaning)
 
 		for _, data := range meaning.DictionaryData {
 			for _, entry := range data.Entries {

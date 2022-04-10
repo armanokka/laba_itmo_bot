@@ -14,13 +14,13 @@ import (
 	"html"
 	"net/url"
 	"os"
-	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
 )
 
 func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
+	log := app.log.With(zap.Int64("id", message.From.ID))
 	defer func() {
 		if err := recover(); err != nil {
 			app.log.Error("%w", zap.Any("error", err))
@@ -75,11 +75,13 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		}
 	}
 	user.SetLang(message.From.LanguageCode)
+	log = log.With(zap.String("my_lang", user.MyLang), zap.String("to_lang", user.ToLang), zap.Int("usings", user.Usings))
 
 	switch message.Command() {
 	case "start":
 		fallthrough
 	case "help":
+		log.Info("/start or /help")
 		app.bot.Send(tgbotapi.MessageConfig{
 			BaseChat: tgbotapi.BaseChat{
 				ChatID:                   message.From.ID,
@@ -97,6 +99,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		}
 		return
 	case "users":
+		log.Info("/users")
 		if message.From.ID != config.AdminID {
 			return
 		}
@@ -127,6 +130,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		}
 		return
 	case "id":
+		log.Info("/id")
 		msg := tgbotapi.NewMessage(message.From.ID, strconv.FormatInt(message.From.ID, 10))
 		app.bot.Send(msg)
 		if err = app.db.LogBotMessage(message.From.ID, "pm_id", msg.Text); err != nil {
@@ -135,6 +139,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 
 		return
 	case "mailing":
+		log.Info("/mailing")
 		if err = app.db.UpdateUser(message.From.ID, tables.Users{Act: "mailing"}); err != nil {
 			warn(err)
 			return
@@ -161,6 +166,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		})
 		return
 	case "analytics":
+		log.Info("/analytics")
 		user, err := app.db.GetRandomUser()
 		if err != nil {
 			warn(err)
@@ -449,6 +455,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		to = user.MyLang
 	}
 
+	log.Info("translated", zap.String("from", from), zap.String("to", to))
 	ret, err := app.SuperTranslate(user, from, to, text, message.Entities)
 	if err != nil {
 		warn(err)
@@ -494,12 +501,11 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			DisableWebPagePreview: false,
 		})
 		if err != nil {
-			pp.Println("Error:", err.Error())
-			pp.Println(fmt.Errorf("Error:\n%s->%s\n%s", from, to, text))
-			pp.Println(string(debug.Stack()))
+			log.Error("Error: app.bot.Send", zap.Error(err))
 			return
 		}
 		if err = app.bc.PutWithTTL([]byte(strconv.Itoa(msg.MessageID)), []byte(text), 24*time.Hour); err != nil {
+			log.Error("app.bc.PutWithTTL", zap.Error(err))
 			warn(err)
 			return
 		}
@@ -512,6 +518,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	}
 
 	if user.Usings == 5 || (user.Usings > 0 && user.Usings%20 == 0) {
+		log.Info("sent bot's ad")
 		link := strings.ReplaceAll(user.Localize("Я рекомендую @translobot"), " ", "+")
 		link = url.PathEscape(link)
 		defer func() {

@@ -10,6 +10,7 @@ import (
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/k0kubun/pp"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"golang.org/x/sync/errgroup"
 	"os"
 	"os/signal"
@@ -38,13 +39,16 @@ func reverseByDots(s string) string {
 }
 
 func main() {
+	conf := zap.NewDevelopmentConfig()
+	conf.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	conf.DisableStacktrace = true
+	log, _ := conf.Build()
+	defer log.Sync()
+
 	pp.WithLineInfo = true
 	if err := config.Load(); err != nil {
 		panic(err)
 	}
-
-	log, _ := zap.NewProduction()
-	defer log.Sync()
 
 	signalChanel := make(chan os.Signal, 1)
 	signal.Notify(signalChanel,

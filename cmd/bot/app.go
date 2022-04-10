@@ -34,13 +34,13 @@ type App struct {
 	bc        *bitcask.Bitcask
 }
 
-func New(bot *botapi.BotAPI, db repos.BotDB, analytics dashbot.DashBot, logger *zap.Logger, bc *bitcask.Bitcask /* deepl translate2.Deepl*/) App {
+func New(bot *botapi.BotAPI, db repos.BotDB, analytics dashbot.DashBot, log *zap.Logger, bc *bitcask.Bitcask /* deepl translate2.Deepl*/) App {
 	return App{
 		//deepl:     deepl,
 		bot:       bot,
 		db:        db,
 		analytics: analytics,
-		log:       logger,
+		log:       log,
 		bc:        bc,
 	}
 }
@@ -282,7 +282,6 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 		}
 		from = tr.FromLang
 	}
-	pp.Println(from, "->", to)
 
 	g, _ := errgroup.WithContext(context.Background())
 
