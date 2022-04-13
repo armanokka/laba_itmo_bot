@@ -23,7 +23,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	log := app.log.With(zap.Int64("id", message.From.ID))
 	defer func() {
 		if err := recover(); err != nil {
-			app.log.Error("%w", zap.Any("error", err))
+			log.Error("%w", zap.Any("error", err))
 			app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Panic:"+fmt.Sprint(err)))
 		}
 	}()

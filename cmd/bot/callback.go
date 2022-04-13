@@ -24,7 +24,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 	log := app.log.With(zap.Int64("id", callback.From.ID))
 	defer func() {
 		if err := recover(); err != nil {
-			app.log.Error("%w", zap.Any("error", err))
+			log.Error("%w", zap.Any("error", err))
 			app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Panic:"+fmt.Sprint(err)))
 		}
 	}()
@@ -228,8 +228,6 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		app.db.LogBotMessage(callback.From.ID, "cb_meaning", text)
 	case "exm": // arr[1] - from, arr[2] - to. Target text in replied message
 		text := callback.Message.ReplyToMessage.Text
-
-		pp.Println(text)
 
 		tr, err := translate2.ReversoTranslate(translate2.ReversoIso6392(arr[1]), translate2.ReversoIso6392(arr[2]), text)
 		if err != nil {

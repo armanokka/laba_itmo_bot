@@ -341,9 +341,8 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 			}
 			if len(v) == 0 {
 				v, err = lingvo.GetDictionary(user.ToLang, user.MyLang, lower)
-				log.Error("lingvo.GetDictionary", zap.Error(err), zap.String("my_lang", user.MyLang), zap.String("to_lang", user.ToLang))
-
 				if err != nil {
+					log.Error("lingvo.GetDictionary", zap.Error(err), zap.String("my_lang", user.MyLang), zap.String("to_lang", user.ToLang))
 					return err
 				}
 			}
