@@ -12,8 +12,8 @@ import (
 	"github.com/k0kubun/pp"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-	"html"
 	"reflect"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -24,7 +24,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 	log := app.log.With(zap.Int64("id", callback.From.ID))
 	defer func() {
 		if err := recover(); err != nil {
-			log.Error("%w", zap.Any("error", err))
+			log.Error("%w", zap.Any("error", err), zap.String("stack_trace", string(debug.Stack())))
 			app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Panic:"+fmt.Sprint(err)))
 		}
 	}()
@@ -405,82 +405,8 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			return
 		}
 
-		user, err := app.db.GetUserByID(callback.From.ID)
-		if err != nil {
-			warn(err)
-			return
-		}
-		user.SetLang(callback.From.LanguageCode)
-
-		var text = callback.Message.ReplyToMessage.Text
-		if callback.Message.ReplyToMessage.Caption != "" {
-			text = callback.Message.ReplyToMessage.Caption
-		}
-
-		if text == "" {
-			app.bot.Send(tgbotapi.NewMessage(callback.From.ID, user.Localize("Отправь текстовое сообщение, чтобы я его перевел")))
-			app.analytics.Bot(callback.From.ID, "Please, send text message", "Message is not text message")
-			return
-		}
-
-		log.Info("translated", zap.String("from", from), zap.String("to", to))
-		ret, err := app.SuperTranslate(user, from, to, text, callback.Message.Entities)
-		if err != nil {
-			warn(err)
-			return
-		}
-		//ret.TranslatedText, err = url.QueryUnescape(ret.TranslatedText)
-		//if err != nil {
-		//	warn(err)
-		//	return
-		//} хуй
-
-		ret.TranslatedText = html.UnescapeString(ret.TranslatedText)
-
-		keyboard := tgbotapi.NewInlineKeyboardMarkup(
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("🔊", fmt.Sprintf("speech_this_message_and_replied_one:%s:%s", from, to))))
-
-		if ret.Examples {
-			keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0], tgbotapi.NewInlineKeyboardButtonData("💬", fmt.Sprintf("exm:%s:%s", from, to)))
-		}
-		if ret.Translations {
-			keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0], tgbotapi.NewInlineKeyboardButtonData("📚", fmt.Sprintf("trs:%s:%s", from, to)))
-		}
-		if ret.Dictionary {
-			keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0], tgbotapi.NewInlineKeyboardButtonData("📖", fmt.Sprintf("dict:%s", from)))
-		}
-
-		keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0], tgbotapi.NewInlineKeyboardButtonData("⚠️", fmt.Sprintf("do_you_like_translation:%s:%s", from, to)))
-
-		for _, part := range translate2.SplitIntoChunksBySentences(ret.TranslatedText, 4000) {
-			msg, err := app.bot.Send(tgbotapi.MessageConfig{
-				BaseChat: tgbotapi.BaseChat{
-					ChatID:                   callback.From.ID,
-					ChannelUsername:          "",
-					ReplyToMessageID:         0,
-					ReplyMarkup:              keyboard,
-					DisableNotification:      true,
-					AllowSendingWithoutReply: false,
-				},
-				Text:                  part,
-				ParseMode:             tgbotapi.ModeHTML,
-				Entities:              nil,
-				DisableWebPagePreview: false,
-			})
-			if err != nil {
-				log.Error("Error: app.bot.Send", zap.Error(err), zap.String("input", text), zap.String("output", ret.TranslatedText))
-				return
-			}
-			if err = app.bc.PutWithTTL([]byte(strconv.Itoa(msg.MessageID)), []byte(text), 24*time.Hour); err != nil {
-				log.Error("app.bc.PutWithTTL", zap.Error(err))
-				warn(err)
-				return
-			}
-		}
-
 		app.bot.Send(tgbotapi.NewCallback(callback.ID, ""))
-		app.bot.Send(tgbotapi.NewMessage(callback.From.ID, user.Localize("Теперь я буду переводить с %s на %s и обратно. Если захочешь изменить, напишешь /start", langs[user.Lang][arr[1]], langs[user.Lang][arr[2]])))
+		app.bot.Send(tgbotapi.NewMessage(callback.From.ID, user.Localize("start_info")))
 
 		app.bot.Send(tgbotapi.VideoConfig{
 			BaseFile: tgbotapi.BaseFile{
