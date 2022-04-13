@@ -10,7 +10,6 @@ import (
 	"github.com/armanokka/translobot/internal/tables"
 	"github.com/go-errors/errors"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/k0kubun/pp"
 	"github.com/paul-mannino/go-fuzzywuzzy"
 	"io"
 	"io/ioutil"
@@ -423,7 +422,6 @@ func buildLangsPagination(user tables.Users, offset int, count int, exceptLang, 
 			out.InlineKeyboard[l] = append(out.InlineKeyboard[l], btn)
 		}
 	}
-	pp.Println("build_langs_pagination:", offset, offset+count)
 
 	out.InlineKeyboard = append(out.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
 		tgbotapi.NewInlineKeyboardButtonData("<--- Back", buttonBackCallback),

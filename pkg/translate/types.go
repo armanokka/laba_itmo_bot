@@ -639,7 +639,7 @@ func SplitIntoChunksBySentences(text string, limit int) []string {
 
 		if len(out) == 0 || l+len([]rune(out[last])) > limit {
 			chunks := splitIntoChunks(sentence, limit)
-			if i > 0 {
+			if i > 0 && len(chunks) > 0 {
 				chunks[0] = "." + chunks[0]
 			}
 			out = append(out, chunks...)

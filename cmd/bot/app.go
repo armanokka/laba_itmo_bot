@@ -284,12 +284,13 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 	}
 
 	g, _ := errgroup.WithContext(context.Background())
-
+	log := app.log.With(zap.String("from", from), zap.String("to", to), zap.String("text", text))
 	if l < 100 {
 		g.Go(func() error {
 			dict, err = translate2.GoogleDictionary(from, lower)
 			if err != nil {
-				err = errors.WrapPrefix(err, "g.Go: translate2.GoogleDictionary:", 1)
+				log.Error("translate2.GoogleDictionary", zap.Error(err))
+				return errors.WrapPrefix(err, "g.Go: translate2.GoogleDictionary:", 1)
 			}
 			definitions := 0
 			for _, data := range dict.DictionaryData {
@@ -312,9 +313,10 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 				rev, err = translate2.ReversoTranslate(translate2.ReversoIso6392(from), translate2.ReversoIso6392(to), lower)
 			}
 			if err != nil {
-				err = errors.WrapPrefix(err, "g.Go: translate2.ReversoTranslate:", 1)
+				log.Error("translate2.ReversoSupportedLangs", zap.Error(err))
+				return errors.WrapPrefix(err, "g.Go: translate2.ReversoTranslate:", 1)
 			}
-			return err
+			return nil
 		})
 	}
 
@@ -323,6 +325,9 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 	if ok1 && ok2 && l < 50 {
 		g.Go(func() error {
 			suggestions, err = lingvo.Suggestions(from, to, lower, 1, 0)
+			if err != nil {
+				log.Error("lingvo.Suggestions", zap.Error(err))
+			}
 			return err
 		})
 	}
@@ -331,10 +336,13 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 		g.Go(func() error {
 			v, err := lingvo.GetDictionary(user.MyLang, user.ToLang, lower)
 			if err != nil {
+				log.Error("lingvo.GetDictionary", zap.Error(err), zap.String("my_lang", user.MyLang), zap.String("to_lang", user.ToLang))
 				return err
 			}
 			if len(v) == 0 {
 				v, err = lingvo.GetDictionary(user.ToLang, user.MyLang, lower)
+				log.Error("lingvo.GetDictionary", zap.Error(err), zap.String("my_lang", user.MyLang), zap.String("to_lang", user.ToLang))
+
 				if err != nil {
 					return err
 				}
@@ -374,25 +382,14 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 		})
 	}
 
-	//if in(translate2.DeeplSupportedLangs, from) && in(translate2.DeeplSupportedLangs, to) {
-	//	g.Go(func() error {
-	//		tr, err := app.deepl.Translate(from, to, text, false)
-	//		if err != nil {
-	//			app.notifyAdmin(err)
-	//			return nil
-	//			//return err
-	//		}
-	//		DeeplTr = tr
-	//		return nil
-	//	})
-	//}
-
 	_, ok1 = translate2.YandexSupportedLanguages[from]
 	_, ok2 = translate2.YandexSupportedLanguages[to]
+
 	if ok1 && ok2 {
 		g.Go(func() error {
 			tr, err := translate2.YandexTranslate(from, to, text)
 			if err != nil {
+				app.log.Error("translate2.YandexTranslate", zap.Error(err))
 				return err
 			}
 			YandexTr = tr
@@ -403,6 +400,7 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 			g.Go(func() error {
 				tr, err := translate2.MicrosoftTranslate(from, to, text)
 				if err != nil {
+					app.log.Error("translate2.MicrosoftTranslate", zap.Error(err))
 					return err
 				}
 				MicrosoftTr = tr.TranslatedText
@@ -414,6 +412,7 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 	g.Go(func() error {
 		tr, err := translate2.GoogleTranslate(from, to, text)
 		if err != nil {
+			app.log.Error("translate2.GoogleTranslate", zap.Error(err))
 			return err
 		}
 		GoogleFromToTr = tr.Text
@@ -422,6 +421,7 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 	g.Go(func() error {
 		tr, err := translate2.GoogleTranslate(to, from, text)
 		if err != nil {
+			app.log.Error("translate2.GoogleTranslate", zap.Error(err))
 			return err
 		}
 		GoogleToFromTr = tr.Text
@@ -429,6 +429,7 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 	})
 
 	if err = g.Wait(); err != nil {
+		app.log.Error("g.Wait()", zap.Error(err))
 		return SuperTranslation{}, err
 	}
 

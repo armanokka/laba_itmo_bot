@@ -501,7 +501,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			DisableWebPagePreview: false,
 		})
 		if err != nil {
-			log.Error("Error: app.bot.Send", zap.Error(err))
+			log.Error("Error: app.bot.Send", zap.Error(err), zap.String("input", text), zap.String("output", ret.TranslatedText))
 			return
 		}
 		if err = app.bc.PutWithTTL([]byte(strconv.Itoa(msg.MessageID)), []byte(text), 24*time.Hour); err != nil {

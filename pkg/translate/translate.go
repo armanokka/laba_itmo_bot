@@ -166,7 +166,7 @@ func detectLanguageGoogle(text string) (string, error) {
 	if res.StatusCode != 200 {
 		return "", HTTPError{
 			Code:        res.StatusCode,
-			Description: "got non 200 http code",
+			Description: "detectLanguageGoogle: non 200 http code",
 		}
 	}
 	doc, err := goquery.NewDocumentFromReader(res.Body)
