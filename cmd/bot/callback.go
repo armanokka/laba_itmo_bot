@@ -407,7 +407,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		}
 
 		app.bot.Send(tgbotapi.NewCallback(callback.ID, ""))
-		app.bot.Send(tgbotapi.NewMessage(callback.From.ID, user.Localize("start_info")))
+		app.bot.Send(tgbotapi.NewMessage(callback.From.ID, user.Localize("start_info", langs[callback.From.LanguageCode][from], langs[callback.From.LanguageCode][to])))
 
 		app.bot.Send(tgbotapi.VideoConfig{
 			BaseFile: tgbotapi.BaseFile{
