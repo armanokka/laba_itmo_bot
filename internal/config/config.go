@@ -49,7 +49,7 @@ func Load() error {
 	var err error
 	once.Do(func() {
 		// Initializing MySQL DB
-		db, err = gorm.Open(mysql.Open("f0568401_user:NlEbEgda@tcp(141.8.193.236:3306)/f0568401_user?charset=utf8mb4&parseTime=True&loc=Local"), &gorm.Config{
+		db, err = gorm.Open(mysql.Open("translo:oEr|ea5uiKS@tcp(94.228.112.221:3306)/translo?charset=utf8mb4&parseTime=True&loc=Local"), &gorm.Config{
 			SkipDefaultTransaction: true,
 			CreateBatchSize:        5000,
 			PrepareStmt:            true,
