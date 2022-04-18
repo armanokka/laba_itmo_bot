@@ -56,6 +56,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 					URL:             "",
 					CacheTime:       0,
 				})
+				return
 			}
 		}
 

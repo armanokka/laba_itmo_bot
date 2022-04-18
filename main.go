@@ -71,6 +71,7 @@ func main() {
 
 	db := config.DB()
 	botAPI := config.BotAPI()
+	botAPI.SetAPIEndpoint("https://api.telegram.org/bot%s/%s")
 	analytics := config.Analytics()
 	bc, err := bitcask.Open("bitcask_db")
 	if err != nil {
