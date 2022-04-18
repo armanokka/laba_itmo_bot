@@ -62,9 +62,9 @@ func Load() error {
 		if err != nil {
 			return
 		}
-		sqlDb.SetMaxOpenConns(24)
-		sqlDb.SetMaxIdleConns(24)
-		sqlDb.SetConnMaxLifetime(15 * time.Minute)
+		sqlDb.SetMaxOpenConns(20)
+		sqlDb.SetMaxIdleConns(20)
+		sqlDb.SetConnMaxLifetime(time.Hour)
 
 		var api *tgbotapi.BotAPI
 		api, err = tgbotapi.NewBotAPI(botToken)
