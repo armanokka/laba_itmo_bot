@@ -6,11 +6,9 @@ import (
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
 	"github.com/armanokka/translobot/pkg/errors"
-	"github.com/armanokka/translobot/pkg/ocr"
 	"github.com/armanokka/translobot/pkg/translate"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
-	fuzzy "github.com/paul-mannino/go-fuzzywuzzy"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"html"
@@ -464,26 +462,26 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		warn(err)
 		return
 	}
-	if fuzzy.EditDistance(text, ret.TranslatedText) < 2 {
-		filename := strconv.FormatInt(time.Now().UnixNano(), 10) + ".png"
-		//defer os.Remove(filename)
-		err = ocr.WriteTextOnImage(text, "fonts/ttf/JetBrainsMonoNL-Regular.ttf", filename)
-		if err != nil {
-			warn(err)
-			return
-		}
-		readyOcr, err := ocr.Yandex(filename)
-		if err != nil {
-			warn(err)
-			return
-		}
-		pp.Println(readyOcr)
-		ret, err = app.SuperTranslate(user, readyOcr.DetectedLang, to, text, message.Entities)
-		if err != nil {
-			warn(err)
-			return
-		}
-	}
+	//if fuzzy.EditDistance(text, ret.TranslatedText) < 2 {
+	//	filename := strconv.FormatInt(time.Now().UnixNano(), 10) + ".png"
+	//	//defer os.Remove(filename)
+	//	err = ocr.WriteTextOnImage(text, "fonts/ttf/JetBrainsMonoNL-Regular.ttf", filename)
+	//	if err != nil {
+	//		warn(err)
+	//		return
+	//	}
+	//	readyOcr, err := ocr.Yandex(filename)
+	//	if err != nil {
+	//		warn(err)
+	//		return
+	//	}
+	//	pp.Println(readyOcr)
+	//	ret, err = app.SuperTranslate(user, readyOcr.DetectedLang, to, text, message.Entities)
+	//	if err != nil {
+	//		warn(err)
+	//		return
+	//	}
+	//}
 	//ret.TranslatedText, err = url.QueryUnescape(ret.TranslatedText)
 	//if err != nil {
 	//	warn(err)
