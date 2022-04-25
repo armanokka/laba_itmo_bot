@@ -21,10 +21,12 @@ func generateSid() string {
 	return i
 }
 
-func YandexTranslate(from, to, text string) (string, error) {
-	tr, err := yandexTranslate(from, to, text)
-	if err != nil {
+func YandexTranslate(from, to, text string) (tr string, err error) {
+	for i := 0; i < 3; i++ {
 		tr, err = yandexTranslate(from, to, text)
+		if err == nil {
+			break
+		}
 	}
 	return tr, err
 }

@@ -1,0 +1,344 @@
+{
+  "appDesc": {
+    "message": "Übersetzen Sie beim Lesen und Schreiben mit dem DeepL Übersetzer – dem präzisesten Übersetzer der Welt.",
+    "description": "The description of the application, displayed in the web store."
+  },
+  "appName": {
+    "message": "DeepL Übersetzer (Beta-Version)",
+    "description": "The title of the application, displayed in the web store."
+  },
+  "context_menus_translate_section": {
+    "message": "Ausgewählten Text übersetzen",
+    "description": "The right click context menu action to trigger an inline translation"
+  },
+  "default_popup_button_done": {
+    "message": "Fertig",
+    "description": "Button to close the default popup of the extension (settings)"
+  },
+  "error_message_generic_error": {
+    "message": "Ihr Text konnte leider nicht übersetzt werden. Bitte versuchen Sie es später noch einmal.",
+    "description": "Genric error to tell the user that there is a technical problem"
+  },
+  "error_message_technical_issue": {
+    "message": "Leider konnte Ihr Text aufgrund eines technischen Problems nicht übersetzt werden. Das Problem ist uns bereits bekannt, und wir arbeiten an einer Lösung."
+  },
+  "error_message_too_many_requests": {
+    "message": "Ihr Text konnte leider nicht übersetzt werden. Ihr Netzwerk scheint zu viele Anforderungen an unsere Server zu senden.",
+    "description": "Info for free users that too many requests are triggered"
+  },
+  "extension_settings_keyboard_shortcut_perform_translation": {
+    "message": "Text übersetzen",
+    "description": "This text will be displayed in the settings screen of the browser (we can only set the label here)."
+  },
+  "full_page_translation_auto_detect_lang": {
+    "message": "Sprache wird erkannt ..."
+  },
+  "full_page_translation_auto_translate_message": {
+    "message": "Automatisch aus dieser Sprache übersetzt:"
+  },
+  "full_page_translation_error_exceeds_char_limit": {
+    "message": "Leider können wir diese Seite nicht übersetzen, da sie das Zeichenlimit überschreitet.",
+    "description": "If a single element of the website has more than 5,500 characters, we can't translate it. And in that case there is nothing the user can do. "
+  },
+  "full_page_translation_error_service_not_available": {
+    "message": "Die Übersetzung ganzer Seiten ist derzeit leider nicht möglich. Wir versuchen, dieses Problem so schnell wie möglich zu beheben."
+  },
+  "full_page_translation_info_google_translate": {
+    "message": "Scheinbar verwenden Sie auch den Google Übersetzer. Bitte deaktivieren Sie den Google Übersetzer, damit die DeepL-Erweiterung richtig funktioniert."
+  },
+  "full_page_translation_menu_always_translate": {
+    "message": "Immer übersetzen:"
+  },
+  "full_page_translation_menu_cancel_button": {
+    "message": "Nein, danke"
+  },
+  "full_page_translation_menu_cancel_opt_lang": {
+    "message": "Diese Sprache nicht übersetzen:"
+  },
+  "full_page_translation_menu_cancel_opt_website": {
+    "message": "Diese Website nicht übersetzen"
+  },
+  "full_page_translation_menu_headline": {
+    "message": "Diese Seite übersetzen?"
+  },
+  "full_page_translation_menu_translate_button": {
+    "message": "Übersetzen"
+  },
+  "full_page_translation_no_translate_lang_change": {
+    "message": "Ändern"
+  },
+  "full_page_translation_no_translate_lang_message": {
+    "message": "Sie möchten nicht aus diesen Sprachen übersetzen:"
+  },
+  "full_page_translation_no_translate_website_change": {
+    "message": "Ändern"
+  },
+  "full_page_translation_no_translate_website_message": {
+    "message": "Folgendes soll nicht übersetzt werden:"
+  },
+  "full_page_translation_no_website_data": {
+    "message": "Wir konnten keine Daten von dieser Website abrufen. Wenn möglich, laden Sie die Seite bitte neu."
+  },
+  "full_page_translation_ongoing_translation": {
+    "message": "Bitte gedulden Sie sich einen Augenblick ..."
+  },
+  "full_page_translation_settings_button_cancel": {
+    "message": "Abbrechen"
+  },
+  "full_page_translation_settings_button_save": {
+    "message": "Speichern"
+  },
+  "full_page_translation_settings_done_button": {
+    "message": "Fertig",
+    "description": "Done button for the settings page"
+  },
+  "full_page_translation_settings_headline": {
+    "message": "Einstellungen"
+  },
+  "full_page_translation_settings_list_auto_translate_from": {
+    "message": "Automatisch aus diesen Sprachen übersetzen"
+  },
+  "full_page_translation_settings_list_never_translate_from": {
+    "message": "Niemals aus diesen Sprachen übersetzen"
+  },
+  "full_page_translation_settings_list_never_translate_websites": {
+    "message": "Diese Seiten niemals übersetzen"
+  },
+  "full_page_translation_settings_subheader_label": {
+    "message": "Webseiten übersetzen",
+    "description": "Translate pages sub-header label\n\nThe screenshot is outdated, \"pages\" should be in lowercase"
+  },
+  "full_page_translation_settings_target_lang": {
+    "message": "Übersetzen nach"
+  },
+  "full_page_translation_settings_translate_writting": {
+    "message": "Geschriebenes übersetzen"
+  },
+  "full_page_translation_show_original": {
+    "message": "Original anzeigen"
+  },
+  "inline_translation_settings_headline": {
+    "message": "Lesen",
+    "description": "Headline for settings section of the inline translation"
+  },
+  "inline_translation_settings_target_language": {
+    "message": "Rechtsklick zum Übersetzen nach",
+    "description": "Label for selecting the target language for inline translation. Most often this is the user's native language."
+  },
+  "inline_translation_show_more": {
+    "message": "Mehr anzeigen",
+    "description": "Text for a link that opens deepl in a new tab where the selected text is prefilled"
+  },
+  "input_translation_button_translate": {
+    "message": "Übersetzen",
+    "description": "Button in the settings screen of the input translation to trigger a translation"
+  },
+  "input_translation_option_choose_language": {
+    "message": "Sprache jedes Mal neu wählen",
+    "description": "If the user selects this option, each click on the button opens a selection to choose the target language"
+  },
+  "input_translation_option_default_translation": {
+    "message": "Immer in diese Sprache übersetzen",
+    "description": "If the user selects this option, each button click immediately triggers a translation into the selected target languages"
+  },
+  "input_translation_settings_headline": {
+    "message": "Schreiben",
+    "description": "Headline for settings section of the translation of user input"
+  },
+  "input_translation_settings_target_language": {
+    "message": "Geschriebenes übersetzen nach",
+    "description": "Label for selecting the target language for input translation."
+  },
+  "input_translation_tooltip_settings": {
+    "message": "Einstellungen",
+    "description": "Tooltip to inform the user the button click open the settings for the input translation"
+  },
+  "input_translation_tooltip_translate": {
+    "message": "Übersetzen",
+    "description": "Tooltip to inform the user the button click will trigger a translation of the written text"
+  },
+  "input_translation_tooltip_translate_to_unknown": {
+    "message": "Übersetzen nach ...",
+    "description": "Tooltip to inform the user that he/she must select a target language"
+  },
+  "layout_header_label_language_switch": {
+    "message": "Übersetzen nach:",
+    "description": "Label for the \"Translate to\" inline select to translate popup."
+  },
+  "login_error_default_message": {
+    "message": "Anmeldung fehlgeschlagen."
+  },
+  "login_link_label": {
+    "message": "Anmelden bei DeepL Pro",
+    "description": "Login to DeepL Pro link label"
+  },
+  "login_link_try_pro_label": {
+    "message": "DeepL Pro kostenlos testen",
+    "description": "Link to try DeepL Pro for free\n\nThe link to \"Try DeepL Pro Free\" leads to : https://www.deepl.com/pro"
+  },
+  "login_translate_pages_label": {
+    "message": "Webseiten übersetzen",
+    "description": "Translate pages label"
+  },
+  "login_translate_pages_pro_badge": {
+    "message": "PRO",
+    "description": "PRO badge stays in EN"
+  },
+  "menu_login_label": {
+    "message": "Anmelden bei DeepL Pro",
+    "description": "Log in to DeepL Pro Link label\n\nPlease check the Jira ticket for more context on this key: https://jira.deepl.dev/browse/TNL-711"
+  },
+  "menu_logout_label": {
+    "message": "Abmelden",
+    "description": "Logout Label in the Menu"
+  },
+  "menu_settings_label": {
+    "message": "Einstellungen",
+    "description": "Settings Label for the Menu"
+  },
+  "menu_trial_label": {
+    "message": "DeepL Pro kostenlos testen",
+    "description": "Menu Try DeepL Pro for free label"
+  },
+  "notification_keyboard_shortcut_hint": {
+    "message": "Legen Sie Ihre eigene Tastenkombination für die Übersetzung von Text in den $settings$ fest.",
+    "description": "A notification which will be displayed for 4 seconds. It contains a link to the browser settings to set shortcut for extensions.",
+    "placeholders": {
+      "settings": {
+        "content": "$1"
+      }
+    }
+  },
+  "notification_keyboard_shortcut_hint_placeholder": {
+    "message": "Einstellungen",
+    "description": "The placeholder text for notification_keyboard_shortcut_hint"
+  },
+  "position_options_bottom": {
+    "message": "Unten"
+  },
+  "position_options_left": {
+    "message": "Links"
+  },
+  "position_options_right": {
+    "message": "Rechts"
+  },
+  "position_options_top": {
+    "message": "Oben"
+  },
+  "settings_set_shortcuts_headline": {
+    "message": "Tastenkombinationen",
+    "description": "The headline for the shortcut setting"
+  },
+  "settings_set_shortcuts_link": {
+    "message": "Tastenkombination hier festlegen",
+    "description": "A message which contains a link to the browser settings to set shortcut for extensions."
+  },
+  "supported_languages_BG": {
+    "message": "Bulgarisch",
+    "description": "Name of language"
+  },
+  "supported_languages_CS": {
+    "message": "Tschechisch",
+    "description": "Name of language"
+  },
+  "supported_languages_DA": {
+    "message": "Dänisch",
+    "description": "Name of language"
+  },
+  "supported_languages_DE": {
+    "message": "Deutsch",
+    "description": "Name of language"
+  },
+  "supported_languages_EL": {
+    "message": "Griechisch",
+    "description": "Name of language"
+  },
+  "supported_languages_EN": {
+    "message": "Englisch",
+    "description": "Name of language"
+  },
+  "supported_languages_ES": {
+    "message": "Spanisch",
+    "description": "Name of language"
+  },
+  "supported_languages_ET": {
+    "message": "Estnisch",
+    "description": "Name of language"
+  },
+  "supported_languages_FI": {
+    "message": "Finnisch",
+    "description": "Name of language"
+  },
+  "supported_languages_FR": {
+    "message": "Französisch",
+    "description": "Name of language"
+  },
+  "supported_languages_HU": {
+    "message": "Ungarisch",
+    "description": "Name of language"
+  },
+  "supported_languages_IT": {
+    "message": "Italienisch",
+    "description": "Name of language"
+  },
+  "supported_languages_JA": {
+    "message": "Japanisch",
+    "description": "Name of language"
+  },
+  "supported_languages_LT": {
+    "message": "Litauisch",
+    "description": "Name of language"
+  },
+  "supported_languages_LV": {
+    "message": "Lettisch",
+    "description": "Name of language"
+  },
+  "supported_languages_NL": {
+    "message": "Niederländisch",
+    "description": "Name of language"
+  },
+  "supported_languages_PL": {
+    "message": "Polnisch",
+    "description": "Name of language"
+  },
+  "supported_languages_PT": {
+    "message": "Portugiesisch",
+    "description": "Name of language"
+  },
+  "supported_languages_RO": {
+    "message": "Rumänisch",
+    "description": "Name of language"
+  },
+  "supported_languages_RU": {
+    "message": "Russisch",
+    "description": "Name of language"
+  },
+  "supported_languages_SK": {
+    "message": "Slowakisch",
+    "description": "Name of language"
+  },
+  "supported_languages_SL": {
+    "message": "Slowenisch",
+    "description": "Name of language"
+  },
+  "supported_languages_SV": {
+    "message": "Schwedisch",
+    "description": "Name of language"
+  },
+  "supported_languages_undefined": {
+    "message": "Sprache auswählen",
+    "description": "The user has not yet selected a target language."
+  },
+  "supported_languages_ZH": {
+    "message": "Chinesisch (vereinfacht)",
+    "description": "Name of language"
+  },
+  "switch_component_off": {
+    "message": "AUS",
+    "description": "The OFF state for the switch ui element"
+  },
+  "switch_component_on": {
+    "message": "EIN",
+    "description": "The ON state for the switch ui element"
+  }
+}
