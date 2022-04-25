@@ -409,7 +409,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		app.bot.Send(tgbotapi.NewCallback(callback.ID, ""))
 		app.bot.Send(tgbotapi.NewMessage(callback.From.ID, user.Localize("start_info", langs[callback.From.LanguageCode][from], langs[callback.From.LanguageCode][to])))
 
-		app.bot.Send(tgbotapi.VideoConfig{
+		if _, err := app.bot.Send(tgbotapi.DocumentConfig{
 			BaseFile: tgbotapi.BaseFile{
 				BaseChat: tgbotapi.BaseChat{
 					ChatID:                   callback.From.ID,
@@ -419,15 +419,17 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 					DisableNotification:      false,
 					AllowSendingWithoutReply: false,
 				},
-				File: tgbotapi.FilePath("inline.mp4"),
+				File: tgbotapi.FilePath("inline.gif"),
 			},
-			Thumb:             nil,
-			Duration:          0,
-			Caption:           user.Localize("Как переводить еще удобнее"),
-			ParseMode:         "",
-			CaptionEntities:   nil,
-			SupportsStreaming: false,
-		})
+			Thumb:                       nil,
+			Caption:                     user.Localize("Как переводить еще удобнее"),
+			ParseMode:                   "",
+			CaptionEntities:             nil,
+			DisableContentTypeDetection: false,
+		}); err != nil {
+			pp.Println(err)
+		}
+		// user.Localize("")
 	case "setup_langs_pagination": // arr[1] - source language of the text, arr[2] - offset
 		from := arr[1]
 		offset, err := strconv.Atoi(arr[2])
