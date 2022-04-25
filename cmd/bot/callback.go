@@ -2,11 +2,11 @@ package bot
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"git.mills.io/prologic/bitcask"
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
+	"github.com/armanokka/translobot/pkg/errors"
 	translate2 "github.com/armanokka/translobot/pkg/translate"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
@@ -31,7 +31,6 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 	warn := func(err error) {
 		app.bot.Send(tgbotapi.NewCallback(callback.ID, "Error, sorry"))
 		app.notifyAdmin(err)
-		pp.Println(err)
 	}
 
 	user := tables.Users{Lang: callback.From.LanguageCode}
@@ -160,12 +159,12 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			return
 		}
 		go func() {
-			if err = app.sendSpeech(user, arr[2], botMsgText, callback.ID, callback.Message.MessageID); err != nil { // озвучиваем непереведенное сообщение
+			if err = app.sendSpeech(user, arr[2], botMsgText, callback.ID); err != nil { // озвучиваем непереведенное сообщение
 				warn(err)
 				return
 			}
 		}()
-		if err = app.sendSpeech(user, arr[1], userMsgText, callback.ID, callback.Message.MessageID); err != nil { // озвучиваем переведенное сообщение
+		if err = app.sendSpeech(user, arr[1], userMsgText, callback.ID); err != nil { // озвучиваем переведенное сообщение
 			warn(err)
 			return
 		}
@@ -298,7 +297,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		g, _ := errgroup.WithContext(ctx)
 		g.Go(func() error {
 			rev, err = translate2.ReversoTranslate(translate2.ReversoIso6392(arr[1]), translate2.ReversoIso6392(arr[2]), text)
-			return err
+			return errors.Wrap(err)
 		})
 		//g.Go(func() error {
 		//	if v, err := lingvo.Suggestions(arr[1], arr[2], callback.Message.Text, 6, 0); err == nil && len(v.Items) > 0 {
@@ -308,7 +307,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		//})
 		g.Go(func() error {
 			trscript, err = translate2.YandexTranscription(reversoFrom, reversoTo, text)
-			return err
+			return errors.Wrap(err)
 		})
 
 		if err = g.Wait(); err != nil {
@@ -340,12 +339,13 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 					tr.ContextResults.Results = tr.ContextResults.Results[:4]
 				}
 				for i, result := range tr.ContextResults.Results {
-					if result.Translation == "" {
+					if result.Translation == "" || result.Translation == text {
 						continue
 					}
 					if i > 0 {
 						out += ", "
 					}
+
 					out += "<code>" + result.Translation + "</code>"
 				}
 			}()

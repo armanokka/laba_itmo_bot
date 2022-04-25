@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
-	"github.com/go-errors/errors"
+	"github.com/armanokka/translobot/pkg/errors"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/paul-mannino/go-fuzzywuzzy"
 	"io"
@@ -309,7 +309,7 @@ func inMapValues(m map[string]string, values ...string) bool {
 func WitAiSpeech(wav io.Reader, lang string, bits int) (string, error) {
 	var key, ok = config.WitAPIKeys[lang]
 	if !ok {
-		return "", errors.New("no wit.ai key for lang " + lang)
+		return "", fmt.Errorf("no wit.ai key for lang " + lang)
 	}
 	req, err := http.NewRequest("POST", "https://api.wit.ai/speech?v=20210928&bits="+strconv.Itoa(bits), wav)
 	if err != nil {
@@ -329,7 +329,7 @@ func WitAiSpeech(wav io.Reader, lang string, bits int) (string, error) {
 	}
 	parts := strings.Split(string(body), "\r\n")
 	if len(parts) == 0 {
-		return "", errors.New("empty parts: " + string(body))
+		return "", fmt.Errorf("empty parts: " + string(body))
 	}
 	var result struct {
 		Text  string `json:"text"`
@@ -337,10 +337,10 @@ func WitAiSpeech(wav io.Reader, lang string, bits int) (string, error) {
 		Code  string `json:"code"`
 	}
 	if err = json.Unmarshal([]byte(parts[len(parts)-1]), &result); err != nil {
-		return "", errors.WrapPrefix(err, string(body), 0)
+		return "", errors.Wrap(err)
 	}
 	if result.Error != "" {
-		return "", errors.New(result.Error)
+		return "", fmt.Errorf(result.Error)
 	}
 	return result.Text, nil
 }
@@ -350,7 +350,7 @@ func BuildSupportedLanguagesKeyboard(user tables.Users) (tgbotapi.InlineKeyboard
 	for i, code := range config.BotLocalizedLangs {
 		lang, ok := langs[user.Lang][code]
 		if !ok {
-			return tgbotapi.InlineKeyboardMarkup{}, errors.New("no such code " + code + " in langs")
+			return tgbotapi.InlineKeyboardMarkup{}, fmt.Errorf("no such code " + code + " in langs")
 		}
 
 		if i%2 == 0 {

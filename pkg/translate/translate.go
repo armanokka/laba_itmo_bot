@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/armanokka/translobot/pkg/errors"
 	"github.com/armanokka/translobot/pkg/lingvo"
-	"github.com/go-errors/errors"
 	"github.com/go-resty/resty/v2"
 	"github.com/k0kubun/pp"
 	"github.com/tidwall/gjson"
@@ -261,7 +261,7 @@ func ttsRequest(lang, text string) (string, error) {
 	}
 	idx := strings.IndexByte(string(body), '\'') + 1
 	if idx == 0 {
-		return "", errors.New("couldn't find \"'\"")
+		return "", fmt.Errorf("couldn't find \"'\"")
 	}
 	var out = struct {
 		TranslateTTS []string `json:"translate_tts"`
@@ -273,7 +273,7 @@ func ttsRequest(lang, text string) (string, error) {
 	}
 
 	if len(out.TranslateTTS) == 0 {
-		return "", errors.New("translateTTS js object not found")
+		return "", fmt.Errorf("translateTTS js object not found")
 	}
 	if out.TranslateTTS[0] == "" {
 		return "", ErrTTSLanguageNotSupported
@@ -597,7 +597,7 @@ func ReversoTranslate(from, to, text string) (ReversoTranslation, error) {
 
 	var ret ReversoTranslation
 	if err = json.Unmarshal(body, &ret); err != nil {
-		return ReversoTranslation{}, errors.WrapPrefix(err, string(body), 0)
+		return ReversoTranslation{}, errors.Wrap(err)
 	}
 	return ret, nil
 }
@@ -681,7 +681,7 @@ func GoogleTranslateSingle(from, to, text string) (GoogleTranslateSingleResult, 
 
 	var result GoogleTranslateSingleResult
 	if err = json.Unmarshal(body, &result); err != nil {
-		return GoogleTranslateSingleResult{}, errors.WrapPrefix(err, string(body), 0)
+		return GoogleTranslateSingleResult{}, errors.Wrap(err)
 	}
 	return result, err
 }
@@ -722,7 +722,7 @@ func GetSamples(from, to, source, translation string) (GetSamplesResponse, error
 
 	var result GetSamplesResponse
 	if err = json.Unmarshal(body, &result); err != nil {
-		return GetSamplesResponse{}, errors.WrapPrefix(err, string(body), 0)
+		return GetSamplesResponse{}, errors.Wrap(err)
 	}
 	return result, nil
 }

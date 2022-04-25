@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
+	"github.com/armanokka/translobot/pkg/errors"
 	translate2 "github.com/armanokka/translobot/pkg/translate"
-	"github.com/go-errors/errors"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
 	"go.uber.org/zap"
@@ -199,19 +199,6 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 				from = tr.FromLang
 			}
 
-			keyboard := tgbotapi.NewInlineKeyboardMarkup(
-				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.InlineKeyboardButton{
-						Text:                         "translate",
-						URL:                          nil,
-						LoginURL:                     nil,
-						CallbackData:                 nil,
-						SwitchInlineQuery:            nil,
-						SwitchInlineQueryCurrentChat: &tr.Text,
-						CallbackGame:                 nil,
-						Pay:                          false,
-					}))
-
 			mu.Lock()
 			blocks = append(blocks, tgbotapi.InlineQueryResultArticle{
 				Type:  "article",
@@ -221,7 +208,7 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 					"message_text":             tr.Text,
 					"disable_web_page_preview": true,
 				},
-				ReplyMarkup: &keyboard,
+				ReplyMarkup: nil,
 				URL:         "",
 				HideURL:     true,
 				Description: tr.Text,
@@ -290,7 +277,7 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 		SwitchPMText:      pmtext,
 		SwitchPMParameter: "from_inline",
 	}); err != nil {
-		warn(errors.WrapPrefix(err, "app.bot.AnswerInlineQuery:", 1))
+		warn(errors.Wrap(err))
 		pp.Println(blocks)
 	}
 

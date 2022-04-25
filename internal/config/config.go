@@ -3,12 +3,10 @@ package config
 import (
 	"database/sql"
 	"fmt"
-	"github.com/armanokka/translobot/internal/tables"
 	"github.com/armanokka/translobot/pkg/botapi"
 	"github.com/armanokka/translobot/pkg/dashbot"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
-	"github.com/robfig/cron"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"sync"
@@ -84,17 +82,6 @@ func Load() error {
 			pp.Println(err)
 			bot.Send(tgbotapi.NewMessage(AdminID, fmt.Sprint(err)))
 		})
-
-		// Running cron job
-		cronjob := cron.New()
-		if err = cronjob.AddFunc("@daily", func() {
-			if err = db.Model(&tables.UsersLogs{}).Exec("DELETE FROM users_logs WHERE date < (NOW() - INTERVAL 30 DAY)").Error; err != nil {
-				pp.Println(err)
-				bot.Send(tgbotapi.NewMessage(AdminID, fmt.Sprint(err)+"\n\nIT'S FROM config.go"))
-			}
-		}); err != nil {
-			return
-		}
 	})
 	return err
 }

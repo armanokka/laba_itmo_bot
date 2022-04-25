@@ -8,10 +8,10 @@ import (
 	"github.com/armanokka/translobot/internal/tables"
 	"github.com/armanokka/translobot/pkg/botapi"
 	"github.com/armanokka/translobot/pkg/dashbot"
+	"github.com/armanokka/translobot/pkg/errors"
 	"github.com/armanokka/translobot/pkg/lingvo"
 	translate2 "github.com/armanokka/translobot/pkg/translate"
 	"github.com/armanokka/translobot/repos"
-	"github.com/go-errors/errors"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
 	fuzzy "github.com/paul-mannino/go-fuzzywuzzy"
@@ -55,10 +55,8 @@ func (app App) Run(ctx context.Context) error {
 		for {
 			select {
 			case <-ctx.Done():
-				pp.Println("Stopping receiving updates...")
 				app.bot.StopReceivingUpdates()
 				wg.Wait()
-				pp.Println("Waiting for goroutines finishing...")
 				return ctx.Err()
 			case update := <-updates:
 				defer func() {
@@ -111,6 +109,7 @@ func (app App) Run(ctx context.Context) error {
 		}
 		if exists {
 			pp.Println("рассылка есть, продолжаю")
+
 			mailingMessageIDBytes, err := app.bc.Get([]byte("mailing_message_id"))
 			if err != nil {
 				return err
@@ -119,22 +118,20 @@ func (app App) Run(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
-
 			mailing_keyboard_raw_text, err := app.bc.Get([]byte("mailing_keyboard_raw_text"))
 			if err != nil && !errors.Is(err, bitcask.ErrKeyNotFound) {
-				return err
+				return errors.Wrap(err)
 			}
-
 			keyboard := parseKeyboard(string(mailing_keyboard_raw_text))
 			withKeyboard := false
 			if len(keyboard.InlineKeyboard) > 0 {
 				withKeyboard = true
 			}
+
 			rows, err := app.db.GetMailersRows()
 			if err != nil {
 				return err
 			}
-
 			defer rows.Close()
 			for rows.Next() {
 				var id int64
@@ -205,6 +202,8 @@ func (app App) notifyAdmin(args ...interface{}) {
 	text := ""
 	for _, arg := range args {
 		switch v := arg.(type) {
+		case errors.Error:
+			text += "\n" + v.Error() + "\n" + string(v.Stack())
 		case error:
 			text += "\n" + v.Error()
 		default:
@@ -224,37 +223,6 @@ func (app App) notifyAdmin(args ...interface{}) {
 		app.log.Error(fmt.Sprintf("%w", err), zap.Error(err))
 	}
 }
-
-//func (app app) setMyCommands(langs []string, commands []tgbotapi.BotCommand) error {
-//	newCommands := make(map[string][]tgbotapi.BotCommand)
-//	for _, lang := range langs {
-//		newCommands[lang] = []tgbotapi.BotCommand{}
-//		for _, command := range commands {
-//			tr, err := translate.GoogleHTMLTranslate("en", lang, command.Description)
-//			if err != nil {
-//				return err
-//			}
-//			newCommands[lang]= append(newCommands[lang], tgbotapi.BotCommand{
-//				Command:     command.Command,
-//				Description: tr.Text,
-//			})
-//		}
-//	}
-//
-//	for lang, command := range newCommands {
-//		data, err := json.Marshal(command)
-//		if err != nil {
-//			return err
-//		}
-//		params := tgbotapi.Params{}
-//		params.AddNonEmpty("commands", string(data))
-//		params.AddNonEmpty("language_code", lang)
-//		if _, err = app.bot.MakeRequest("setMyCommands", params); err != nil {
-//			return err
-//		}
-//	}
-//	return nil
-//}
 
 func (app App) SuperTranslate(user tables.Users, from, to, text string, entities []tgbotapi.MessageEntity) (ret SuperTranslation, err error) {
 	text = applyEntitiesHtml(text, entities)
@@ -277,10 +245,11 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 
 	if from == "auto" {
 		tr, err := translate2.GoogleTranslate(from, to, cutStringUTF16(text, 100))
-		if err != nil {
-			return SuperTranslation{}, errors.WrapPrefix(err, "g.Go: translate2.GoogleTranslate", 1)
-		}
 		from = tr.FromLang
+		if err != nil {
+			return SuperTranslation{}, errors.Wrap(err)
+		}
+
 	}
 
 	g, _ := errgroup.WithContext(context.Background())
@@ -290,7 +259,7 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 			dict, err = translate2.GoogleDictionary(from, lower)
 			if err != nil {
 				log.Error("translate2.GoogleDictionary", zap.Error(err))
-				return errors.WrapPrefix(err, "g.Go: translate2.GoogleDictionary:", 1)
+				return errors.Wrap(err)
 			}
 			definitions := 0
 			for _, data := range dict.DictionaryData {
@@ -303,20 +272,14 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 			if definitions < 2 {
 				dict = translate2.GoogleDictionaryResponse{}
 			}
-			return err
+			return errors.Wrap(err)
 		})
 	}
 
-	if l < 100 {
+	if l < 100 && inMapValues(translate2.ReversoSupportedLangs(), from, to) && from != to {
 		g.Go(func() error {
-			if inMapValues(translate2.ReversoSupportedLangs(), from, to) && from != to {
-				rev, err = translate2.ReversoTranslate(translate2.ReversoIso6392(from), translate2.ReversoIso6392(to), lower)
-			}
-			if err != nil {
-				log.Error("translate2.ReversoSupportedLangs", zap.Error(err))
-				return errors.WrapPrefix(err, "g.Go: translate2.ReversoTranslate:", 1)
-			}
-			return nil
+			rev, err = translate2.ReversoTranslate(translate2.ReversoIso6392(from), translate2.ReversoIso6392(to), lower)
+			return errors.Wrap(err)
 		})
 	}
 
@@ -325,10 +288,7 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 	if ok1 && ok2 && l < 50 {
 		g.Go(func() error {
 			suggestions, err = lingvo.Suggestions(from, to, lower, 1, 0)
-			if err != nil {
-				log.Error("lingvo.Suggestions", zap.Error(err))
-			}
-			return err
+			return errors.Wrap(err)
 		})
 	}
 
@@ -337,13 +297,13 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 			v, err := lingvo.GetDictionary(user.MyLang, user.ToLang, lower)
 			if err != nil {
 				log.Error("lingvo.GetDictionary", zap.Error(err), zap.String("my_lang", user.MyLang), zap.String("to_lang", user.ToLang))
-				return err
+				return errors.Wrap(err)
 			}
 			if len(v) == 0 {
 				v, err = lingvo.GetDictionary(user.ToLang, user.MyLang, lower)
 				if err != nil {
 					log.Error("lingvo.GetDictionary", zap.Error(err), zap.String("my_lang", user.MyLang), zap.String("to_lang", user.ToLang))
-					return err
+					return errors.Wrap(err)
 				}
 			}
 			if len(v) > 8 {
@@ -386,49 +346,31 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 
 	if ok1 && ok2 {
 		g.Go(func() error {
-			tr, err := translate2.YandexTranslate(from, to, text)
-			if err != nil {
-				app.log.Error("translate2.YandexTranslate", zap.Error(err))
-				return err
-			}
-			YandexTr = tr
-			return nil
+			YandexTr, err = translate2.YandexTranslate(from, to, text)
+			return errors.Wrap(err)
 		})
 	} else {
 		if html.UnescapeString(text) != html.EscapeString(text) { // есть html теги
 			g.Go(func() error {
 				tr, err := translate2.MicrosoftTranslate(from, to, text)
-				if err != nil {
-					app.log.Error("translate2.MicrosoftTranslate", zap.Error(err))
-					return err
-				}
 				MicrosoftTr = tr.TranslatedText
-				return nil
+				return errors.Wrap(err)
 			})
 		}
 	}
 
 	g.Go(func() error {
 		tr, err := translate2.GoogleTranslate(from, to, text)
-		if err != nil {
-			app.log.Error("translate2.GoogleTranslate", zap.Error(err))
-			return err
-		}
 		GoogleFromToTr = tr.Text
-		return nil
+		return errors.Wrap(err)
 	})
 	g.Go(func() error {
 		tr, err := translate2.GoogleTranslate(to, from, text)
-		if err != nil {
-			app.log.Error("translate2.GoogleTranslate", zap.Error(err))
-			return err
-		}
 		GoogleToFromTr = tr.Text
-		return nil
+		return errors.Wrap(err)
 	})
 
 	if err = g.Wait(); err != nil {
-		app.log.Error("g.Wait()", zap.Error(err))
 		return SuperTranslation{}, err
 	}
 
@@ -465,45 +407,30 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 			break
 		}
 		fallthrough
-	case GoogleToFromTr != "":
-		fallthrough
-	case GoogleFromToTr != "":
+	case GoogleFromToTr != "" || GoogleToFromTr != "":
 		if fuzzy.EditDistance(text, GoogleFromToTr) > fuzzy.EditDistance(text, GoogleToFromTr) {
 			ret.TranslatedText = GoogleFromToTr
 		} else {
 			ret.TranslatedText = GoogleToFromTr
 		}
 		pp.Println("translated via google")
-
 		break
 	case MicrosoftTr != "":
 		ret.TranslatedText = MicrosoftTr
 		pp.Println("translated via microsoft")
-
 	}
 
 	return ret, nil
 }
 
-func (app App) sendSpeech(user tables.Users, lang, text string, callbackID string, replyToMessageID int) error {
+func (app App) sendSpeech(user tables.Users, lang, text string, callbackID string) error {
 	sdec, err := translate2.TTS(lang, text)
 	if err != nil {
 		if err == translate2.ErrTTSLanguageNotSupported {
-			call := tgbotapi.NewCallback(callbackID, user.Localize("%s не поддерживается", langs[user.Lang][lang]))
-			call.ShowAlert = true
-			app.bot.AnswerCallbackQuery(call)
+			app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callbackID, user.Localize("%s не поддерживается", langs[user.Lang][lang])))
 			return nil
 		}
-		if e, ok := err.(translate2.HTTPError); ok {
-			if e.Code == 500 || e.Code == 414 {
-				call := tgbotapi.NewCallback(callbackID, "Too big text")
-				call.ShowAlert = true
-				app.bot.AnswerCallbackQuery(call)
-				return nil
-			}
-		}
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callbackID, "Internal error"))
-		pp.Println(err)
 		return err
 	}
 	app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callbackID, "⏳"))
@@ -512,20 +439,30 @@ func (app App) sendSpeech(user tables.Users, lang, text string, callbackID strin
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if err = f.Close(); err != nil {
-			app.notifyAdmin(err)
-		}
-	}()
-	_, err = f.Write(sdec)
-	if err != nil {
+	defer f.Close()
+	if _, err = f.Write(sdec); err != nil {
 		return err
 	}
-	audio := tgbotapi.NewAudio(user.ID, tgbotapi.FilePath(f.Name()))
-	audio.Title = text
-	audio.ReplyToMessageID = replyToMessageID
-	kb := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌", "delete")))
-	audio.ReplyMarkup = kb
-	app.bot.Send(audio)
+
+	app.bot.Send(tgbotapi.AudioConfig{
+		BaseFile: tgbotapi.BaseFile{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:                   user.ID,
+				ChannelUsername:          "",
+				ReplyToMessageID:         0,
+				ReplyMarkup:              nil,
+				DisableNotification:      false,
+				AllowSendingWithoutReply: false,
+			},
+			File: tgbotapi.FilePath(f.Name()),
+		},
+		Thumb:           nil,
+		Caption:         "",
+		ParseMode:       "",
+		CaptionEntities: nil,
+		Duration:        0,
+		Performer:       "",
+		Title:           text,
+	})
 	return nil
 }

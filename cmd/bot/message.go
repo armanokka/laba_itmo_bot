@@ -2,13 +2,15 @@ package bot
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
+	"github.com/armanokka/translobot/pkg/errors"
+	"github.com/armanokka/translobot/pkg/ocr"
 	"github.com/armanokka/translobot/pkg/translate"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
+	fuzzy "github.com/paul-mannino/go-fuzzywuzzy"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"html"
@@ -23,7 +25,11 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	log := app.log.With(zap.Int64("id", message.From.ID))
 	defer func() {
 		if err := recover(); err != nil {
-			log.Error("%w", zap.Any("error", err))
+			if e, ok := err.(errors.Error); ok {
+				app.bot.Send(tgbotapi.NewMessage(config.AdminID, "recover:"+fmt.Sprint(err)+"\nstack:"+string(e.Stack())))
+				return
+			}
+			log.Error("recover:", zap.Any("error", err))
 			app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Panic:"+fmt.Sprint(err)))
 		}
 	}()
@@ -417,8 +423,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 
-	go app.bot.Send(tgbotapi.NewChatAction(message.From.ID, "typing"))
-
 	var text = message.Text
 	message.Text = ""
 	if message.Caption != "" {
@@ -455,11 +459,30 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		to = user.MyLang
 	}
 
-	log.Info("translated", zap.String("from", from), zap.String("to", to))
 	ret, err := app.SuperTranslate(user, from, to, text, message.Entities)
 	if err != nil {
 		warn(err)
 		return
+	}
+	if fuzzy.EditDistance(text, ret.TranslatedText) < 2 {
+		filename := strconv.FormatInt(time.Now().UnixNano(), 10) + ".png"
+		//defer os.Remove(filename)
+		err = ocr.WriteTextOnImage(text, "fonts/ttf/JetBrainsMonoNL-Regular.ttf", filename)
+		if err != nil {
+			warn(err)
+			return
+		}
+		readyOcr, err := ocr.Yandex(filename)
+		if err != nil {
+			warn(err)
+			return
+		}
+		pp.Println(readyOcr)
+		ret, err = app.SuperTranslate(user, readyOcr.DetectedLang, to, text, message.Entities)
+		if err != nil {
+			warn(err)
+			return
+		}
 	}
 	//ret.TranslatedText, err = url.QueryUnescape(ret.TranslatedText)
 	//if err != nil {

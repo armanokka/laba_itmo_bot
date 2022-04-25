@@ -37,11 +37,17 @@ func (db BotDB) CreateUser(user tables.Users) (err error) {
 }
 
 func (db BotDB) UpdateUser(id int64, updates tables.Users) error {
-	return db.Model(&tables.Users{}).Where("id = ?", id).Updates(updates).Error
+	return db.Clauses(clause.Locking{
+		Strength: "SHARE",
+		Table:    clause.Table{Name: clause.CurrentTable},
+	}).Model(&tables.Users{}).Where("id = ?", id).Updates(updates).Error
 }
 
 func (db BotDB) UpdateUserByMap(id int64, updates map[string]interface{}) error {
-	return db.Model(&tables.Users{}).Where("id = ?", id).Updates(updates).Error
+	return db.Clauses(clause.Locking{
+		Strength: "SHARE",
+		Table:    clause.Table{Name: clause.CurrentTable},
+	}).Model(&tables.Users{}).Where("id = ?", id).Updates(updates).Error
 }
 
 func (db BotDB) GetAllUsers() (users []tables.Users, err error) {

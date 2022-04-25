@@ -60,23 +60,21 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
-		signal := <-signalChanel
-		//switch t := signal.(type) {
-		//case syscall.SIGHUP:
-		//	//reread config...
-		//}
-		pp.Println("Received", signal.String())
+		<-signalChanel
+		pp.Println("exiting...")
 		cancel()
 	}()
 
 	db := config.DB()
 	botAPI := config.BotAPI()
+
 	botAPI.SetAPIEndpoint("http://127.0.0.1:8081/bot%s/%s")
 	analytics := config.Analytics()
 	bc, err := bitcask.Open("bitcask_db")
 	if err != nil {
 		panic(err)
 	}
+
 	//d, err := translate.NewDeepl()
 	//if err != nil {
 	//	panic(err)
@@ -94,5 +92,4 @@ func main() {
 	if err := g.Wait(); err != nil && err != context.Canceled {
 		panic(err)
 	}
-	pp.Println("Program stopped gracefully.")
 }
