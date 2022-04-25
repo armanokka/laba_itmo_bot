@@ -79,7 +79,7 @@ func yandexTranslate(from, to, text string) (string, error) {
 		}
 
 		if gjson.GetBytes(body, "code").Int() != 200 {
-			return "", fmt.Errorf("YandexTranslate:" + gjson.GetBytes(body, "message").String())
+			return "", fmt.Errorf("YandexTranslate error: %s->%s\n%s", from, to, gjson.GetBytes(body, "message").String())
 		}
 		for _, result := range gjson.GetBytes(body, "text").Array() {
 			out += result.String()
