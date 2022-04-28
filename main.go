@@ -68,7 +68,7 @@ func main() {
 	db := config.DB()
 	botAPI := config.BotAPI()
 
-	//botAPI.SetAPIEndpoint("http://127.0.0.1:8081/bot%s/%s")
+	botAPI.SetAPIEndpoint("http://127.0.0.1:8081/bot%s/%s")
 	analytics := config.Analytics()
 	bc, err := bitcask.Open("bitcask_db")
 	if err != nil {
