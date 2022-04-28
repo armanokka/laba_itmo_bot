@@ -429,6 +429,10 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		}); err != nil {
 			pp.Println(err)
 		}
+
+		if _, err := app.bot.Send(tgbotapi.NewMessage(callback.From.ID, user.Localize("format_translation_tip"))); err != nil {
+			pp.Println(err)
+		}
 		// user.Localize("")
 	case "setup_langs_pagination": // arr[1] - source language of the text, arr[2] - offset
 		from := arr[1]

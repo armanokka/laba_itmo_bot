@@ -9,6 +9,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
 	"go.uber.org/zap"
+	"golang.org/x/text/unicode/norm"
 	"gorm.io/gorm"
 	"runtime/debug"
 	"sort"
@@ -66,7 +67,7 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 		}
 	}()
 
-	update.Query = Title(update.Query)
+	update.Query = norm.NFKC.String(update.Query)
 	warn := func(err error) {
 		app.bot.AnswerInlineQuery(tgbotapi.InlineConfig{
 			InlineQueryID:     update.ID,

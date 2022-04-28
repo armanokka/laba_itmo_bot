@@ -456,7 +456,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	} else { // никакой из
 		to = user.MyLang
 	}
-
 	ret, err := app.SuperTranslate(user, from, to, text, message.Entities)
 	if err != nil {
 		warn(err)

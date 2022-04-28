@@ -17,6 +17,7 @@ import (
 	fuzzy "github.com/paul-mannino/go-fuzzywuzzy"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/text/unicode/norm"
 	"html"
 	"os"
 	"runtime/debug"
@@ -225,6 +226,7 @@ func (app App) notifyAdmin(args ...interface{}) {
 }
 
 func (app App) SuperTranslate(user tables.Users, from, to, text string, entities []tgbotapi.MessageEntity) (ret SuperTranslation, err error) {
+	text = norm.NFKC.String(text)
 	text = applyEntitiesHtml(text, entities)
 	//text = html.EscapeString(text)
 	var (
@@ -401,6 +403,7 @@ func (app App) SuperTranslate(user tables.Users, from, to, text string, entities
 		pp.Println("translated via deepl")
 		break
 	case YandexTr != "":
+		pp.Println(YandexTr, GoogleToFromTr)
 		if fuzzy.EditDistance(text, GoogleFromToTr) < fuzzy.EditDistance(text, YandexTr) {
 			ret.TranslatedText = YandexTr
 			pp.Println("translated via yandex")

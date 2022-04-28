@@ -375,6 +375,18 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"uk": "Час очікування скарги на переклад минув. Перекажіть повідомлення ще раз",
 			"es": "El tiempo de espera de la queja en la traducción agotado. Ponga de nuevo el mensaje",
 		},
+		"format_translation_tip": map[string]string{
+			"es": "💡Sugerencia:\nSólo Translo puede traducir estos textos con formato, como: \"𝑴𝒓 𝒑𝒂𝒖𝒍𝒔𝒐𝒏 𝑷𝒊𝒆𝒕𝒆𝒓\"\nNi google, ni yahoo! ni ningún otro traductor porque no pueden. Pruebe y compruebe en este",
+			"id": "💡Petunjuk:\nHanya Translo dapat menerjemahkan diformat teks-teks seperti: \"𝑴𝒓 𝒑𝒂𝒖𝒍𝒔𝒐𝒏 𝑷𝒊𝒆𝒕𝒆𝒓\"\nGoogle atau Yandex, atau translator tidak bisa melakukan itu. Mencobanya dan melihat untuk diri sendiri",
+			"en": "💡Hint:\nOnly Translo can translate formatted texts such as: \"𝑴𝒓 𝒑𝒂𝒖𝒍𝒔𝒐𝒏 𝑷𝒊𝒆𝒕𝒆𝒓\"\nAny Google or Yandex, or any other translator can't do that. Try it out and see for yourself",
+			"de": "💡Tipp:\nNur Translo übersetzen kann diese formatierte Texte, wie: \"𝑴𝒓 𝒑𝒂𝒖𝒍𝒔𝒐𝒏 𝑷𝒊𝒆𝒕𝒆𝒓\"\nWeder Google, Yandex, noch irgendein anderer übersetzer nicht so können. Probieren Sie es aus und überzeugen Sie sich",
+			"uk": "💡Підказка:\nТільки Translo може переводити такі форматовані тексти, як: \"𝑴𝒓 𝒑𝒂𝒖𝒍𝒔𝒐𝒏 𝑷𝒊𝒆𝒕𝒆𝒓\"\nНі гугл, ні яндекс, ні будь-який інший перекладач так не можуть. Спробуйте і переконаєтеся в цьому",
+			"pt": "💡Dica:\nSó Translo pode traduzir tais textos formatados, como: \"𝑴𝒓 𝒑𝒂𝒖𝒍𝒔𝒐𝒏 𝑷𝒊𝒆𝒕𝒆𝒓\"\nNem o google, nem ela, nem qualquer outro tradutor não podem. Tente e certifique-se neste",
+			"it": "💡Suggerimento:\nSolo Translo in grado di tradurre i testi formattati, come: \"𝑴𝒓 𝒑𝒂𝒖𝒍𝒔𝒐𝒏 𝑷𝒊𝒆𝒕𝒆𝒓\"\nNé google, né yandex, né qualsiasi altro traduttore non possono. Provare e vedere di",
+			"uz": "Подсказ uchi:\nFaqat Translo quyidagi formatlangan matnlarni tarjima qilishi mumkin: \"𝑴𝒓 𝒑𝒂𝒖𝒍𝒔𝒐𝒏 𝑷𝒊𝒆𝒕𝒆𝒓\"\nNa Google, na Yandex, na boshqa tarjimon ham shunday qila olmaydi. Uni sinab ko'ring va ishonch hosil qiling",
+			"ru": "💡Подсказка:\nТолько Translo может переводить такие форматированные тексты, как: \"𝑴𝒓 𝒑𝒂𝒖𝒍𝒔𝒐𝒏 𝑷𝒊𝒆𝒕𝒆𝒓\"\nНи гугл, ни яндекс, ни любой другой переводчик так не могут. Попробуйте и убедитесь в этом",
+			"ar": "💡تلميح:\nفقط Translo يمكن أن تترجم تنسيق النصوص مثل: \"𝑴𝒓 𝒑𝒂𝒖𝒍𝒔𝒐𝒏 𝑷𝒊𝒆𝒕𝒆𝒓\"\nأي جوجل أو ياندكس ، أو أي مترجم لا تستطيع أن تفعل ذلك. محاولة وانظر لنفسك",
+		},
 	}
 
 	if v, ok := localization[key]; ok {

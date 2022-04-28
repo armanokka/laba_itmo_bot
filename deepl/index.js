@@ -31,6 +31,17 @@ function translate(from, to, text) {
     }
     return s.texts
 };
+async function l(e) {
+    if (e.includes("session")) {
+        const e = await chrome.storage.sync.get(["session"]);
+        e && !e.session && await p()
+    }
+    return new Promise(((t, n) => {
+        chrome.storage.sync.get(e, (r => {
+            r ? t(r) : n(`Can not get ${e}`)
+        }))
+    }))
+}
 translate("en", "ru", "hey").then((e => n(e))).catch((e => {
     n(Rt(e))
 }))
