@@ -392,6 +392,10 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		app.bot.Send(tgbotapi.NewMessage(message.From.ID, "рассылка закончена"))
 		return
 	case "setup_langs":
+		if message.Text == "" {
+			app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, user.Localize("Отправь текстовое сообщение, чтобы я его перевел")))
+			return
+		}
 		fromLang, err := translate.GoogleTranslate("auto", "en", cutStringUTF16(message.Text, 100))
 		if err != nil {
 			warn(err)
