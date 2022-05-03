@@ -542,29 +542,24 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	}
 
 	if user.Usings == 5 || (user.Usings > 0 && user.Usings%20 == 0) {
-		log.Info("sent bot's ad")
-		link := strings.ReplaceAll(user.Localize("Я рекомендую @translobot"), " ", "+")
-		link = url.PathEscape(link)
-		defer func() {
-			if _, err := app.bot.Send(tgbotapi.MessageConfig{
-				BaseChat: tgbotapi.BaseChat{
-					ChatID:           message.From.ID,
-					ChannelUsername:  "",
-					ReplyToMessageID: 0,
-					ReplyMarkup: tgbotapi.NewInlineKeyboardMarkup(
-						tgbotapi.NewInlineKeyboardRow(
-							tgbotapi.NewInlineKeyboardButtonURL(user.Localize("Рассказать про нас"), "http://t.me/share/url?url="+link))),
-					DisableNotification:      true,
-					AllowSendingWithoutReply: false,
-				},
-				Text:                  user.Localize("Понравился бот? 😎 Поделись с друзьями, нажав на кнопку"),
-				ParseMode:             tgbotapi.ModeHTML,
-				Entities:              nil,
-				DisableWebPagePreview: false,
-			}); err != nil {
-				pp.Println(err)
-			}
-		}()
+		if _, err := app.bot.Send(tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:           message.From.ID,
+				ChannelUsername:  "",
+				ReplyToMessageID: 0,
+				ReplyMarkup: tgbotapi.NewInlineKeyboardMarkup(
+					tgbotapi.NewInlineKeyboardRow(
+						tgbotapi.NewInlineKeyboardButtonURL(user.Localize("Рассказать про нас"), "http://t.me/share/url?url="+url.PathEscape(user.Localize("Я рекомендую @translobot"))))),
+				DisableNotification:      true,
+				AllowSendingWithoutReply: false,
+			},
+			Text:                  user.Localize("Понравился бот? 😎 Поделись с друзьями, нажав на кнопку"),
+			ParseMode:             tgbotapi.ModeHTML,
+			Entities:              nil,
+			DisableWebPagePreview: false,
+		}); err != nil {
+			pp.Println(err)
+		}
 	}
 
 }
