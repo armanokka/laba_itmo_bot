@@ -856,6 +856,9 @@ func reversoParaphrase(ctx context.Context, lang, text string) ([]string, error)
 		return nil, err
 	}
 	if resp.StatusCode != 200 {
+		if resp.StatusCode == 415 { // lang is not supported or other shit
+			return []string{}, nil
+		}
 		if gjson.GetBytes(body, "message").String() == "No message available" {
 			return nil, nil
 		}
