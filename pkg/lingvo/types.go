@@ -14,7 +14,28 @@ type Dictionary struct {
 	PartOfSpeech   string `json:"partOfSpeech"`
 }
 
-var LingvoDictionaryLangs = []string{"en", "hu", "el", "da", "es", "it", "kk", "zh", "la", "de", "nl", "no", "pl", "pt", "ru", "tt", "tr", "uk", "fi", "fr"}
+//var LingvoDictionaryLangs = []string{
+//	"en",
+//	"hu",
+//	"el",
+//	"da",
+//	"es",
+//	"it",
+//	"kk",
+//	"zh",
+//	"la",
+//	"de",
+//	"nl",
+//	"no",
+//	"pl",
+//	"pt",
+//	"ru",
+//	"tt",
+//	"tr",
+//	"uk",
+//	"fi",
+//	"fr",
+//}
 
 var Lingvo = map[string]int{
 	"zh": 1028,

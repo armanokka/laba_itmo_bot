@@ -97,7 +97,9 @@ func (app App) translate(ctx context.Context, user tables.Users, from, to, text 
 			return errors.Wrap(err)
 		})
 	}
-	if len(text) < 50 && in(lingvo.LingvoDictionaryLangs, from, to) {
+	_, ok1 = lingvo.Lingvo[from]
+	_, ok2 = lingvo.Lingvo[to]
+	if len(text) < 50 && ok1 && ok2 {
 		g.Go(func() (err error) {
 			LingvoTr, examples, err = app.lingvo(ctx, user.MyLang, user.ToLang, text)
 			return errors.Wrap(err)
