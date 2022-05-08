@@ -4,46 +4,83 @@ import (
 	"context"
 	"fmt"
 	"git.mills.io/prologic/bitcask"
+	"github.com/arangodb/go-driver"
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
 	"github.com/armanokka/translobot/pkg/botapi"
 	"github.com/armanokka/translobot/pkg/dashbot"
 	"github.com/armanokka/translobot/pkg/errors"
-	"github.com/armanokka/translobot/pkg/lingvo"
 	translate2 "github.com/armanokka/translobot/pkg/translate"
 	"github.com/armanokka/translobot/repos"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
-	fuzzy "github.com/paul-mannino/go-fuzzywuzzy"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-	"golang.org/x/text/unicode/norm"
-	"html"
 	"os"
+	"regexp"
 	"runtime/debug"
 	"strconv"
-	"strings"
 	"sync"
 )
 
-type App struct {
-	deepl     translate2.Deepl
-	bot       *botapi.BotAPI
-	log       *zap.Logger
-	db        repos.BotDB
-	analytics dashbot.DashBot
-	bc        *bitcask.Bitcask
-}
+//TODO: заменить fuzzywuzzy и отпрофилировать бота, чтобы убрать утечки памяти
 
-func New(bot *botapi.BotAPI, db repos.BotDB, analytics dashbot.DashBot, log *zap.Logger, bc *bitcask.Bitcask /* deepl translate2.Deepl*/) App {
-	return App{
-		//deepl:     deepl,
+type App struct {
+	htmlTagsRe *regexp.Regexp
+	deepl      translate2.Deepl
+	bot        *botapi.BotAPI
+	log        *zap.Logger
+	db         repos.BotDB
+	analytics  dashbot.DashBot
+	bc         *bitcask.Bitcask
+
+	arangodb driver.Database
+	cache    driver.Collection
+} // TODO: сократить объем lingvo
+
+func New(bot *botapi.BotAPI, db repos.BotDB, analytics dashbot.DashBot, log *zap.Logger, bc *bitcask.Bitcask /* deepl translate2.Deepl*/, arangodb driver.Database) (App, error) {
+	app := App{
+		arangodb:   arangodb,
+		htmlTagsRe: regexp.MustCompile("<\\s*[^>]+>(.*?)"),
+		//deepl:      translate2.Deepl{},
 		bot:       bot,
+		log:       log,
 		db:        db,
 		analytics: analytics,
-		log:       log,
 		bc:        bc,
 	}
+	if err := app.prepareCollections(); err != nil {
+		return App{}, err
+	}
+	return app, nil
+}
+
+func (app *App) prepareCollections() error {
+	cacheEnabled := true
+	options := &driver.CreateCollectionOptions{CacheEnabled: &cacheEnabled, WaitForSync: true}
+
+	cache, err := app.createCollectionIfNotExists("cache", options) // IT MUST HAVE UNIQUE INDEX ON from, to and original_text!
+	if err != nil {
+		return err
+	}
+	app.cache = cache
+	//if _, _, err = app.cache.EnsureTTLIndex(nil, "createdAt", 60*60*24, nil); err != nil {
+	//	return err
+	//}
+	return nil
+}
+
+func (app App) createCollectionIfNotExists(collection string, options *driver.CreateCollectionOptions) (driver.Collection, error) {
+	col, err := app.arangodb.Collection(nil, collection)
+	if err != nil {
+		if driver.IsNotFound(err) {
+			col, err = app.arangodb.CreateCollection(nil, collection, options)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	return col, nil
 }
 
 func (app App) Run(ctx context.Context) error {
@@ -84,7 +121,7 @@ func (app App) Run(ctx context.Context) error {
 						if update.InlineQuery.From.LanguageCode == "" || !in(config.BotLocalizedLangs, update.InlineQuery.From.LanguageCode) {
 							update.InlineQuery.From.LanguageCode = "en"
 						}
-						app.onInlineQuery(*update.InlineQuery)
+						app.onInlineQuery(ctx, *update.InlineQuery)
 					} else if update.MyChatMember != nil {
 						if update.MyChatMember.From.LanguageCode == "" || !in(config.BotLocalizedLangs, update.MyChatMember.From.LanguageCode) {
 							update.MyChatMember.From.LanguageCode = "en"
@@ -225,205 +262,174 @@ func (app App) notifyAdmin(args ...interface{}) {
 	}
 }
 
-func (app App) SuperTranslate(user tables.Users, from, to, text string, entities []tgbotapi.MessageEntity) (ret SuperTranslation, err error) {
-	text = norm.NFKC.String(text)
-	text = applyEntitiesHtml(text, entities)
-	//text = html.EscapeString(text)
+// SuperTranslate. Pass messageID as user's message id and edit = true if new message arrived and messageID = callback.Message.MessageID with edit= false on callback
+func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int64, messageID int, from, to, text string, edit bool) error {
+	log := app.log.With(zap.String("from", from), zap.String("to", to), zap.String("text", text), zap.Int64("chat_id", chatID))
+	if user.ID == 0 {
+		user.ID = chatID
+	}
+
 	var (
-		rev            = translate2.ReversoTranslation{}
-		dict           = translate2.GoogleDictionaryResponse{}
-		suggestions    *lingvo.SuggestionResult
-		LingvoTr       string
-		YandexTr       string
-		DeeplTr        string
-		MicrosoftTr    string
-		GoogleFromToTr string
-		GoogleToFromTr string
-		//lingv []lingvo.Dictionary
+		answeredWithCache bool
+		translation       string // not empty if answeredWithCache is false and number of chunks is 1, not more
+		//examples          map[string]string
+		keyboard      Keyboard
+		messageIDChan = make(chan int, 1)
 	)
-
-	l := len([]rune(text))
-	lower := strings.ToLower(text)
-
-	if from == "auto" {
-		tr, err := translate2.GoogleTranslate(from, to, cutStringUTF16(text, 100))
-		from = tr.FromLang
-		if err != nil {
-			return SuperTranslation{}, errors.Wrap(err)
+	ctx, cancel := context.WithCancel(ctx) // close if translation retrieved faster than cache was loaded
+	g, ctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		cache, err := app.seekForCache(ctx, from, to, text)
+		if err != nil && !errors.Is(err, ErrCacheNotFound) {
+			if IsCtxError(err) {
+				return nil
+			}
+			return err
 		}
-
-	}
-
-	g, _ := errgroup.WithContext(context.Background())
-	log := app.log.With(zap.String("from", from), zap.String("to", to), zap.String("text", text))
-	if l < 100 {
-		g.Go(func() error {
-			dict, err = translate2.GoogleDictionary(from, lower)
-			if err != nil {
-				log.Error("translate2.GoogleDictionary", zap.Error(err))
-				return errors.Wrap(err)
-			}
-			definitions := 0
-			for _, data := range dict.DictionaryData {
-				for _, entry := range data.Entries {
-					for _, senseFamily := range entry.SenseFamilies {
-						definitions += len(senseFamily.Senses)
-					}
+		if cache.Translation != "" {
+			cancel()
+			chunks := translate2.SplitIntoChunksBySentences(cache.Translation, 4000)
+			answeredWithCache = true
+			for i, chunk := range chunks {
+				if edit && i == 0 {
+					k := buildKeyboard(from, to, cache.Keyboard)
+					app.bot.Send(tgbotapi.EditMessageTextConfig{
+						BaseEdit: tgbotapi.BaseEdit{
+							ChatID:          chatID,
+							ChannelUsername: "",
+							MessageID:       messageID,
+							InlineMessageID: "",
+							ReplyMarkup:     &k,
+						},
+						Text:                  chunk,
+						ParseMode:             tgbotapi.ModeHTML,
+						Entities:              nil,
+						DisableWebPagePreview: false,
+					})
+					continue
 				}
-			}
-			if definitions < 2 {
-				dict = translate2.GoogleDictionaryResponse{}
-			}
-			return errors.Wrap(err)
-		})
-	}
-
-	if l < 100 && inMapValues(translate2.ReversoSupportedLangs(), from, to) && from != to {
-		g.Go(func() error {
-			rev, err = translate2.ReversoTranslate(translate2.ReversoIso6392(from), translate2.ReversoIso6392(to), lower)
-			return errors.Wrap(err)
-		})
-	}
-
-	_, ok1 := lingvo.Lingvo[from]
-	_, ok2 := lingvo.Lingvo[to]
-	if ok1 && ok2 && l < 50 {
-		g.Go(func() error {
-			suggestions, err = lingvo.Suggestions(from, to, lower, 1, 0)
-			return errors.Wrap(err)
-		})
-	}
-
-	if l < 50 && in(lingvo.LingvoDictionaryLangs, user.MyLang, user.ToLang) {
-		g.Go(func() error {
-			v, err := lingvo.GetDictionary(user.MyLang, user.ToLang, lower)
-			if err != nil {
-				log.Error("lingvo.GetDictionary", zap.Error(err), zap.String("my_lang", user.MyLang), zap.String("to_lang", user.ToLang))
-				return errors.Wrap(err)
-			}
-			if len(v) == 0 {
-				v, err = lingvo.GetDictionary(user.ToLang, user.MyLang, lower)
+				_, err = app.bot.Send(tgbotapi.MessageConfig{
+					BaseChat: tgbotapi.BaseChat{
+						ChatID:                   chatID,
+						ChannelUsername:          "",
+						ReplyToMessageID:         messageID,
+						ReplyMarkup:              buildKeyboard(from, to, cache.Keyboard),
+						DisableNotification:      false,
+						AllowSendingWithoutReply: false,
+					},
+					Text:                  chunk,
+					ParseMode:             tgbotapi.ModeHTML,
+					Entities:              nil,
+					DisableWebPagePreview: false,
+				})
 				if err != nil {
-					log.Error("lingvo.GetDictionary", zap.Error(err), zap.String("my_lang", user.MyLang), zap.String("to_lang", user.ToLang))
-					return errors.Wrap(err)
+					log.Error("", zap.Error(err))
+					return err
 				}
 			}
-			if len(v) > 8 {
-				v = v[:8]
+		}
+		return nil
+	})
+	g.Go(func() (err error) {
+		var tr string
+		tr, _, err = app.translate(ctx, user, from, to, text) // examples мы сохраняем, чтобы соединить с keyboard.Examples и положить в кэш
+		if err != nil {
+			if IsCtxError(err) {
+				return nil
 			}
+			return err
+		}
 
-			out := ""
-			usedWords := make([]string, 0, 10)
-			for _, r := range v {
-				words := strings.Split(r.Translations, ";")
-				if len(words) == 0 {
-					words[0] = r.Translations
+		chunks := translate2.SplitIntoChunksBySentences(tr, 4000)
+		if len(chunks) == 1 { // if number of chunks is 1, not more
+			translation = tr
+		}
+		id := 0
+		for i, chunk := range chunks {
+			if edit && i == 0 {
+				msg, err := app.bot.Send(tgbotapi.EditMessageTextConfig{
+					BaseEdit: tgbotapi.BaseEdit{
+						ChatID:          chatID,
+						ChannelUsername: "",
+						MessageID:       messageID,
+						InlineMessageID: "",
+						ReplyMarkup:     nil,
+					},
+					Text:                  chunk,
+					ParseMode:             tgbotapi.ModeHTML,
+					Entities:              nil,
+					DisableWebPagePreview: false,
+				})
+				if err != nil {
+					log.Error("", zap.Error(err))
+					return err
 				}
-				lines := strings.Split(out, "\n")
-				last := lines[len(lines)-1]
-
-				for _, word := range words {
-					if word == "" {
-						continue
-					}
-					word = strings.TrimSpace(word)
-					if inFuzzy(usedWords, word) {
-						continue
-					}
-					if len(last)+len(words) > 25 {
-						out += "\n" + word + ";"
-					} else {
-						out += " " + word + ";"
-					}
-					usedWords = append(usedWords, word)
-				}
+				id = msg.MessageID
+				continue
 			}
-			LingvoTr = out
-			return nil
-		})
-	}
-
-	_, ok1 = translate2.YandexSupportedLanguages[from]
-	_, ok2 = translate2.YandexSupportedLanguages[to]
-
-	if ok1 && ok2 {
-		g.Go(func() error {
-			YandexTr, err = translate2.YandexTranslate(from, to, text)
-			return errors.Wrap(err)
-		})
-	} else {
-		if html.UnescapeString(text) != html.EscapeString(text) { // есть html теги
-			g.Go(func() error {
-				tr, err := translate2.MicrosoftTranslate(from, to, text)
-				MicrosoftTr = tr.TranslatedText
-				return errors.Wrap(err)
+			msg, err := app.bot.Send(tgbotapi.MessageConfig{
+				BaseChat: tgbotapi.BaseChat{
+					ChatID:                   chatID,
+					ChannelUsername:          "",
+					ReplyToMessageID:         messageID,
+					ReplyMarkup:              nil,
+					DisableNotification:      false,
+					AllowSendingWithoutReply: false,
+				},
+				Text:                  chunk,
+				ParseMode:             tgbotapi.ModeHTML,
+				Entities:              nil,
+				DisableWebPagePreview: false,
 			})
+			if err != nil {
+				log.Error("", zap.Error(err))
+				return err
+			}
+			id = msg.MessageID
 		}
-	}
-
-	g.Go(func() error {
-		tr, err := translate2.GoogleTranslate(from, to, text)
-		GoogleFromToTr = tr.Text
-		return errors.Wrap(err)
+		messageIDChan <- id
+		return nil
 	})
 	g.Go(func() error {
-		tr, err := translate2.GoogleTranslate(to, from, text)
-		GoogleToFromTr = tr.Text
-		return errors.Wrap(err)
+		var err error
+		keyboard, err = app.keyboard(ctx, from, to, text)
+		if err != nil {
+			if IsCtxError(err) {
+				return nil
+			}
+			return err
+		}
+		cancel()
+		id := <-messageIDChan
+		_, err = app.bot.Send(tgbotapi.NewEditMessageReplyMarkup(chatID, id, buildKeyboard(from, to, keyboard)))
+		return err
 	})
 
-	if err = g.Wait(); err != nil {
-		return SuperTranslation{}, err
+	if err := g.Wait(); err != nil {
+		cancel()
+		return err
 	}
-
-	if len(rev.ContextResults.Results) > 0 {
-		if len(rev.ContextResults.Results[0].SourceExamples) > 0 {
-			ret.Examples = true
+	//for source, target := range examples {
+	//	keyboard.Examples[source] = target
+	//}
+	if !answeredWithCache {
+		if _, err := app.cache.CreateDocument(nil, RecordTranslationCache{
+			From:        from,
+			To:          to,
+			Text:        text,
+			Translation: translation,
+			Keyboard:    keyboard,
+			//CreatedAt:   time.Now().Unix(),
+		}); err != nil {
+			log.Error("", zap.Error(err))
+			return err
 		}
-		if rev.ContextResults.Results[0].Translation != "" {
-			ret.Translations = true
-		}
+		log.Info("saved translation to cache")
+	} else {
+		log.Info("answered with translation from cache")
 	}
 
-	if dict.Status == 200 && dict.DictionaryData != nil {
-		ret.Dictionary = true
-	}
-
-	if suggestions != nil && len(suggestions.Items) > 0 {
-		ret.Suggestions = true
-	}
-
-	switch {
-	case LingvoTr != "":
-		ret.TranslatedText = LingvoTr
-		pp.Println("translated via lingvo")
-		break
-	case DeeplTr != "":
-		ret.TranslatedText = DeeplTr
-		pp.Println("translated via deepl")
-		break
-	case YandexTr != "":
-		pp.Println(YandexTr, GoogleToFromTr)
-		if fuzzy.EditDistance(text, GoogleFromToTr) < fuzzy.EditDistance(text, YandexTr) {
-			ret.TranslatedText = YandexTr
-			pp.Println("translated via yandex")
-			break
-		}
-		fallthrough
-	case GoogleFromToTr != "" || GoogleToFromTr != "":
-		if fuzzy.EditDistance(text, GoogleFromToTr) > fuzzy.EditDistance(text, GoogleToFromTr) {
-			ret.TranslatedText = GoogleFromToTr
-		} else {
-			ret.TranslatedText = GoogleToFromTr
-		}
-		pp.Println("translated via google")
-		break
-	case MicrosoftTr != "":
-		ret.TranslatedText = MicrosoftTr
-		pp.Println("translated via microsoft")
-	}
-
-	return ret, nil
+	return nil
 }
 
 func (app App) sendSpeech(user tables.Users, lang, text string, callbackID string) error {

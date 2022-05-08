@@ -121,6 +121,9 @@ func ReversoIso6392(iso6391 string) string {
 			return k
 		}
 	}
+	if _, ok := reversoSupportedLangs[iso6391]; ok { // нам и так дали iso6392
+		return iso6391
+	}
 	return ""
 }
 
@@ -534,7 +537,6 @@ var YandexSupportedLanguages = map[string]string{
 	"bs":     "Боснийский",
 	"ca":     "Каталанский",
 	"ceb":    "Себуанский",
-	"cs":     "Чешский",
 	"cv":     "Чувашский",
 	"cy":     "Валлийский",
 	"da":     "Датский",
@@ -599,10 +601,8 @@ var YandexSupportedLanguages = map[string]string{
 	"sah":    "Якутский",
 	"si":     "Сингальский",
 	"sjn":    "Эльфийский (синдарин)",
-	"sk":     "Словацкий",
 	"sl":     "Словенский",
 	"sq":     "Албанский",
-	"sr":     "Сербский",
 	"su":     "Сунданский",
 	"sv":     "Шведский",
 	"sw":     "Суахили",

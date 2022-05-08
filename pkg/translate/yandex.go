@@ -1,6 +1,9 @@
 package translate
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/tidwall/gjson"
 	"io/ioutil"
@@ -21,17 +24,15 @@ func generateSid() string {
 	return i
 }
 
-func YandexTranslate(from, to, text string) (tr string, err error) {
-	for i := 0; i < 3; i++ {
-		tr, err = yandexTranslate(from, to, text)
-		if err == nil {
-			break
-		}
+func YandexTranslate(ctx context.Context, from, to, text string) (string, error) {
+	tr, err := yandexTranslate(ctx, from, to, text)
+	if err != nil {
+		tr, err = yandexTranslate(ctx, from, to, text)
 	}
 	return tr, err
 }
 
-func yandexTranslate(from, to, text string) (string, error) {
+func yandexTranslate(ctx context.Context, from, to, text string) (string, error) {
 	if _, ok := YandexSupportedLanguages[from]; !ok {
 		return "", ErrLangNotSupported
 	}
@@ -39,7 +40,7 @@ func yandexTranslate(from, to, text string) (string, error) {
 		return "", ErrLangNotSupported
 	}
 	parts := SplitIntoChunksBySentences(text, 1800)
-	out := ""
+	out := new(bytes.Buffer)
 	for _, part := range parts {
 		params := url.Values{}
 		for _, chunk := range SplitIntoChunksBySentences(part, 400) {
@@ -53,7 +54,7 @@ func yandexTranslate(from, to, text string) (string, error) {
 		params.Add("lang", from+`-`+to)
 		params.Add("format", "html")
 		params.Add("options", "0")
-		req, err := http.NewRequest("GET", `https://browser.translate.yandex.net/api/v1/tr.json/translate?`+params.Encode(), nil)
+		req, err := http.NewRequestWithContext(ctx, "GET", `https://browser.translate.yandex.net/api/v1/tr.json/translate?`+params.Encode(), nil)
 		if err != nil {
 			return "", err
 		}
@@ -81,24 +82,26 @@ func yandexTranslate(from, to, text string) (string, error) {
 		}
 
 		if gjson.GetBytes(body, "code").Int() != 200 {
-			return "", fmt.Errorf("YandexTranslate error: %s->%s\n%s", from, to, gjson.GetBytes(body, "message").String())
+			return "", fmt.Errorf("YandexTranslate:" + gjson.GetBytes(body, "message").String())
 		}
 		for _, result := range gjson.GetBytes(body, "text").Array() {
-			out += result.String()
+			out.WriteString(result.String())
 		}
 	}
-	return out, nil
+	return out.String(), nil
 }
-func DetectLanguageYandex(text string) (string, error) {
-	d, err := detectLanguageYandex(text)
-	if err != nil {
-		d, err = detectLanguageGoogle(text)
+func DetectLanguageYandex(ctx context.Context, text string) (lang string, err error) {
+	for i := 0; i < 3; i++ {
+		lang, err = detectLanguageYandex(ctx, text)
+		if err == nil {
+			break
+		}
 	}
-	return d, err
+	return lang, err
 }
 
-func detectLanguageYandex(text string) (string, error) {
-	req, err := http.NewRequest("GET", `https://translate.yandex.net/api/v1/tr.json/detect?sid=`+generateSid()+`-0-0&srv=tr-text&text=`+url.PathEscape(text)+`&options=1&yu=9527670361648278346&yum=1648283397624970429`, nil)
+func detectLanguageYandex(ctx context.Context, text string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", `https://translate.yandex.net/api/v1/tr.json/detect?sid=`+generateSid()+`-0-0&srv=tr-text&text=`+url.PathEscape(text)+`&options=1&yu=9527670361648278346&yum=1648283397624970429`, nil)
 	if err != nil {
 		return "", err
 	}
@@ -122,8 +125,17 @@ func detectLanguageYandex(text string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if gjson.GetBytes(body, "code").Int() != 200 {
-		return "", fmt.Errorf("detectLanguageYandex: %s\nBody:%s", gjson.GetBytes(body, "message").String(), string(body))
+	out := struct {
+		Code    int    `json:"code"`
+		Lang    string `json:"lang"`
+		Message string `json:"message"`
+	}{}
+	if err = json.Unmarshal(body, &out); err != nil {
+		return "", fmt.Errorf("json.Unmarshal: %s\nresponse:%s", err, string(body))
 	}
-	return gjson.GetBytes(body, "lang").String(), nil
+
+	if out.Code != 200 {
+		return "", fmt.Errorf("detectLanguageYandex: %s\nBody:%s", out.Message, string(body))
+	}
+	return out.Lang, nil
 }

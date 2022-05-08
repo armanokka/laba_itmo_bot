@@ -4,13 +4,15 @@ Helper functions
 package bot
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
 	"github.com/armanokka/translobot/pkg/errors"
+	"github.com/armanokka/translobot/pkg/lingvo"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/paul-mannino/go-fuzzywuzzy"
 	"io"
 	"io/ioutil"
 	"log"
@@ -70,7 +72,7 @@ func inFuzzy(arr []string, keys ...string) bool {
 	for _, k := range keys {
 		exists := false
 		for _, v := range arr {
-			if k == v || fuzzy.EditDistance(k, v) == 1 {
+			if k == v || diff(k, v) == 1 {
 				exists = true
 				break
 			}
@@ -81,142 +83,6 @@ func inFuzzy(arr []string, keys ...string) bool {
 	}
 	return true
 }
-
-func GetTickedCallbacks(keyboard tgbotapi.InlineKeyboardMarkup) []string {
-	callbacks := make([]string, 0)
-	for _, row := range keyboard.InlineKeyboard {
-		for _, button := range row {
-			if strings.HasPrefix(button.Text, "✅") {
-				callbacks = append(callbacks, *button.CallbackData)
-			}
-		}
-	}
-	return callbacks
-}
-
-func TickByCallback(uniqueCallbackData string, keyboard *tgbotapi.InlineKeyboardMarkup) {
-	var done bool
-	for i1, row := range keyboard.InlineKeyboard {
-		if done {
-			break
-		}
-		for i2, button := range row {
-			if *button.CallbackData == uniqueCallbackData && !strings.HasPrefix(*button.CallbackData, "✅ ") {
-				keyboard.InlineKeyboard[i1][i2].Text = "✅ " + button.Text
-				done = true
-				break
-			}
-		}
-	}
-}
-
-func UnTickByCallback(uniqueCallbackData string, keyboard *tgbotapi.InlineKeyboardMarkup) {
-	var done bool
-	for i1, row := range keyboard.InlineKeyboard {
-		if done {
-			break
-		}
-		for i2, button := range row {
-			if *button.CallbackData == uniqueCallbackData {
-				keyboard.InlineKeyboard[i1][i2].Text = strings.TrimPrefix(button.Text, "✅ ")
-				done = true
-				break
-			}
-		}
-	}
-}
-
-func IsTicked(callback string, keyboard *tgbotapi.InlineKeyboardMarkup) bool {
-	for _, row := range keyboard.InlineKeyboard {
-		for _, button := range row {
-			if *button.CallbackData != callback {
-				continue
-			}
-			if strings.HasPrefix(button.Text, "✅") {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-/*
-func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
-    if len(entities) == 0 {
-        return text
-    }
-
-    //text = strings.ReplaceAll(text, "\n", "<br>")
-
-    encoded := utf16.Encode([]rune(text))
-    pointers := make(map[int]string)
-
-    for _, entity := range entities {
-        var startTag string
-        switch entity.Type {
-        case "code", "pre":
-            startTag = `<label class="notranslate"><code>`
-        case "mention", "hashtag", "cashtag", "bot_command", "url", "email", "phone_number":
-            startTag = `<label class="notranslate">` // very important to keep '<label class="notranslate">' strongly correct, without any spaces or another
-        case "bold":
-            startTag = `<b>`
-        case "italic":
-            startTag = `<i>`
-        case "underline":
-            startTag = `<u>`
-        case "strikethrough":
-            startTag = `<s>`
-        case "text_link":
-            startTag = `<a href="` + entity.URL + `">`
-        case "text_mention":
-            startTag = `<a href="tg://user?id=` + strconv.FormatInt(entity.User.ID, 10) + `">`
-        }
-
-        pointers[entity.Offset] += startTag
-
-
-        //startTag = strings.TrimPrefix(startTag, "<")
-        var endTag string
-        switch entity.Type {
-        case "code", "pre":
-            endTag = "</code></label>" // very important to keep '</label>' strongly correct, without any spaces or another
-        case "mention", "hashtag", "cashtag", "bot_command", "url", "email", "phone_number":
-            endTag = `</label>`
-        case "bold":
-            endTag = `</b>`
-        case "italic":
-            endTag = `</i>`
-        case "underline":
-            endTag = `</u>`
-        case "strikethrough":
-            endTag = `</s>`
-        case "text_link", "text_mention":
-            endTag = `</a>`
-        }
-        pointers[entity.Offset+entity.Length] += endTag
-    }
-
-    var out = make([]uint16, 0, len(encoded))
-
-    for i, ch := range encoded {
-       if m, ok := pointers[i]; ok {
-           pp.Println("adding", m)
-           out = append(out, utf16.Encode([]rune(m))...)
-       }
-       out = append(out, ch)
-
-       if i == len(encoded) - 1 {
-           if m, ok := pointers[i+1]; ok {
-               out = append(out, utf16.Encode([]rune(m))...)
-           }
-       }
-    }
-    ret := string(utf16.Decode(out))
-    ret = strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "").Replace(ret)
-    ret = strings.ReplaceAll(ret, `<br>`, "\n")
-    return ret
-}
-*/
 
 func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
 	if len(entities) == 0 {
@@ -345,40 +211,40 @@ func WitAiSpeech(wav io.Reader, lang string, bits int) (string, error) {
 	return result.Text, nil
 }
 
-func BuildSupportedLanguagesKeyboard(user tables.Users) (tgbotapi.InlineKeyboardMarkup, error) {
-	keyboard := tgbotapi.NewInlineKeyboardMarkup()
-	for i, code := range config.BotLocalizedLangs {
-		lang, ok := langs[user.Lang][code]
-		if !ok {
-			return tgbotapi.InlineKeyboardMarkup{}, fmt.Errorf("no such code " + code + " in langs")
-		}
-
-		if i%2 == 0 {
-			keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(lang, "set_bot_lang_and_register:"+code)))
-		} else {
-			l := len(keyboard.InlineKeyboard) - 1
-			keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], tgbotapi.NewInlineKeyboardButtonData(lang, "set_bot_lang_and_register:"+code))
+func index(arr []string, k string) int {
+	for i, v := range arr {
+		if k == v {
+			return i
 		}
 	}
-	return keyboard, nil
+	return 0
 }
 
-type SuperTranslation struct {
-	From                                            string
-	TranslatedText                                  string
-	Examples, Translations, Dictionary, Suggestions bool
-}
+func highlightDiffs(s1, s2, start, stop string) string {
+	first := strings.Fields(s1)
+	highlited := false
+	var out bytes.Buffer
+	for i, w := range strings.Fields(s2) {
+		idx := index(first, w)
+		if idx == 0 && first[0] != w {
+			if !highlited {
+				highlited = true
+				w = start + w
+			}
 
-type Message struct {
-	Text     string
-	Keyboard tgbotapi.ReplyKeyboardMarkup
-}
-
-func reverse(arr []string) []string {
-	for i, j := 0, len(arr)-1; i < j; i, j = i+1, j-1 {
-		arr[i], arr[j] = arr[j], arr[i]
+		} else if highlited {
+			highlited = false
+			out.WriteString(stop)
+		}
+		if i > 0 {
+			out.WriteString(" ")
+		}
+		out.WriteString(w)
 	}
-	return arr
+	if highlited {
+		out.WriteString("</b>")
+	}
+	return out.String()
 }
 
 // buildLangsPagination создает пагинацию как говорил F d
@@ -441,48 +307,90 @@ func randid(seed int64) string {
 	return uuid
 }
 
-func remove(arr []string, k string) []string {
-	ret := make([]string, 0, len(arr))
-	for _, v := range arr {
-		if v == k {
+// diff counts difference between s1 and s2 by comparing their characters
+func diff(s1, s2 string) (n int) {
+	reader := strings.NewReader(s1)
+	for _, ch := range s2 {
+		r, _, err := reader.ReadRune()
+		if err == nil {
+			if r != ch {
+				n++
+			}
 			continue
 		}
-		ret = append(ret, v)
+		break
 	}
-	return ret
+	if l1, l2 := len(s1), len(s2); l1 != l2 {
+		if l1 > l2 {
+			n += l1 - l2
+		} else {
+			n += l2 - l1
+		}
+	}
+	return n
 }
 
-func tickUntick(keyboard tgbotapi.InlineKeyboardMarkup, tickCallback, untickCallback, prefix string) tgbotapi.InlineKeyboardMarkup {
-	for i1, row := range keyboard.InlineKeyboard {
-		for i2, btn := range row {
-			callback := *btn.CallbackData
-			if callback == tickCallback {
-				btn.Text = prefix + btn.Text
-				keyboard.InlineKeyboard[i1][i2] = btn
-			}
-			if callback == untickCallback {
-				btn.Text = strings.TrimPrefix(btn.Text, prefix)
-				keyboard.InlineKeyboard[i1][i2] = btn
-			}
-		}
+func buildKeyboard(from, to string, ret Keyboard) tgbotapi.InlineKeyboardMarkup {
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🔉", fmt.Sprintf("speech:%s:%s", from, to))))
+	if ret.Examples != nil {
+		keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0], tgbotapi.NewInlineKeyboardButtonData("💬", fmt.Sprintf("examples:%s:%s", from, to)))
+	}
+	if len(ret.Dictionary) > 0 {
+		keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0], tgbotapi.NewInlineKeyboardButtonData("📖", fmt.Sprintf("dictionary:%s:%s", from, to)))
+	}
+	if len(ret.Paraphrase) > 0 {
+		keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0], tgbotapi.NewInlineKeyboardButtonData("✨", fmt.Sprintf("paraphrase:%s:%s", from, to)))
+	}
+	if len(ret.ReverseTranslations) > 0 {
+		keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0], tgbotapi.NewInlineKeyboardButtonData("📚", fmt.Sprintf("reverse_translations:%s:%s", from, to)))
 	}
 	return keyboard
 }
 
-func min(ints ...float64) float64 {
-	if len(ints) == 0 {
-		return -1
+func IsCtxError(err error) bool {
+	if e, ok := err.(errors.Error); ok {
+		return IsCtxError(e.Err)
 	}
-	min := ints[0]
-	for _, v := range ints {
-		if v < min {
-			min = v
-		}
-	}
-	return min
+	return errors.Is(err, context.Canceled)
 }
 
-func inlineTranslationKeyboard(lang string) tgbotapi.InlineKeyboardMarkup {
-	return tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("Translate", "none")))
+func writeLingvo(lingvo []lingvo.Dictionary) string {
+	out := new(bytes.Buffer)
+	usedWords := make([]string, 0, 10)
+	translations := 0
+	lastLineLen := 0
+	for _, r := range lingvo {
+		if translations > 11 {
+			break
+		}
+		words := strings.Split(r.Translations, ";")
+		if len(words) == 0 {
+			words[0] = r.Translations
+		}
+		for _, word := range words {
+			if translations >= 11 {
+				break
+			}
+			translations++
+			if word == "" {
+				continue
+			}
+			word = strings.TrimSpace(word)
+			if inFuzzy(usedWords, word) {
+				continue
+			}
+			usedWords = append(usedWords, word)
+			word += "; "
+			if lastLineLen+len(word) > 32 {
+				out.WriteString("\n")
+				lastLineLen = len(word)
+			} else {
+				lastLineLen += len(word)
+			}
+			out.WriteString(word)
+		}
+	}
+	return out.String()
 }

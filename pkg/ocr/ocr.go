@@ -2,8 +2,8 @@ package ocr
 
 import (
 	"fmt"
+	"github.com/go-resty/resty/v2"
 	"github.com/tidwall/gjson"
-	"gopkg.in/resty.v1"
 	"os"
 	"strings"
 )

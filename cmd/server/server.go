@@ -2,32 +2,26 @@ package server
 
 import (
 	"context"
-	"fmt"
-	"github.com/gorilla/mux"
+	"github.com/gin-contrib/pprof"
+	"github.com/gin-gonic/gin"
 	"github.com/k0kubun/pp"
+	"go.uber.org/zap"
 	"net/http"
-	"net/http/pprof"
 	"os"
 )
 
-func Run(ctx context.Context) error {
-	r := mux.NewRouter()
-
-	r.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
-	r.Handle("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
-	r.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
-	r.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
-	r.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
-	r.PathPrefix("/debug/").Handler(http.DefaultServeMux)
-
+func Run(ctx context.Context, log *zap.Logger) error {
+	r := gin.Default()
+	pprof.Register(r)
+	r.GET("/", func(c *gin.Context) {
+		c.String(200, "ok")
+	})
+	r.GET("/speech", speechHandler(log))
 	// Ports for Heroku
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-	r.Handle("/", http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		fmt.Fprint(writer, "ok")
-	}))
 	server := &http.Server{Addr: ":" + port, Handler: r}
 	go func() {
 		<-ctx.Done()

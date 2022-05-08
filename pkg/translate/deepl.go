@@ -3,9 +3,9 @@ package translate
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/go-resty/resty/v2"
 	"github.com/k0kubun/pp"
 	"github.com/tidwall/gjson"
-	"gopkg.in/resty.v1"
 	"math"
 	"math/rand"
 	"net/http"

@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"context"
 	"fmt"
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
@@ -9,6 +10,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/text/unicode/norm"
 	"gorm.io/gorm"
 	"runtime/debug"
@@ -59,7 +61,7 @@ func Title(s string) string {
 	return string(runes)
 }
 
-func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
+func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 	defer func() {
 		if err := recover(); err != nil {
 			app.log.Error("%w", zap.Any("error", err))
@@ -159,48 +161,52 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 
 	nextOffset := offset + count
 
-	var wg sync.WaitGroup
+	g, _ := errgroup.WithContext(context.Background())
 	var mu sync.Mutex
 	var err error
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	g.Go(func() error {
 		user, err = app.db.GetUserByID(update.From.ID)
-		if err != nil {
-			if !errors.Is(err, gorm.ErrRecordNotFound) {
-				warn(err)
-				return
-			}
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
 		}
 		user.SetLang(update.From.LanguageCode)
-	}()
+		return nil
+	})
 
 	blocks := make([]interface{}, 0, 50)
+
+	//needAudio := strings.HasPrefix(update.Query, "!")
 
 	from := ""
 	for i, code := range codes[user.Lang][offset : offset+count] {
 		code := code
 		i := i
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
+		g.Go(func() error {
 			title := langs[user.Lang][code]
 			if offset == 0 && i < 19 {
 				title += " 📌"
 			}
-			tr, err := translate2.GoogleTranslate("auto", code, update.Query)
+
+			tr, err := translate2.GoogleTranslate(ctx, "auto", code, update.Query)
 			if err != nil || tr.Text == "" {
-				//pp.Printf("couldnt translate %s to %s in inline", update.Query, code)
-				//tr.Text = user.Localize("не получилось перевести")
-				return
+				return nil
 			}
 			if from == "" {
 				from = tr.FromLang
 			}
 
+			//if needAudio {
+			//	audio, err := translate2.TTS(code, tr.Text)
+			//	if err != nil {
+			//		return err
+			//	}
+			//	app.bot.UploadFiles()
+			//	tgbotapi.InlineQueryResultAudio{}
+			//}
+
 			mu.Lock()
+			defer mu.Unlock()
 			blocks = append(blocks, tgbotapi.InlineQueryResultArticle{
 				Type:  "article",
 				ID:    strconv.Itoa(i + offset),
@@ -217,10 +223,14 @@ func (app App) onInlineQuery(update tgbotapi.InlineQuery) {
 				ThumbWidth:  0,
 				ThumbHeight: 0,
 			})
-			mu.Unlock()
-		}()
+			return nil
+		})
 	}
-	wg.Wait()
+	if err = g.Wait(); err != nil {
+		warn(err)
+		app.log.Error("", zap.Error(err))
+		return
+	}
 
 	blocks = removeArticles(user, blocks, from)
 

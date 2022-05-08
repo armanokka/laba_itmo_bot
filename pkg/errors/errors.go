@@ -6,12 +6,12 @@ import (
 )
 
 type Error struct {
-	err   error
+	Err   error
 	stack []byte
 }
 
 func (e Error) Error() string {
-	return e.err.Error()
+	return e.Err.Error()
 }
 func (e Error) Stack() []byte {
 	return e.stack
@@ -22,7 +22,7 @@ func Wrap(err error) error {
 		return nil
 	}
 	return Error{
-		err:   err,
+		Err:   err,
 		stack: debug.Stack(),
 	}
 }

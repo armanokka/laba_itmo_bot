@@ -14,29 +14,8 @@ import (
 	"golang.org/x/sync/errgroup"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 )
-
-func extract(key, html string) string {
-	q := key + ": '"
-	i1 := strings.Index(html, q) + len(q)
-	i2 := strings.Index(html[i1:], "'")
-	return html[i1 : i1+i2]
-}
-
-func reverseByDots(s string) string {
-	out := ""
-	for i, part := range strings.Split(s, ".") {
-		if i > 0 {
-			out += "."
-		}
-		for i := len(part) - 1; i > -1; i-- {
-			out += string(part[i])
-		}
-	}
-	return out
-}
 
 func main() {
 	conf := zap.NewDevelopmentConfig()
@@ -66,27 +45,27 @@ func main() {
 	}()
 
 	db := config.DB()
+	arangodb := config.ArangoDB()
 	botAPI := config.BotAPI()
 
-	botAPI.SetAPIEndpoint("http://127.0.0.1:8081/bot%s/%s")
+	//botAPI.SetAPIEndpoint("http://127.0.0.1:8081/bot%s/%s")
 	analytics := config.Analytics()
 	bc, err := bitcask.Open("bitcask_db")
 	if err != nil {
 		panic(err)
 	}
 
-	//d, err := translate.NewDeepl()
-	//if err != nil {
-	//	panic(err)
-	//}
-
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
-		return boto.New(botAPI, botdb.New(db), analytics, log, bc /*, d*/).Run(ctx)
+		Bot, err := boto.New(botAPI, botdb.New(db), analytics, log, bc /*, d*/, arangodb)
+		if err != nil {
+			return err
+		}
+		return Bot.Run(ctx)
 	})
 
 	g.Go(func() error {
-		return server.Run(ctx)
+		return server.Run(ctx, log)
 	})
 
 	if err := g.Wait(); err != nil && err != context.Canceled {
