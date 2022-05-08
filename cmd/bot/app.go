@@ -399,7 +399,7 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 			}
 			return err
 		}
-		cancel()
+		//cancel()
 		id := <-messageIDChan
 		_, err = app.bot.Send(tgbotapi.NewEditMessageReplyMarkup(chatID, id, buildKeyboard(from, to, keyboard)))
 		return err

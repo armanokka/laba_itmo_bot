@@ -45,7 +45,7 @@ func main() {
 	}()
 
 	db := config.DB()
-	arangodb := config.ArangoDB()
+	arangodb := config.ArangoDB() // yUY2EePG
 	botAPI := config.BotAPI()
 
 	botAPI.SetAPIEndpoint("http://127.0.0.1:8081/bot%s/%s")

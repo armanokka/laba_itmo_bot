@@ -478,10 +478,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 
 	app.analytics.Bot(user.ID, "", "Translated")
 
-	if err = app.db.LogBotMessage(message.From.ID, "pm_translate", ""); err != nil {
-		app.notifyAdmin(fmt.Errorf("%w", err))
-	}
-
 	if user.Usings == 5 || (user.Usings > 0 && user.Usings%20 == 0) {
 		if _, err := app.bot.Send(tgbotapi.MessageConfig{
 			BaseChat: tgbotapi.BaseChat{

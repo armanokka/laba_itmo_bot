@@ -8,7 +8,7 @@ import (
 	"github.com/armanokka/translobot/pkg/errors"
 	"github.com/armanokka/translobot/pkg/lingvo"
 	"github.com/armanokka/translobot/pkg/translate"
-	"github.com/k0kubun/pp"
+	"github.com/forPelevin/gomoji"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"strings"
@@ -42,7 +42,7 @@ func (app App) seekForCache(ctx context.Context, from, to, text string) (RecordT
 
 // translate returns translation, examples and error
 func (app App) translate(ctx context.Context, user tables.Users, from, to, text string) (string, map[string]string, error) {
-	log := app.log.With()
+	log := app.log.With(zap.String("from", from), zap.String("to", to), zap.String("text", text))
 	g, ctx := errgroup.WithContext(ctx)
 	var (
 		MicrosoftTr    string
@@ -108,25 +108,25 @@ func (app App) translate(ctx context.Context, user tables.Users, from, to, text 
 		return "", nil, err
 	}
 	if LingvoTr != "" {
-		pp.Println("translated via lingvo")
+		log.Info("translated via lingvo", zap.String("translation", LingvoTr))
 		return LingvoTr, examples, nil
-	} else if YandexTr != "" && diff(text, GoogleFromToTr) < diff(text, YandexTr) {
-		pp.Println("translated via yandex")
-		return YandexTr, examples, nil
 	} else if GoogleFromToTr != "" && GoogleToFromTr != "" {
 		if diff(text, GoogleFromToTr) > diff(text, GoogleToFromTr) {
-			pp.Println("translated via google")
+			log.Info("translated via google", zap.String("translation", GoogleFromToTr))
 			return GoogleFromToTr, examples, nil
 		} else {
-			pp.Println("translated via google")
+			log.Info("translated via google", zap.String("translation", GoogleToFromTr))
 			return GoogleToFromTr, examples, nil
 		}
+	} else if YandexTr != "" {
+		log.Info("translated via yandex", zap.String("translation", YandexTr))
+		return YandexTr, examples, nil
 	} else if MicrosoftTr != "" {
 		MicrosoftTr = strings.ReplaceAll(MicrosoftTr, "<br>", "\n")
-		pp.Println("translated via microsoft")
+		log.Info("translated via microsoft", zap.String("translation", MicrosoftTr))
 		return MicrosoftTr, examples, nil
 	}
-	return "", nil, fmt.Errorf("all translators returned empty result")
+	return "", nil, fmt.Errorf("all translators returned empty result\n%s->%s\n%s", from, to, text)
 }
 
 func (app App) keyboard(ctx context.Context, from, to, text string) (Keyboard, error) {
@@ -146,19 +146,16 @@ func (app App) keyboard(ctx context.Context, from, to, text string) (Keyboard, e
 	if inMapValues(translate.ReversoSupportedLangs(), from, to) && from != to {
 		if len(text) < 100 {
 			g.Go(func() error { // examples
-				examples, err = app.examples(ctx, from, to, text)
+				reversedTranslations, examples, err = app.reverseTranslationsExamples(ctx, from, to, text)
 				return errors.Wrap(err)
 			})
 		}
-		g.Go(func() error { // paraphrase
-			paraphrase, err = translate.ReversoParaphrase(ctx, from, text)
-			return errors.Wrap(err)
-		})
-		g.Go(func() error { // reversed translations
-			reversedTranslations, err = app.reverseTranslations(ctx, from, to, text)
-			return errors.Wrap(err)
-		})
-
+		if l := len(strings.Fields(gomoji.RemoveEmojis(text))); l > 2 && l < 31 {
+			g.Go(func() error { // paraphrase
+				paraphrase, err = translate.ReversoParaphrase(ctx, from, text)
+				return errors.Wrap(err)
+			})
+		}
 	}
 
 	if err = g.Wait(); err != nil {
@@ -218,53 +215,30 @@ func (app App) lingvo(ctx context.Context, from, to, text string) (string, map[s
 	return writeLingvo(d1), examples, nil
 }
 
-func (app App) examples(ctx context.Context, from, to, text string) (map[string]string, error) {
-	tr, err := translate.ReversoTranslate(ctx, translate.ReversoIso6392(from), translate.ReversoIso6392(to), text)
-	if err != nil {
-		return nil, errors.Wrap(err)
-	}
-
-	if len(tr.ContextResults.Results) > 3 {
-		tr.ContextResults.Results = tr.ContextResults.Results[:3]
-	}
-
-	idx := 0
-	count := 0
-	examples := make(map[string]string, len(tr.ContextResults.Results)+1*2)
-	for _, result := range tr.ContextResults.Results {
-		idx++
-		if len(result.SourceExamples) == 0 {
-			continue
-		}
-		for i := 0; i < len(result.SourceExamples) && count < 3; i++ {
-			if i > 0 {
-				idx++
-			}
-			examples[result.SourceExamples[i]] = result.TargetExamples[i]
-			count++
-		}
-	}
-	return examples, nil
-}
-
-func (app App) reverseTranslations(ctx context.Context, from, to, text string) (map[string][]string, error) {
+func (app App) reverseTranslationsExamples(ctx context.Context, from, to, text string) (map[string][]string, map[string]string, error) {
 	from = translate.ReversoIso6392(from)
 	to = translate.ReversoIso6392(to)
 	rev, err := translate.ReversoTranslate(ctx, from, to, text)
 	if err != nil {
-		return nil, errors.Wrap(err)
+		return nil, nil, errors.Wrap(err)
 	}
 	reversedTranslations := make(map[string][]string, len(rev.ContextResults.Results))
 	var mu sync.Mutex
 	if len(rev.ContextResults.Results) > 10 {
 		rev.ContextResults.Results = rev.ContextResults.Results[:10]
 	}
+	examples := make(map[string]string, 3)
 	g, ctx := errgroup.WithContext(ctx)
 	for _, result := range rev.ContextResults.Results {
 		result := result
-		if result.Translation == "" {
+		if result.Translation == "" || len(result.SourceExamples) == 0 {
 			continue
 		}
+		r := strings.NewReplacer("<em>", "<b>", "</em>", "</b>")
+		for i := 0; i < len(result.SourceExamples) && len(examples) <= 3; i++ {
+			examples[r.Replace(result.SourceExamples[i])] = r.Replace(result.TargetExamples[i])
+		}
+
 		reversedTranslations[result.Translation] = make([]string, 0, 4)
 		g.Go(func() error {
 			tr, err := translate.ReversoTranslate(ctx, to, from, result.Translation)
@@ -288,9 +262,9 @@ func (app App) reverseTranslations(ctx context.Context, from, to, text string) (
 		})
 	}
 	if err = g.Wait(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return reversedTranslations, nil
+	return reversedTranslations, examples, nil
 }
 
 func (app App) dictionary(ctx context.Context, lang, text string) ([]string, error) {

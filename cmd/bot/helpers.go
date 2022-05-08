@@ -133,7 +133,7 @@ func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
 		case "text_link", "text_mention":
 			endTag = `</a>`
 		}
-		pointers[entity.Offset+entity.Length] += endTag
+		pointers[entity.Offset+entity.Length] = endTag + pointers[entity.Offset+entity.Length]
 	}
 
 	var out = make([]uint16, 0, len(encoded))
@@ -150,10 +150,7 @@ func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
 			}
 		}
 	}
-	ret := string(utf16.Decode(out))
-	ret = strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "").Replace(ret)
-	ret = strings.ReplaceAll(ret, `<br>`, "\n")
-	return ret
+	return strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "", "<br>", "\n").Replace(string(utf16.Decode(out)))
 }
 
 func inMapValues(m map[string]string, values ...string) bool {
@@ -334,7 +331,7 @@ func buildKeyboard(from, to string, ret Keyboard) tgbotapi.InlineKeyboardMarkup 
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("🔉", fmt.Sprintf("speech:%s:%s", from, to))))
-	if ret.Examples != nil {
+	if len(ret.Examples) > 0 {
 		keyboard.InlineKeyboard[0] = append(keyboard.InlineKeyboard[0], tgbotapi.NewInlineKeyboardButtonData("💬", fmt.Sprintf("examples:%s:%s", from, to)))
 	}
 	if len(ret.Dictionary) > 0 {

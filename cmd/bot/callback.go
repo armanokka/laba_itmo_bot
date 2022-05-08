@@ -11,6 +11,8 @@ import (
 	"github.com/k0kubun/pp"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/text/unicode/norm"
+	"net/url"
 	"reflect"
 	"runtime/debug"
 	"strconv"
@@ -71,6 +73,11 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		app.db.LogBotMessage(callback.From.ID, "cb_delete", "")
 		return
 	case "translate": // arr[1] - from, arr[2] - to
+		entites := callback.Message.Entities
+		if len(callback.Message.CaptionEntities) > 0 {
+			entites = callback.Message.CaptionEntities
+		}
+		callback.Message.ReplyToMessage.Text = applyEntitiesHtml(norm.NFKC.String(url.PathEscape(callback.Message.ReplyToMessage.Text)), entites)
 		if err := app.SuperTranslate(ctx, user, callback.From.ID, callback.Message.MessageID, arr[1], arr[2], callback.Message.ReplyToMessage.Text, true); err != nil {
 			warn(err)
 			return
@@ -183,7 +190,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		ctx, cancel := context.WithCancel(ctx)
 		g, ctx := errgroup.WithContext(ctx)
 		g.Go(func() (err error) {
-			r, err := app.examples(ctx, arr[1], arr[2], callback.Message.ReplyToMessage.Text)
+			_, r, err := app.reverseTranslationsExamples(ctx, arr[1], arr[2], callback.Message.ReplyToMessage.Text)
 			if err != nil {
 				if IsCtxError(err) {
 					return nil
@@ -206,6 +213,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			cancel()
 			examples = r.Examples
 			log.Info("got examples from cache")
+
 			return nil
 		})
 		if err := g.Wait(); err != nil {
@@ -258,7 +266,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		ctx, cancel := context.WithCancel(ctx)
 		g, ctx := errgroup.WithContext(ctx)
 		g.Go(func() (err error) {
-			r, err := app.reverseTranslations(ctx, translate2.ReversoIso6392(arr[1]), translate2.ReversoIso6392(arr[2]), callback.Message.ReplyToMessage.Text)
+			r, _, err := app.reverseTranslationsExamples(ctx, translate2.ReversoIso6392(arr[1]), translate2.ReversoIso6392(arr[2]), callback.Message.ReplyToMessage.Text)
 			if err != nil {
 				if IsCtxError(err) {
 					return nil
