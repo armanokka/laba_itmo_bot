@@ -32,6 +32,7 @@ var (
 	arangodb  driver.Database
 	analytics dashbot.DashBot
 	bot       *botapi.BotAPI
+	botID     int64
 	once      sync.Once
 )
 
@@ -85,9 +86,11 @@ func load() (err error) {
 	bot.Debug = false // >:(
 	bot.Buffer = 30
 
-	if _, err = bot.GetMe(); err != nil {
+	me, err := bot.GetMe()
+	if err != nil {
 		return err
 	}
+	botID = me.ID
 
 	// Initializing analytics
 	analytics = dashbot.NewAPI(DashBotAPIKey, func(err error) {
@@ -139,4 +142,8 @@ func Analytics() dashbot.DashBot {
 
 func ArangoDB() driver.Database {
 	return arangodb
+}
+
+func BotID() int64 {
+	return botID
 }

@@ -1,7 +1,7 @@
 module github.com/armanokka/translobot
 
-// +heroku goVersion go1.17
-go 1.17
+// +heroku goVersion go1.18
+go 1.18
 
 require (
 	git.mills.io/prologic/bitcask v1.0.2
@@ -11,7 +11,7 @@ require (
 	github.com/gin-contrib/pprof v1.3.0
 	github.com/gin-gonic/gin v1.7.7
 	github.com/go-resty/resty/v2 v2.7.0
-	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
+	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.2-0.20220419141443-537c005643ad
 	github.com/k0kubun/pp v3.0.1+incompatible
 	github.com/tidwall/gjson v1.13.0
 	go.uber.org/zap v1.19.1

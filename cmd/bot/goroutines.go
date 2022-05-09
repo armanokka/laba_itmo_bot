@@ -97,8 +97,8 @@ func (app App) translate(ctx context.Context, user tables.Users, from, to, text 
 			return errors.Wrap(err)
 		})
 	}
-	_, ok1 = lingvo.Lingvo[from]
-	_, ok2 = lingvo.Lingvo[to]
+	_, ok1 = lingvo.Lingvo[user.MyLang]
+	_, ok2 = lingvo.Lingvo[user.ToLang]
 	if len(text) < 50 && ok1 && ok2 {
 		g.Go(func() (err error) {
 			LingvoTr, examples, err = app.lingvo(ctx, user.MyLang, user.ToLang, text)
@@ -109,11 +109,12 @@ func (app App) translate(ctx context.Context, user tables.Users, from, to, text 
 	if err := g.Wait(); err != nil {
 		return "", nil, err
 	}
+
 	if LingvoTr != "" {
 		log.Info("translated via lingvo", zap.String("translation", LingvoTr))
 		return LingvoTr, examples, nil
 	} else if GoogleFromToTr != "" && GoogleToFromTr != "" {
-		if diff(text, GoogleFromToTr) > diff(text, GoogleToFromTr) {
+		if diff(text, GoogleFromToTr) > diff(text, GoogleToFromTr) || (diff(GoogleFromToTr, YandexTr) < diff(GoogleFromToTr, GoogleToFromTr)) && YandexTr != "" {
 			log.Info("translated via google", zap.String("translation", GoogleFromToTr))
 			return GoogleFromToTr, examples, nil
 		} else {
@@ -152,7 +153,7 @@ func (app App) keyboard(ctx context.Context, from, to, text string) (Keyboard, e
 				return errors.Wrap(err)
 			})
 		}
-		if l := len(strings.Fields(gomoji.RemoveEmojis(text))); l > 2 && l < 31 {
+		if l := len(strings.Fields(app.reSpecialCharacters.ReplaceAllString(gomoji.RemoveEmojis(text), ""))); l > 2 && l < 31 {
 			g.Go(func() error { // paraphrase
 				paraphrase, err = translate.ReversoParaphrase(ctx, from, text)
 				return errors.Wrap(err)

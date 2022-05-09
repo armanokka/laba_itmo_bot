@@ -12,7 +12,6 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/text/unicode/norm"
-	"net/url"
 	"reflect"
 	"runtime/debug"
 	"strconv"
@@ -49,6 +48,18 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 	}()
 
 	switch arr[0] {
+	case "delete_cache": // arr[1] - document's ._key
+		if _, err = app.cache.RemoveDocument(ctx, arr[1]); err != nil {
+			_, err = app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, err.Error()))
+		} else {
+			_, err = app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, "OK"))
+		}
+		if err != nil {
+			warn(err)
+			log.Error("", zap.Error(err))
+			return
+		}
+		log.Info("cache was deleted", zap.String("_key", arr[1]))
 	case "cancel_mailing_act":
 		if err := app.db.UpdateUserByMap(callback.From.ID, map[string]interface{}{"act": ""}); err != nil {
 			warn(err)
@@ -73,11 +84,13 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		app.db.LogBotMessage(callback.From.ID, "cb_delete", "")
 		return
 	case "translate": // arr[1] - from, arr[2] - to
-		entites := callback.Message.Entities
-		if len(callback.Message.CaptionEntities) > 0 {
-			entites = callback.Message.CaptionEntities
+		entites := callback.Message.ReplyToMessage.Entities
+		if len(callback.Message.ReplyToMessage.CaptionEntities) > 0 {
+			entites = callback.Message.ReplyToMessage.CaptionEntities
 		}
-		callback.Message.ReplyToMessage.Text = applyEntitiesHtml(norm.NFKC.String(url.PathEscape(callback.Message.ReplyToMessage.Text)), entites)
+		callback.Message.ReplyToMessage.Text = applyEntitiesHtml(norm.NFKC.String(callback.Message.ReplyToMessage.Text), entites)
+		pp.Println(arr[1], arr[2], callback.Message.ReplyToMessage.Text)
+
 		if err := app.SuperTranslate(ctx, user, callback.From.ID, callback.Message.MessageID, arr[1], arr[2], callback.Message.ReplyToMessage.Text, true); err != nil {
 			warn(err)
 			return
@@ -105,7 +118,6 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			warn(err)
 			return
 		}
-		app.db.LogUserMessage(callback.From.ID, "cb_voice")
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
 	case "dictionary": // arr[1] - from, arr[2] - to, text in replied message
 		callback.Message.ReplyToMessage.Text = strings.ToLower(callback.Message.ReplyToMessage.Text)

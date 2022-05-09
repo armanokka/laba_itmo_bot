@@ -26,13 +26,14 @@ import (
 //TODO: заменить fuzzywuzzy и отпрофилировать бота, чтобы убрать утечки памяти
 
 type App struct {
-	htmlTagsRe *regexp.Regexp
-	deepl      translate2.Deepl
-	bot        *botapi.BotAPI
-	log        *zap.Logger
-	db         repos.BotDB
-	analytics  dashbot.DashBot
-	bc         *bitcask.Bitcask
+	htmlTagsRe          *regexp.Regexp
+	reSpecialCharacters *regexp.Regexp
+	deepl               translate2.Deepl
+	bot                 *botapi.BotAPI
+	log                 *zap.Logger
+	db                  repos.BotDB
+	analytics           dashbot.DashBot
+	bc                  *bitcask.Bitcask
 
 	arangodb driver.Database
 	cache    driver.Collection
@@ -40,8 +41,9 @@ type App struct {
 
 func New(bot *botapi.BotAPI, db repos.BotDB, analytics dashbot.DashBot, log *zap.Logger, bc *bitcask.Bitcask /* deepl translate2.Deepl*/, arangodb driver.Database) (App, error) {
 	app := App{
-		arangodb:   arangodb,
-		htmlTagsRe: regexp.MustCompile("<\\s*[^>]+>(.*?)"),
+		arangodb:            arangodb,
+		htmlTagsRe:          regexp.MustCompile("<\\s*[^>]+>(.*?)"),
+		reSpecialCharacters: regexp.MustCompile(`[[:punct:]]`),
 		//deepl:      translate2.Deepl{},
 		bot:       bot,
 		log:       log,
@@ -291,9 +293,13 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 			chunks := translate2.SplitIntoChunksBySentences(cache.Translation, 4000)
 			answeredWithCache = true
 			for i, chunk := range chunks {
+				k := buildKeyboard(from, to, cache.Keyboard)
+				if chatID == config.AdminID {
+					k.InlineKeyboard = append(k.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+						tgbotapi.NewInlineKeyboardButtonData("delete cache", "delete_cache:"+cache.Key)))
+				}
 				if edit && i == 0 {
-					k := buildKeyboard(from, to, cache.Keyboard)
-					app.bot.Send(tgbotapi.EditMessageTextConfig{
+					_, err = app.bot.Send(tgbotapi.EditMessageTextConfig{
 						BaseEdit: tgbotapi.BaseEdit{
 							ChatID:          chatID,
 							ChannelUsername: "",
@@ -313,7 +319,7 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 						ChatID:                   chatID,
 						ChannelUsername:          "",
 						ReplyToMessageID:         messageID,
-						ReplyMarkup:              buildKeyboard(from, to, cache.Keyboard),
+						ReplyMarkup:              k,
 						DisableNotification:      false,
 						AllowSendingWithoutReply: false,
 					},
@@ -442,7 +448,7 @@ func (app App) sendSpeech(user tables.Users, lang, text string, callbackID strin
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callbackID, "Internal error"))
 		return err
 	}
-	app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callbackID, "⏳"))
+	app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callbackID, "OK"))
 
 	f, err := os.CreateTemp("", "")
 	if err != nil {

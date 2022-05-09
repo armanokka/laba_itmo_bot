@@ -40,6 +40,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	}
 
 	if message.Chat.ID < 0 {
+		app.onGroupMessage(message)
 		return
 	}
 
@@ -440,7 +441,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 
-	from, err := translate.DetectLanguageYandex(ctx, cutStringUTF16(text, 100))
+	from, err := translate.DetectLanguageGoogle(ctx, cutStringUTF16(text, 100))
 	if err != nil {
 		warn(err)
 		return
