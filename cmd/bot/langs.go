@@ -1,7 +1,5 @@
 package bot
 
-import "github.com/armanokka/translobot/internal/tables"
-
 type Lang struct {
 	Name  string
 	Emoji string
@@ -3790,13 +3788,4 @@ var codes = map[string][]string{
 		"el",
 		"za",
 	},
-}
-
-func getIndex(user tables.Users, codes map[string][]string, code string) int {
-	for i, v := range codes[user.Lang] {
-		if v == code {
-			return i
-		}
-	}
-	return 0
 }

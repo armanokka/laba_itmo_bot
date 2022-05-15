@@ -41,7 +41,7 @@ func (app App) seekForCache(ctx context.Context, from, to, text string) (RecordT
 }
 
 // translate returns translation, examples and error
-func (app App) translate(ctx context.Context, user tables.Users, from, to, text string) (string, map[string]string, error) {
+func (app App) translate(ctx context.Context, user tables.Users, from, to, text string) (string, error) {
 	log := app.log.With(zap.String("from", from), zap.String("to", to), zap.String("text", text))
 	g, ctx := errgroup.WithContext(ctx)
 	var (
@@ -49,9 +49,10 @@ func (app App) translate(ctx context.Context, user tables.Users, from, to, text 
 		GoogleFromToTr string
 		GoogleToFromTr string
 		LingvoTr       string
+		dict           []string
 		YandexTr       string
-		examples       map[string]string
 	)
+
 	if app.htmlTagsRe.MatchString(text) { // есть html теги
 		g.Go(func() error {
 			start := time.Now()
@@ -97,40 +98,48 @@ func (app App) translate(ctx context.Context, user tables.Users, from, to, text 
 			return errors.Wrap(err)
 		})
 	}
+
 	_, ok1 = lingvo.Lingvo[user.MyLang]
 	_, ok2 = lingvo.Lingvo[user.ToLang]
 	if len(text) < 50 && ok1 && ok2 {
 		g.Go(func() (err error) {
-			LingvoTr, examples, err = app.lingvo(ctx, user.MyLang, user.ToLang, text)
+			LingvoTr, _, err = app.lingvo(ctx, user.MyLang, user.ToLang, text)
 			return errors.Wrap(err)
 		})
 	}
+	//g.Go(func() (err error) { // dictionary
+	//	dict, err = app.dictionary(ctx, from, text)
+	//	return errors.Wrap(err)
+	//})
 
 	if err := g.Wait(); err != nil {
-		return "", nil, err
+		return "", err
 	}
 
-	if LingvoTr != "" {
+	switch {
+	case LingvoTr != "":
+		if len(dict) > 0 {
+			LingvoTr += "\n" + strings.Join(dict, ";")
+		}
 		log.Info("translated via lingvo", zap.String("translation", LingvoTr))
-		return LingvoTr, examples, nil
-	} else if GoogleFromToTr != "" && GoogleToFromTr != "" {
+		return LingvoTr, nil
+	case YandexTr != "":
+		log.Info("translated via yandex", zap.String("translation", YandexTr))
+		return YandexTr, nil
+	case GoogleFromToTr != "" && GoogleToFromTr != "":
 		if diff(text, GoogleFromToTr) > diff(text, GoogleToFromTr) || (diff(GoogleFromToTr, YandexTr) < diff(GoogleFromToTr, GoogleToFromTr)) && YandexTr != "" {
 			log.Info("translated via google", zap.String("translation", GoogleFromToTr))
-			return GoogleFromToTr, examples, nil
+			return GoogleFromToTr, nil
 		} else {
 			log.Info("translated via google", zap.String("translation", GoogleToFromTr))
-			return GoogleToFromTr, examples, nil
+			return GoogleToFromTr, nil
 		}
-	} else if YandexTr != "" {
-		log.Info("translated via yandex", zap.String("translation", YandexTr))
-		return YandexTr, examples, nil
-	} else if MicrosoftTr != "" {
+	case MicrosoftTr != "":
 		MicrosoftTr = strings.ReplaceAll(MicrosoftTr, "<br>", "\n")
 		log.Info("translated via microsoft", zap.String("translation", MicrosoftTr))
-		return MicrosoftTr, examples, nil
+		return MicrosoftTr, nil
 	}
-	
-	return "", nil, fmt.Errorf("all translators returned empty result\n%s->%s\n%s", from, to, text)
+	return "", fmt.Errorf("all translators returned empty result\n%s->%s\n%s", from, to, text)
 }
 
 func (app App) keyboard(ctx context.Context, from, to, text string) (Keyboard, error) {

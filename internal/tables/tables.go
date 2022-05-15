@@ -171,9 +171,21 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"es": "Diccionario",
 			"it": "Dizionario",
 		},
-		"На какой язык перевести?": map[string]string{
+		"Твое сообщение и так на %s языке. Выбери другой язык, на который надо переводить": map[string]string{
+			"ru": "Твое сообщение и так на %s языке. Выбери другой язык, на который надо переводить",
+			"en": "Your message is already in %s language. Choose another language to translate into",
+			"pt": "Sua mensagem já está no idioma %s. Escolha outro idioma para traduzir",
+			"ar": "رسالتك باللغة٪ s بالفعل. اختر لغة أخرى للترجمة إليها",
+			"uz": "Xabaringiz allaqachon %s tilida. Tarjima qilish uchun boshqa tilni tanlang",
+			"es": "Su mensaje ya está en %s idioma. Elija otro idioma para traducir",
+			"de": "Ihre Nachricht ist bereits in %s Sprache. Wählen Sie eine andere Sprache, in die übersetzt werden soll",
+			"id": "Pesan Anda sudah dalam bahasa %s. Pilih bahasa lain untuk diterjemahkan",
+			"uk": "Твоє повідомлення і так %s мовою. Вибери іншу мову, якою треба перекладати",
+			"it": "Il tuo messaggio è già nella lingua %s. Scegli un'altra lingua in cui tradurre",
+		},
+		"На какой язык переводить?": map[string]string{
 			"en": "What language should I translate it into?",
-			"ru": "На какой язык перевести?",
+			"ru": "На какой язык переводить?",
 			"de": "Auf welche Sprache zu übersetzen?",
 			"es": "En qué idioma a traducir?",
 			"uz": "Qaysi tilni tarjima qilish kerak?",

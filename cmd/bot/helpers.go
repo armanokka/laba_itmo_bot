@@ -246,29 +246,25 @@ func highlightDiffs(s1, s2, start, stop string) string {
 
 // buildLangsPagination создает пагинацию как говорил F d
 // в калбак передайте что-то типа set_my_lang:%s, где %s станет код выбранного языка
-func buildLangsPagination(user tables.Users, offset int, count int, exceptLang, buttonSelectLangCallback, buttonBackCallback, buttonNextCallback string) (tgbotapi.InlineKeyboardMarkup, error) {
+func buildLangsPagination(user tables.Users, offset int, count int, exceptLang, buttonSelectLangCallback, buttonBackCallback, buttonNextCallback, buttonExceptLangCallback string) (tgbotapi.InlineKeyboardMarkup, error) {
 	if offset < 0 || offset > len(codes[user.Lang])-1 {
 		return tgbotapi.InlineKeyboardMarkup{}, nil
 	}
 	out := tgbotapi.NewInlineKeyboardMarkup()
 
-	if count == 0 {
-		offset -= 18
-		count += 18
-	}
 	for i, code := range codes[user.Lang][offset : offset+count] {
-		if code == exceptLang {
-			continue
-		}
 		lang, ok := langs[user.Lang][code]
-		if i+offset < 18 {
-			lang += " 📌"
-		}
+		//if offset+count <= 18 {
+		//	lang += " 📌"
+		//}
 		if !ok {
 			return tgbotapi.InlineKeyboardMarkup{}, fmt.Errorf("не нашел %s в langs", code)
 		}
 
 		callback := fmt.Sprintf(buttonSelectLangCallback, code)
+		if code == exceptLang {
+			callback = buttonExceptLangCallback
+		}
 
 		btn := tgbotapi.NewInlineKeyboardButtonData(lang, callback)
 		if i%3 == 0 {
@@ -285,10 +281,10 @@ func buildLangsPagination(user tables.Users, offset int, count int, exceptLang, 
 			out.InlineKeyboard[l] = append(out.InlineKeyboard[l], btn)
 		}
 	}
-
 	out.InlineKeyboard = append(out.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("<--- Back", buttonBackCallback),
-		tgbotapi.NewInlineKeyboardButtonData("Next --->", buttonNextCallback)))
+		tgbotapi.NewInlineKeyboardButtonData("⬅️", buttonBackCallback),
+		tgbotapi.NewInlineKeyboardButtonData(strconv.Itoa(offset)+"/"+strconv.Itoa(len(codes[user.Lang])/count*count), buttonBackCallback),
+		tgbotapi.NewInlineKeyboardButtonData("➡️", buttonNextCallback)))
 	return out, nil
 }
 

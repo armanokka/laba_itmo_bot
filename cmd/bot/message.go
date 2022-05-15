@@ -12,7 +12,6 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/text/unicode/norm"
 	"gorm.io/gorm"
-	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -84,9 +83,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 
 	switch message.Command() {
 	case "start":
-		fallthrough
-	case "help":
-		log.Info("/start or /help")
 		app.bot.Send(tgbotapi.MessageConfig{
 			BaseChat: tgbotapi.BaseChat{
 				ChatID:                   message.From.ID,
@@ -397,15 +393,14 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, user.Localize("Отправь текстовое сообщение, чтобы я его перевел")))
 			return
 		}
-		fromLang, err := translate.GoogleTranslate(ctx, "auto", "en", cutStringUTF16(message.Text, 100))
+		tr, err := translate.GoogleTranslate(ctx, "auto", "en", cutStringUTF16(message.Text, 100))
 		if err != nil {
 			warn(err)
 			return
 		}
-		from := fromLang.FromLang
 		//app.SuperTranslate(ctx, user, message.Chat.ID, from, to, text, entities)
 
-		keyboard, err := buildLangsPagination(user, 0, 18, fromLang.FromLang, fmt.Sprintf("setup_langs:%s:%s", from, "%s"), fmt.Sprintf("setup_langs_pagination:%s:0", from), fmt.Sprintf("setup_langs_pagination:%s:18", from))
+		keyboard, err := buildLangsPagination(user, 0, 18, tr.FromLang, fmt.Sprintf("setup_langs:%s:%s", tr.FromLang, "%s"), fmt.Sprintf("setup_langs_pagination:%s:0", tr.FromLang), fmt.Sprintf("setup_langs_pagination:%s:18", tr.FromLang), fmt.Sprintf("choose_another_lang:%s", tr.FromLang))
 		if err != nil {
 			warn(err)
 		}
@@ -436,6 +431,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	}
 
 	if text == "" {
+		//app.bot.Send(tgbotapi.NewDeleteMessage())
 		app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, user.Localize("Отправь текстовое сообщение, чтобы я его перевел")))
 		app.analytics.Bot(message.Chat.ID, "Please, send text message", "Message is not text message")
 		return
@@ -467,7 +463,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		entities = message.CaptionEntities
 	}
 	text = applyEntitiesHtml(norm.NFKC.String(text), entities)
-	if err = app.SuperTranslate(ctx, user, message.Chat.ID, message.MessageID, from, to, text, false); err != nil && !errors.Is(err, context.Canceled) {
+	if err = app.SuperTranslate(ctx, user, message.Chat.ID, from, to, text, message.MessageID, message); err != nil && !errors.Is(err, context.Canceled) {
 		warn(err)
 		if e, ok := err.(errors.Error); ok {
 			log.Error("", zap.Error(e), zap.String("stack", string(e.Stack())))
@@ -478,26 +474,5 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	}
 
 	app.analytics.Bot(user.ID, "", "Translated")
-
-	if user.Usings == 5 || (user.Usings > 0 && user.Usings%20 == 0) {
-		if _, err := app.bot.Send(tgbotapi.MessageConfig{
-			BaseChat: tgbotapi.BaseChat{
-				ChatID:           message.From.ID,
-				ChannelUsername:  "",
-				ReplyToMessageID: 0,
-				ReplyMarkup: tgbotapi.NewInlineKeyboardMarkup(
-					tgbotapi.NewInlineKeyboardRow(
-						tgbotapi.NewInlineKeyboardButtonURL(user.Localize("Рассказать про нас"), "http://t.me/share/url?url="+url.PathEscape(user.Localize("Я рекомендую @translobot"))))),
-				DisableNotification:      true,
-				AllowSendingWithoutReply: false,
-			},
-			Text:                  user.Localize("Понравился бот? 😎 Поделись с друзьями, нажав на кнопку"),
-			ParseMode:             tgbotapi.ModeHTML,
-			Entities:              nil,
-			DisableWebPagePreview: false,
-		}); err != nil {
-			pp.Println(err)
-		}
-	}
 
 }

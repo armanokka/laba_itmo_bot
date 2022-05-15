@@ -264,121 +264,89 @@ func (app App) notifyAdmin(args ...interface{}) {
 	}
 }
 
-// SuperTranslate. Pass messageID as user's message id and edit = true if new message arrived and messageID = callback.Message.MessageID with edit= false on callback
-func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int64, messageID int, from, to, text string, edit bool) error {
+func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int64, from, to, text string, replyToMessageID int, userMessage tgbotapi.Message) error {
 	log := app.log.With(zap.String("from", from), zap.String("to", to), zap.String("text", text), zap.Int64("chat_id", chatID))
 	if user.ID == 0 {
 		user.ID = chatID
 	}
 
-	var (
-		answeredWithCache bool
-		translation       string // not empty if answeredWithCache is false and number of chunks is 1, not more
-		//examples          map[string]string
-		keyboard      Keyboard
-		messageIDChan = make(chan int, 1)
-	)
-	ctx, cancel := context.WithCancel(ctx) // close if translation retrieved faster than cache was loaded
 	g, ctx := errgroup.WithContext(ctx)
-	g.Go(func() error {
-		cache, err := app.seekForCache(ctx, from, to, text)
-		if err != nil && !errors.Is(err, ErrCacheNotFound) {
-			if IsCtxError(err) {
-				return nil
-			}
-			return err
-		}
-		if cache.Translation != "" {
-			cancel()
-			chunks := translate2.SplitIntoChunksBySentences(cache.Translation, 4000)
-			answeredWithCache = true
-			for i, chunk := range chunks {
-				k := buildKeyboard(from, to, cache.Keyboard)
-				if chatID == config.AdminID {
-					k.InlineKeyboard = append(k.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-						tgbotapi.NewInlineKeyboardButtonData("delete cache", "delete_cache:"+cache.Key)))
-				}
-				if edit && i == 0 {
-					_, err = app.bot.Send(tgbotapi.EditMessageTextConfig{
-						BaseEdit: tgbotapi.BaseEdit{
-							ChatID:          chatID,
-							ChannelUsername: "",
-							MessageID:       messageID,
-							InlineMessageID: "",
-							ReplyMarkup:     &k,
-						},
-						Text:                  chunk,
-						ParseMode:             tgbotapi.ModeHTML,
-						Entities:              nil,
-						DisableWebPagePreview: false,
-					})
-					continue
-				}
-				_, err = app.bot.Send(tgbotapi.MessageConfig{
-					BaseChat: tgbotapi.BaseChat{
-						ChatID:                   chatID,
-						ChannelUsername:          "",
-						ReplyToMessageID:         messageID,
-						ReplyMarkup:              k,
-						DisableNotification:      false,
-						AllowSendingWithoutReply: false,
-					},
-					Text:                  chunk,
-					ParseMode:             tgbotapi.ModeHTML,
-					Entities:              nil,
-					DisableWebPagePreview: false,
+	if userMessage.ReplyMarkup != nil {
+		for i1, row := range userMessage.ReplyMarkup.InlineKeyboard {
+			i1 := i1
+			row := row
+			for i2, btn := range row {
+				i2 := i2
+				btn := btn
+				g.Go(func() error {
+					tr, err := translate2.GoogleTranslate(ctx, from, to, btn.Text)
+					if err != nil {
+						return errors.Wrap(err)
+					}
+					userMessage.ReplyMarkup.InlineKeyboard[i1][i2].Text = tr.Text
+					return nil
 				})
-				if err != nil {
-					log.Error("", zap.Error(err))
-					return err
-				}
 			}
 		}
-		return nil
-	})
-	g.Go(func() (err error) {
-		var tr string
-		tr, _, err = app.translate(ctx, user, from, to, text) // examples мы сохраняем, чтобы соединить с keyboard.Examples и положить в кэш
-		if err != nil {
-			if IsCtxError(err) {
-				return nil
-			}
-			return err
-		}
+	}
 
-		chunks := translate2.SplitIntoChunksBySentences(tr, 4000)
-		if len(chunks) == 1 { // if number of chunks is 1, not more
-			translation = tr
+	var (
+		tr  string
+		err error
+	)
+	g.Go(func() error {
+		tr, err = app.translate(ctx, user, from, to, text) // examples мы сохраняем, чтобы соединить с keyboard.Examples и положить в кэш
+		return errors.Wrap(err)
+	})
+
+	if err = g.Wait(); err != nil {
+		return err
+	}
+
+	chunks := translate2.SplitIntoChunksBySentences(tr, 4000)
+	for i, chunk := range chunks {
+		if i > 0 {
+			replyToMessageID = 0
 		}
-		id := 0
-		for i, chunk := range chunks {
-			if edit && i == 0 {
-				msg, err := app.bot.Send(tgbotapi.EditMessageTextConfig{
-					BaseEdit: tgbotapi.BaseEdit{
-						ChatID:          chatID,
-						ChannelUsername: "",
-						MessageID:       messageID,
-						InlineMessageID: "",
-						ReplyMarkup:     nil,
+		switch {
+		case userMessage.Audio != nil:
+			_, err = app.bot.Send(tgbotapi.AudioConfig{
+				BaseFile: tgbotapi.BaseFile{
+					BaseChat: tgbotapi.BaseChat{
+						ChatID:           chatID,
+						ReplyToMessageID: replyToMessageID,
+						ReplyMarkup:      userMessage.ReplyMarkup,
 					},
-					Text:                  chunk,
-					ParseMode:             tgbotapi.ModeHTML,
-					Entities:              nil,
-					DisableWebPagePreview: false,
-				})
-				if err != nil {
-					log.Error("", zap.Error(err))
-					return err
-				}
-				id = msg.MessageID
-				continue
-			}
-			msg, err := app.bot.Send(tgbotapi.MessageConfig{
+					File: tgbotapi.FileID(userMessage.Audio.FileID),
+				},
+				Thumb:     tgbotapi.FileID(userMessage.Audio.Thumbnail.FileID),
+				Caption:   tr,
+				ParseMode: tgbotapi.ModeHTML,
+				Duration:  userMessage.Audio.Duration,
+				Performer: userMessage.Audio.Performer,
+				Title:     userMessage.Audio.Title,
+			})
+		case len(userMessage.Photo) > 0:
+			maxResolutionPhoto := userMessage.Photo[len(userMessage.Photo)-1]
+			_, err = app.bot.Send(tgbotapi.PhotoConfig{
+				BaseFile: tgbotapi.BaseFile{
+					BaseChat: tgbotapi.BaseChat{
+						ChatID:           chatID,
+						ReplyToMessageID: replyToMessageID,
+						ReplyMarkup:      userMessage.ReplyMarkup,
+					},
+					File: tgbotapi.FileID(maxResolutionPhoto.FileID),
+				},
+				Caption:   chunk,
+				ParseMode: tgbotapi.ModeHTML,
+			})
+		default:
+			_, err = app.bot.Send(tgbotapi.MessageConfig{
 				BaseChat: tgbotapi.BaseChat{
 					ChatID:                   chatID,
 					ChannelUsername:          "",
-					ReplyToMessageID:         messageID,
-					ReplyMarkup:              nil,
+					ReplyToMessageID:         replyToMessageID,
+					ReplyMarkup:              userMessage.ReplyMarkup,
 					DisableNotification:      false,
 					AllowSendingWithoutReply: false,
 				},
@@ -387,52 +355,12 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 				Entities:              nil,
 				DisableWebPagePreview: false,
 			})
-			if err != nil {
-				log.Error("", zap.Error(err))
-				return err
-			}
-			id = msg.MessageID
 		}
-		messageIDChan <- id
-		return nil
-	})
-	g.Go(func() error {
-		var err error
-		keyboard, err = app.keyboard(ctx, from, to, text)
 		if err != nil {
-			if IsCtxError(err) {
-				return nil
-			}
-			return err
-		}
-		//cancel()
-		id := <-messageIDChan
-		_, err = app.bot.Send(tgbotapi.NewEditMessageReplyMarkup(chatID, id, buildKeyboard(from, to, keyboard)))
-		return err
-	})
-
-	if err := g.Wait(); err != nil {
-		cancel()
-		return err
-	}
-	//for source, target := range examples {
-	//	keyboard.Examples[source] = target
-	//}
-	if !answeredWithCache {
-		if _, err := app.cache.CreateDocument(nil, RecordTranslationCache{
-			From:        from,
-			To:          to,
-			Text:        text,
-			Translation: translation,
-			Keyboard:    keyboard,
-			//CreatedAt:   time.Now().Unix(),
-		}); err != nil {
 			log.Error("", zap.Error(err))
 			return err
 		}
-		log.Info("saved translation to cache")
-	} else {
-		log.Info("answered with translation from cache")
+
 	}
 
 	return nil
