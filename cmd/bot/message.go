@@ -13,6 +13,7 @@ import (
 	"golang.org/x/text/unicode/norm"
 	"gorm.io/gorm"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -27,7 +28,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				return
 			}
 			log.Error("recover:", zap.Any("error", err))
-			app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Panic:"+fmt.Sprint(err)))
+			app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Panic:"+fmt.Sprint(err)+"\n\n"+string(debug.Stack())))
 		}
 	}()
 

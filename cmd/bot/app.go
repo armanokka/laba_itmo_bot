@@ -289,7 +289,28 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 			}
 		}
 	}
-
+	if userMessage.Poll != nil {
+		g.Go(func() error {
+			tr, err := translate2.GoogleTranslate(ctx, from, to, userMessage.Poll.Question)
+			userMessage.Poll.Question = tr.Text
+			return errors.Wrap(err)
+		})
+		g.Go(func() error {
+			tr, err := translate2.GoogleTranslate(ctx, from, to, applyEntitiesHtml(userMessage.Poll.Explanation, userMessage.Poll.ExplanationEntities))
+			userMessage.Poll.Explanation = tr.Text
+			return errors.Wrap(err)
+		})
+		for i, q := range userMessage.Poll.Options {
+			i := i
+			q := q
+			g.Go(func() error {
+				tr, err := translate2.GoogleTranslate(ctx, from, to, q.Text)
+				userMessage.Poll.Options[i].Text = tr.Text
+				return errors.Wrap(err)
+			})
+		}
+		// TODO: apply entities to the answer and translate it
+	}
 	var (
 		tr  string
 		err error
@@ -309,7 +330,35 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 			replyToMessageID = 0
 		}
 		switch {
+		case userMessage.Poll != nil:
+			options := make([]string, 0, len(userMessage.Poll.Options))
+			for _, opt := range userMessage.Poll.Options {
+				options = append(options, opt.Text)
+			}
+			_, err = app.bot.Send(tgbotapi.SendPollConfig{
+				BaseChat: tgbotapi.BaseChat{
+					ChatID:           chatID,
+					ReplyToMessageID: replyToMessageID,
+					ReplyMarkup:      userMessage.ReplyMarkup,
+				},
+				Question:              userMessage.Poll.Question,
+				Options:               options,
+				IsAnonymous:           userMessage.Poll.IsAnonymous,
+				Type:                  userMessage.Poll.Type,
+				AllowsMultipleAnswers: userMessage.Poll.AllowsMultipleAnswers,
+				CorrectOptionID:       int64(userMessage.Poll.CorrectOptionID),
+				Explanation:           userMessage.Poll.Explanation,
+				ExplanationParseMode:  tgbotapi.ModeHTML,
+				ExplanationEntities:   nil,
+				OpenPeriod:            userMessage.Poll.OpenPeriod,
+				CloseDate:             userMessage.Poll.CloseDate,
+				IsClosed:              userMessage.Poll.IsClosed,
+			})
 		case userMessage.Audio != nil:
+			thumbnail := ""
+			if userMessage.Audio.Thumbnail != nil {
+				thumbnail = userMessage.Audio.Thumbnail.FileID
+			}
 			_, err = app.bot.Send(tgbotapi.AudioConfig{
 				BaseFile: tgbotapi.BaseFile{
 					BaseChat: tgbotapi.BaseChat{
@@ -319,7 +368,7 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 					},
 					File: tgbotapi.FileID(userMessage.Audio.FileID),
 				},
-				Thumb:     tgbotapi.FileID(userMessage.Audio.Thumbnail.FileID),
+				Thumb:     tgbotapi.FileID(thumbnail),
 				Caption:   tr,
 				ParseMode: tgbotapi.ModeHTML,
 				Duration:  userMessage.Audio.Duration,
@@ -343,12 +392,9 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 		default:
 			_, err = app.bot.Send(tgbotapi.MessageConfig{
 				BaseChat: tgbotapi.BaseChat{
-					ChatID:                   chatID,
-					ChannelUsername:          "",
-					ReplyToMessageID:         replyToMessageID,
-					ReplyMarkup:              userMessage.ReplyMarkup,
-					DisableNotification:      false,
-					AllowSendingWithoutReply: false,
+					ChatID:           chatID,
+					ReplyToMessageID: replyToMessageID,
+					ReplyMarkup:      userMessage.ReplyMarkup,
 				},
 				Text:                  chunk,
 				ParseMode:             tgbotapi.ModeHTML,
