@@ -129,6 +129,7 @@ func (app App) translate(ctx context.Context, user tables.Users, from, to, text 
 		log.Info("translated via microsoft", zap.String("translation", MicrosoftTr))
 		return MicrosoftTr, examples, nil
 	}
+	
 	return "", nil, fmt.Errorf("all translators returned empty result\n%s->%s\n%s", from, to, text)
 }
 
@@ -153,7 +154,7 @@ func (app App) keyboard(ctx context.Context, from, to, text string) (Keyboard, e
 				return errors.Wrap(err)
 			})
 		}
-		if l := len(strings.Fields(app.reSpecialCharacters.ReplaceAllString(gomoji.RemoveEmojis(text), ""))); l > 2 && l < 31 {
+		if l := len(strings.Fields(app.reSpecialCharacters.ReplaceAllString(gomoji.RemoveEmojis(text), " "))); l > 2 && l < 31 {
 			g.Go(func() error { // paraphrase
 				paraphrase, err = translate.ReversoParaphrase(ctx, from, text)
 				return errors.Wrap(err)
@@ -170,7 +171,6 @@ func (app App) keyboard(ctx context.Context, from, to, text string) (Keyboard, e
 		Examples:            examples,
 		ReverseTranslations: reversedTranslations,
 	}, nil
-
 }
 
 // lingvo returns its translation and examples and error
