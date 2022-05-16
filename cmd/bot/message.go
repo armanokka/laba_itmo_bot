@@ -465,6 +465,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	}
 	text = applyEntitiesHtml(norm.NFKC.String(text), entities)
 	if err = app.SuperTranslate(ctx, user, message.Chat.ID, from, to, text, message.MessageID, message); err != nil && !errors.Is(err, context.Canceled) {
+		err = fmt.Errorf("%s\nuser's text:%s", err.Error(), text)
 		warn(err)
 		if e, ok := err.(errors.Error); ok {
 			log.Error("", zap.Error(e), zap.String("stack", string(e.Stack())))
