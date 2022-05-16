@@ -11,7 +11,6 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/k0kubun/pp"
 	"github.com/tidwall/gjson"
-	"go.uber.org/zap/buffer"
 	"golang.org/x/sync/errgroup"
 	"html"
 	"io/ioutil"
@@ -159,7 +158,7 @@ func TTS(lang, text string) ([]byte, error) {
 		return results[i].idx < results[j].idx
 	})
 
-	var out = new(buffer.Buffer)
+	var out = new(bytes.Buffer)
 	for _, res := range results {
 		if _, err := out.WriteString(res.s); err != nil {
 			return nil, err
