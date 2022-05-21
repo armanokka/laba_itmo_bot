@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"git.mills.io/prologic/bitcask"
 	boto "github.com/armanokka/translobot/cmd/bot"
 	"github.com/armanokka/translobot/cmd/botdb"
@@ -42,7 +43,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		<-signalChanel
-		pp.Println("exiting...")
+		fmt.Println("exiting...")
 		cancel()
 	}()
 

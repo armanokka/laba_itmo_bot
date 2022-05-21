@@ -1,7 +1,6 @@
 package repos
 
 import (
-	"database/sql"
 	"github.com/armanokka/translobot/internal/tables"
 )
 
@@ -22,23 +21,18 @@ type BotDB interface {
 	UpdateUserMetrics(id int64, message string) error
 
 	GetRandomUser() (tables.Users, error)
-	// GetAllUsers
-	// Errors: unknown
+
+	SwapLangs(userID int64) error
+
+	GetUsersNumber() (int64, error)
+	GetUsersSlice(offset, count int64, slice []int64) (err error)
+
 	GetAllUsers() ([]tables.Users, error)
 	BotLogs
-	Mailing
 }
 
 type BotLogs interface {
 	LogUserMessage(id int64, text string) error
 	LogBotMessage(toID int64, intent string, text string) error
 	GetUserLogs(id int64, limit int) ([]tables.UsersLogs, error)
-}
-
-type Mailing interface { // temp table for mailings
-	GetMailersRows() (rows *sql.Rows, err error)
-	MailingExists() (bool, error)
-	DeleteMailuser(id int64) error
-	DropMailings() error
-	CreateMailingTable() error
 }

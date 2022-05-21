@@ -33,7 +33,7 @@ func cutStringUTF16(text string, limit int) string {
 	return text
 }
 
-func parseKeyboard(messageText string) *tgbotapi.InlineKeyboardMarkup {
+func parseKeyboard(messageText string) tgbotapi.InlineKeyboardMarkup {
 	keyboard := tgbotapi.NewInlineKeyboardMarkup()
 	if messageText != "Empty" {
 		lines := strings.Split(messageText, "\n")
@@ -47,9 +47,9 @@ func parseKeyboard(messageText string) *tgbotapi.InlineKeyboardMarkup {
 		}
 	}
 	if reflect.DeepEqual(keyboard, tgbotapi.NewInlineKeyboardMarkup()) {
-		return nil
+		return tgbotapi.InlineKeyboardMarkup{}
 	}
-	return &keyboard
+	return keyboard
 }
 
 func in(arr []string, keys ...string) bool {
@@ -246,7 +246,7 @@ func highlightDiffs(s1, s2, start, stop string) string {
 
 // buildLangsPagination создает пагинацию как говорил F d
 // в калбак передайте что-то типа set_my_lang:%s, где %s станет код выбранного языка
-func buildLangsPagination(user tables.Users, offset int, count int, exceptLang, buttonSelectLangCallback, buttonBackCallback, buttonNextCallback, buttonExceptLangCallback string) (tgbotapi.InlineKeyboardMarkup, error) {
+func buildLangsPagination(user tables.Users, offset int, count int, tickLang, buttonSelectLangCallback, buttonBackCallback, buttonNextCallback string) (tgbotapi.InlineKeyboardMarkup, error) {
 	if offset < 0 || offset > len(codes[user.Lang])-1 {
 		return tgbotapi.InlineKeyboardMarkup{}, nil
 	}
@@ -257,14 +257,14 @@ func buildLangsPagination(user tables.Users, offset int, count int, exceptLang, 
 		//if offset+count <= 18 {
 		//	lang += " 📌"
 		//}
+		if code == tickLang {
+			lang += "✅"
+		}
 		if !ok {
 			return tgbotapi.InlineKeyboardMarkup{}, fmt.Errorf("не нашел %s в langs", code)
 		}
 
 		callback := fmt.Sprintf(buttonSelectLangCallback, code)
-		if code == exceptLang {
-			callback = buttonExceptLangCallback
-		}
 
 		btn := tgbotapi.NewInlineKeyboardButtonData(lang, callback)
 		if i%3 == 0 {
@@ -283,7 +283,7 @@ func buildLangsPagination(user tables.Users, offset int, count int, exceptLang, 
 	}
 	out.InlineKeyboard = append(out.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
 		tgbotapi.NewInlineKeyboardButtonData("⬅️", buttonBackCallback),
-		tgbotapi.NewInlineKeyboardButtonData(strconv.Itoa(offset)+"/"+strconv.Itoa(len(codes[user.Lang])/count*count), buttonBackCallback),
+		tgbotapi.NewInlineKeyboardButtonData(strconv.Itoa(offset)+"/"+strconv.Itoa(len(codes[user.Lang])/18*18), buttonBackCallback),
 		tgbotapi.NewInlineKeyboardButtonData("➡️", buttonNextCallback)))
 	return out, nil
 }
@@ -298,6 +298,20 @@ func randid(seed int64) string {
 	uuid := fmt.Sprintf("%x-%x-%x-%x-%x",
 		b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 	return uuid
+}
+
+func concatNonEmpty(separator string, ss ...string) string {
+	b := new(bytes.Buffer)
+	for i, s := range ss {
+		if strings.TrimSpace(s) == "" {
+			continue
+		}
+		if i > 0 {
+			b.WriteString(separator)
+		}
+		b.WriteString(s)
+	}
+	return b.String()
 }
 
 // diff counts difference between s1 and s2 by comparing their characters
@@ -352,23 +366,17 @@ func IsCtxError(err error) bool {
 func writeLingvo(lingvo []lingvo.Dictionary) string {
 	out := new(bytes.Buffer)
 	usedWords := make([]string, 0, 10)
-	translations := 0
 	lastLineLen := 0
 	for _, r := range lingvo {
-		if translations > 11 {
-			break
-		}
-		words := strings.Split(r.Translations, ";")
-		if len(words) == 0 {
-			words[0] = r.Translations
-		}
+		words := strings.FieldsFunc(r.Translations, func(r rune) bool {
+			return r == ',' || r == ';'
+		})
 		for _, word := range words {
-			if translations >= 11 {
-				break
-			}
-			translations++
 			if word == "" {
 				continue
+			}
+			if len(usedWords) > 11 {
+				break
 			}
 			word = strings.TrimSpace(word)
 			if inFuzzy(usedWords, word) {
@@ -376,7 +384,7 @@ func writeLingvo(lingvo []lingvo.Dictionary) string {
 			}
 			usedWords = append(usedWords, word)
 			word += "; "
-			if lastLineLen+len(word) > 32 {
+			if lastLineLen+len(word) > 40 {
 				out.WriteString("\n")
 				lastLineLen = len(word)
 			} else {

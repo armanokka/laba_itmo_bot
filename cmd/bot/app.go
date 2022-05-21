@@ -10,6 +10,7 @@ import (
 	"github.com/armanokka/translobot/pkg/botapi"
 	"github.com/armanokka/translobot/pkg/dashbot"
 	"github.com/armanokka/translobot/pkg/errors"
+	"github.com/armanokka/translobot/pkg/helpers"
 	translate2 "github.com/armanokka/translobot/pkg/translate"
 	"github.com/armanokka/translobot/repos"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -21,6 +22,7 @@ import (
 	"runtime/debug"
 	"strconv"
 	"sync"
+	"time"
 )
 
 //TODO: заменить fuzzywuzzy и отпрофилировать бота, чтобы убрать утечки памяти
@@ -142,97 +144,93 @@ func (app App) Run(ctx context.Context) error {
 				app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Panic:"+fmt.Sprint(err)))
 			}
 		}()
-		fmt.Println("чекаем не завалялась ли рассылка")
-		exists, err := app.db.MailingExists()
+		keyboard := tgbotapi.InlineKeyboardMarkup{}
+		k, err := app.bc.Get([]byte("mailing_keyboard_raw_text"))
+		if err != nil && !errors.Is(err, bitcask.ErrKeyNotFound) {
+			return err
+		}
+		keyboard = parseKeyboard(string(k))
+
+		app.bot.Send(tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:                   config.AdminID,
+				ChannelUsername:          "",
+				ReplyToMessageID:         0,
+				ReplyMarkup:              tgbotapi.NewRemoveKeyboard(false),
+				DisableNotification:      false,
+				AllowSendingWithoutReply: false,
+			},
+			Text:                  "рассылка начата",
+			ParseMode:             "",
+			Entities:              nil,
+			DisableWebPagePreview: false,
+		})
+
+		mailingMessageId, err := app.bc.Get([]byte("mailing_message_id"))
+		if err != nil {
+			if errors.Is(err, bitcask.ErrKeyNotFound) {
+				return err
+			}
+			return nil
+		}
+		mailingMessageIdInt, err := strconv.Atoi(string(mailingMessageId))
 		if err != nil {
 			return err
 		}
-		if exists {
-			pp.Println("рассылка есть, продолжаю")
 
-			mailingMessageIDBytes, err := app.bc.Get([]byte("mailing_message_id"))
-			if err != nil {
-				return err
-			}
-			mailingMessageID, err := strconv.Atoi(string(mailingMessageIDBytes))
-			if err != nil {
-				return err
-			}
-			mailing_keyboard_raw_text, err := app.bc.Get([]byte("mailing_keyboard_raw_text"))
-			if err != nil && !errors.Is(err, bitcask.ErrKeyNotFound) {
-				return errors.Wrap(err)
-			}
-			keyboard := parseKeyboard(string(mailing_keyboard_raw_text))
-			withKeyboard := false
-			if len(keyboard.InlineKeyboard) > 0 {
-				withKeyboard = true
-			}
+		app.bot.Send(tgbotapi.CopyMessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:                   config.AdminID,
+				ChannelUsername:          "",
+				ReplyToMessageID:         0,
+				ReplyMarkup:              &keyboard,
+				DisableNotification:      false,
+				AllowSendingWithoutReply: false,
+			},
+			FromChatID:          config.AdminID,
+			FromChannelUsername: "",
+			MessageID:           mailingMessageIdInt,
+			Caption:             "",
+			ParseMode:           "",
+			CaptionEntities:     nil,
+		})
 
-			rows, err := app.db.GetMailersRows()
-			if err != nil {
-				return err
-			}
-			defer rows.Close()
-			for rows.Next() {
-				var id int64
-				if rows.Err() != nil {
-					return rows.Err()
-				}
-				if err = rows.Scan(&id); err != nil {
-					return err
-				}
-				if withKeyboard {
-					if _, err = app.bot.Send(tgbotapi.CopyMessageConfig{
-						BaseChat: tgbotapi.BaseChat{
-							ChatID:                   id,
-							ChannelUsername:          "",
-							ReplyToMessageID:         0,
-							ReplyMarkup:              keyboard,
-							DisableNotification:      false,
-							AllowSendingWithoutReply: false,
-						},
-						FromChatID:          config.AdminID,
-						FromChannelUsername: "",
-						MessageID:           mailingMessageID,
-						Caption:             "",
-						ParseMode:           "",
-						CaptionEntities:     nil,
-					}); err != nil {
-						return err
-					}
-				} else {
-					if _, err = app.bot.Send(tgbotapi.CopyMessageConfig{
-						BaseChat: tgbotapi.BaseChat{
-							ChatID:                   id,
-							ChannelUsername:          "",
-							ReplyToMessageID:         0,
-							ReplyMarkup:              nil,
-							DisableNotification:      false,
-							AllowSendingWithoutReply: false,
-						},
-						FromChatID:          config.AdminID,
-						FromChannelUsername: "",
-						MessageID:           mailingMessageID,
-						Caption:             "",
-						ParseMode:           "",
-						CaptionEntities:     nil,
-					}); err != nil {
-						return err
-					}
-				}
-
-				if err = app.db.DeleteMailuser(id); err != nil {
-					return err
-				}
-			}
-
-			if err = app.db.DropMailings(); err != nil {
-				return err
-			}
-			app.bot.Send(tgbotapi.NewMessage(config.AdminID, "рассылка закончена"))
-		} else {
-			fmt.Println("рассылок нет")
+		usersNumber, err := app.db.GetUsersNumber()
+		if err != nil {
+			return err
 		}
+
+		slice := make([]int64, 0, 100)
+		var i int64
+		for ; usersNumber/100 < i; i++ { // iterate over each 100 users
+			offset := i*100 + 100
+			if err = app.db.GetUsersSlice(offset, 100, slice); err != nil {
+				return err
+			}
+			for j := 0; j < 100; j++ {
+				if _, err = app.bot.Send(tgbotapi.CopyMessageConfig{
+					BaseChat: tgbotapi.BaseChat{
+						ChatID:                   slice[j],
+						ChannelUsername:          "",
+						ReplyToMessageID:         0,
+						ReplyMarkup:              &keyboard,
+						DisableNotification:      false,
+						AllowSendingWithoutReply: false,
+					},
+					FromChatID:          config.AdminID,
+					FromChannelUsername: "",
+					MessageID:           mailingMessageIdInt,
+					Caption:             "",
+					ParseMode:           "",
+					CaptionEntities:     nil,
+				}); err != nil {
+					pp.Println(err)
+				}
+				app.log.Info("mailing was sent", zap.Int64("recepient_id", slice[j]), zap.Int64("queue_position", i*100+int64(j)))
+			}
+		}
+
+		app.bot.Send(tgbotapi.NewMessage(config.AdminID, "рассылка закончена"))
 		return nil
 	})
 	return g.Wait()
@@ -264,7 +262,7 @@ func (app App) notifyAdmin(args ...interface{}) {
 	}
 }
 
-func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int64, from, to, text string, replyToMessageID int, userMessage tgbotapi.Message) error {
+func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int64, from, to, text string, userMessage tgbotapi.Message) error {
 	log := app.log.With(zap.String("from", from), zap.String("to", to), zap.String("text", text), zap.Int64("chat_id", chatID))
 	if user.ID == 0 {
 		user.ID = chatID
@@ -316,19 +314,17 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 		err error
 	)
 	g.Go(func() error {
-		tr, err = app.translate(ctx, user, from, to, text) // examples мы сохраняем, чтобы соединить с keyboard.Examples и положить в кэш
+		tr, from, err = app.translate(ctx, from, to, text) // examples мы сохраняем, чтобы соединить с keyboard.Examples и положить в кэш
+		tr = replace(to, tr)
 		return errors.Wrap(err)
 	})
 
 	if err = g.Wait(); err != nil {
 		return err
 	}
-
+	time.Sleep(time.Second / 2)
 	chunks := translate2.SplitIntoChunksBySentences(tr, 4000)
-	for i, chunk := range chunks {
-		if i > 0 {
-			replyToMessageID = 0
-		}
+	for _, chunk := range chunks {
 		switch {
 		case userMessage.Poll != nil:
 			options := make([]string, 0, len(userMessage.Poll.Options))
@@ -338,7 +334,7 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 			_, err = app.bot.Send(tgbotapi.SendPollConfig{
 				BaseChat: tgbotapi.BaseChat{
 					ChatID:           chatID,
-					ReplyToMessageID: replyToMessageID,
+					ReplyToMessageID: 0,
 					ReplyMarkup:      userMessage.ReplyMarkup,
 				},
 				Question:              userMessage.Poll.Question,
@@ -363,7 +359,7 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 				BaseFile: tgbotapi.BaseFile{
 					BaseChat: tgbotapi.BaseChat{
 						ChatID:           chatID,
-						ReplyToMessageID: replyToMessageID,
+						ReplyToMessageID: 0,
 						ReplyMarkup:      userMessage.ReplyMarkup,
 					},
 					File: tgbotapi.FileID(userMessage.Audio.FileID),
@@ -376,13 +372,13 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 				Title:     userMessage.Audio.Title,
 			})
 		case len(userMessage.Photo) > 0:
+			chunk = helpers.CutStringUTF16(chunk, 1024) // MEDIA_CAPTION_TOO_LONG
 			maxResolutionPhoto := userMessage.Photo[len(userMessage.Photo)-1]
 			_, err = app.bot.Send(tgbotapi.PhotoConfig{
 				BaseFile: tgbotapi.BaseFile{
 					BaseChat: tgbotapi.BaseChat{
-						ChatID:           chatID,
-						ReplyToMessageID: replyToMessageID,
-						ReplyMarkup:      userMessage.ReplyMarkup,
+						ChatID:      chatID,
+						ReplyMarkup: userMessage.ReplyMarkup,
 					},
 					File: tgbotapi.FileID(maxResolutionPhoto.FileID),
 				},
@@ -390,20 +386,30 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 				ParseMode: tgbotapi.ModeHTML,
 			})
 		default:
+			chunk += "\n<a href=\"https://t.me/translobot\">Translo</a>"
+			var keyboard interface{}
+			if userMessage.ReplyToMessage == nil {
+				keyboard = tgbotapi.NewReplyKeyboard(
+					tgbotapi.NewKeyboardButtonRow(
+						tgbotapi.NewKeyboardButton(langs[user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
+						tgbotapi.NewKeyboardButton("↔️"),
+						tgbotapi.NewKeyboardButton(langs[user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji)))
+			} else {
+				keyboard = userMessage.ReplyMarkup
+			}
 			_, err = app.bot.Send(tgbotapi.MessageConfig{
 				BaseChat: tgbotapi.BaseChat{
-					ChatID:           chatID,
-					ReplyToMessageID: replyToMessageID,
-					ReplyMarkup:      userMessage.ReplyMarkup,
+					ChatID:      chatID,
+					ReplyMarkup: keyboard,
 				},
 				Text:                  chunk,
 				ParseMode:             tgbotapi.ModeHTML,
 				Entities:              nil,
-				DisableWebPagePreview: false,
+				DisableWebPagePreview: true,
 			})
 		}
 		if err != nil {
-			log.Error("", zap.Error(err))
+			log.Error("", zap.Error(err), zap.String("translation", chunk))
 			return err
 		}
 

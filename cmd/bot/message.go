@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/text/unicode/norm"
 	"gorm.io/gorm"
+	"math/rand"
 	"os"
 	"runtime/debug"
 	"strconv"
@@ -58,45 +59,53 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	user, err = app.db.GetUserByID(message.From.ID)
 	if err != nil {
 		if errors.Is(gorm.ErrRecordNotFound, err) {
-			if message.From.LanguageCode == "" {
+			tolang := ""
+			if message.From.LanguageCode == "" || message.From.LanguageCode == "en" {
 				message.From.LanguageCode = "en"
+				tolang = "ru"
+			} else if message.From.LanguageCode == "ru" {
+				tolang = "en"
 			}
-			err = app.db.CreateUser(tables.Users{
+			if err = app.db.CreateUser(tables.Users{
 				ID:           message.From.ID,
-				MyLang:       "",
-				ToLang:       "",
-				Act:          "setup_langs",
+				MyLang:       message.From.LanguageCode,
+				ToLang:       tolang,
+				Act:          "",
 				Usings:       0,
 				Blocked:      false,
 				LastActivity: time.Now(),
-			})
-			if err != nil {
+			}); err != nil {
 				warn(err)
 				return
 			}
+			user.MyLang = message.From.LanguageCode
+			user.ToLang = tolang
 
 		} else {
 			warn(err)
 		}
 	}
 	user.SetLang(message.From.LanguageCode)
-	log = log.With(zap.String("my_lang", user.MyLang), zap.String("to_lang", user.ToLang), zap.Int("usings", user.Usings))
-
+	log = log.With(zap.String("my_lang", user.MyLang), zap.String("to_lang", user.ToLang))
 	switch message.Command() {
 	case "start":
 		app.bot.Send(tgbotapi.MessageConfig{
 			BaseChat: tgbotapi.BaseChat{
-				ChatID:                   message.From.ID,
-				ChannelUsername:          "",
-				ReplyToMessageID:         0,
-				ReplyMarkup:              tgbotapi.NewRemoveKeyboard(true),
+				ChatID:           message.From.ID,
+				ChannelUsername:  "",
+				ReplyToMessageID: 0,
+				ReplyMarkup: tgbotapi.NewReplyKeyboard(
+					tgbotapi.NewKeyboardButtonRow(
+						tgbotapi.NewKeyboardButton(langs[message.From.LanguageCode][user.MyLang]+" "+flags[user.MyLang].Emoji),
+						tgbotapi.NewKeyboardButton("↔️"),
+						tgbotapi.NewKeyboardButton(langs[message.From.LanguageCode][user.ToLang]+" "+flags[user.ToLang].Emoji))),
 				DisableNotification:      true,
 				AllowSendingWithoutReply: false,
 			},
 			Text: user.Localize("Просто напиши мне текст, а я его переведу"),
 		})
 
-		if err = app.db.UpdateUser(message.From.ID, tables.Users{Act: "setup_langs"}); err != nil {
+		if err = app.db.UpdateUser(message.From.ID, tables.Users{Act: ""}); err != nil {
 			warn(err)
 		}
 		return
@@ -212,6 +221,58 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 
+	switch message.Text {
+	case "↔️":
+		if err = app.db.SwapLangs(message.Chat.ID); err != nil {
+			panic(err)
+		}
+		user.MyLang, user.ToLang = user.ToLang, user.MyLang
+		app.bot.Send(tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID: message.From.ID,
+				ReplyMarkup: tgbotapi.NewReplyKeyboard(
+					tgbotapi.NewKeyboardButtonRow(
+						tgbotapi.NewKeyboardButton(langs[message.From.LanguageCode][user.MyLang]+" "+flags[user.MyLang].Emoji),
+						tgbotapi.NewKeyboardButton("↔️"),
+						tgbotapi.NewKeyboardButton(langs[message.From.LanguageCode][user.ToLang]+" "+flags[user.ToLang].Emoji))),
+			},
+			Text: user.Localize("Просто напиши мне текст, а я его переведу"),
+		})
+		return
+	case concatNonEmpty(" ", langs[message.From.LanguageCode][user.MyLang], flags[user.MyLang].Emoji):
+		kb, err := buildLangsPagination(user, 0, 18, "",
+			fmt.Sprintf("set_my_lang:%s:%d", "%s", 0),
+			fmt.Sprintf("set_my_lang_pagination:%d", 0),
+			fmt.Sprintf("set_my_lang_pagination:%d", 18))
+		if err != nil {
+			warn(err)
+		}
+		app.bot.Send(tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:      message.Chat.ID,
+				ReplyMarkup: kb,
+			},
+			Text: user.Localize("Choose language"),
+		})
+		return
+	case concatNonEmpty(" ", langs[message.From.LanguageCode][user.ToLang], flags[user.ToLang].Emoji):
+		kb, err := buildLangsPagination(user, 0, 18, "",
+			fmt.Sprintf("set_to_lang:%s:%d", "%s", 0),
+			fmt.Sprintf("set_to_lang_pagination:%d", 0),
+			fmt.Sprintf("set_to_lang_pagination:%d", 18))
+		if err != nil {
+			warn(err)
+		}
+		app.bot.Send(tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:      message.Chat.ID,
+				ReplyMarkup: kb,
+			},
+			Text: user.Localize("Choose language"),
+		})
+		return
+	}
+
 	switch user.Act {
 	case "mailing":
 		if err = app.bc.Put([]byte("mailing_message_id"), []byte(strconv.Itoa(message.MessageID))); err != nil {
@@ -239,18 +300,15 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		})
 		return
 	case "mailing_keyboards":
-		keyboard := &tgbotapi.InlineKeyboardMarkup{}
+		keyboard := tgbotapi.InlineKeyboardMarkup{}
 		if message.Text != "Empty" {
 			keyboard = parseKeyboard(message.Text)
-			if err = app.bc.Put([]byte("mailing_keyboard_raw_text"), []byte(strconv.Itoa(message.MessageID))); err != nil {
+			if err = app.bc.Put([]byte("mailing_keyboard_raw_text"), []byte(message.Text)); err != nil {
 				warn(err)
 				return
 			}
 		}
-		var withKeyboard bool
-		if len(keyboard.InlineKeyboard) > 0 {
-			withKeyboard = true
-		}
+
 		if err := app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": ""}); err != nil {
 			warn(err)
 			return
@@ -269,14 +327,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			Entities:              nil,
 			DisableWebPagePreview: false,
 		})
-		if err = app.db.DropMailings(); err != nil {
-			warn(err)
-			return
-		}
-		if err = app.db.CreateMailingTable(); err != nil {
-			warn(err)
-			return
-		}
 
 		mailingMessageId, err := app.bc.Get([]byte("mailing_message_id"))
 		if err != nil {
@@ -289,138 +339,60 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			return
 		}
 
-		if withKeyboard {
-			app.bot.Send(tgbotapi.CopyMessageConfig{
-				BaseChat: tgbotapi.BaseChat{
-					ChatID:                   message.From.ID,
-					ChannelUsername:          "",
-					ReplyToMessageID:         0,
-					ReplyMarkup:              keyboard,
-					DisableNotification:      false,
-					AllowSendingWithoutReply: false,
-				},
-				FromChatID:          config.AdminID,
-				FromChannelUsername: "",
-				MessageID:           mailingMessageIdInt,
-				Caption:             "",
-				ParseMode:           "",
-				CaptionEntities:     nil,
-			})
-		} else {
-			app.bot.Send(tgbotapi.CopyMessageConfig{
-				BaseChat: tgbotapi.BaseChat{
-					ChatID:                   message.From.ID,
-					ChannelUsername:          "",
-					ReplyToMessageID:         0,
-					ReplyMarkup:              nil,
-					DisableNotification:      false,
-					AllowSendingWithoutReply: false,
-				},
-				FromChatID:          config.AdminID,
-				FromChannelUsername: "",
-				MessageID:           mailingMessageIdInt,
-				Caption:             "",
-				ParseMode:           "",
-				CaptionEntities:     nil,
-			})
-		}
-
-		rows, err := app.db.GetMailersRows()
-		if err != nil {
-			warn(err)
-			return
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var id int64
-			if err = rows.Scan(&id); err != nil {
-				warn(err)
-				return
-			}
-			if withKeyboard {
-				if _, err = app.bot.Send(tgbotapi.CopyMessageConfig{
-					BaseChat: tgbotapi.BaseChat{
-						ChatID:                   id,
-						ChannelUsername:          "",
-						ReplyToMessageID:         0,
-						ReplyMarkup:              keyboard,
-						DisableNotification:      false,
-						AllowSendingWithoutReply: false,
-					},
-					FromChatID:          config.AdminID,
-					FromChannelUsername: "",
-					MessageID:           mailingMessageIdInt,
-					Caption:             "",
-					ParseMode:           "",
-					CaptionEntities:     nil,
-				}); err != nil {
-					pp.Println(err)
-				}
-			} else {
-				if _, err = app.bot.Send(tgbotapi.CopyMessageConfig{
-					BaseChat: tgbotapi.BaseChat{
-						ChatID:                   id,
-						ChannelUsername:          "",
-						ReplyToMessageID:         0,
-						ReplyMarkup:              nil,
-						DisableNotification:      false,
-						AllowSendingWithoutReply: false,
-					},
-					FromChatID:          config.AdminID,
-					FromChannelUsername: "",
-					MessageID:           mailingMessageIdInt,
-					Caption:             "",
-					ParseMode:           "",
-					CaptionEntities:     nil,
-				}); err != nil {
-					pp.Println(err)
-				}
-			}
-
-			if err = app.db.DeleteMailuser(id); err != nil {
-				warn(err)
-			}
-			time.Sleep(time.Second / 20)
-		}
-		err = app.db.DropMailings()
-		if err != nil {
-			warn(err)
-			return
-		}
-		app.bot.Send(tgbotapi.NewMessage(message.From.ID, "рассылка закончена"))
-		return
-	case "setup_langs":
-		if message.Text == "" {
-			app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, user.Localize("Отправь текстовое сообщение, чтобы я его перевел")))
-			return
-		}
-		tr, err := translate.GoogleTranslate(ctx, "auto", "en", cutStringUTF16(message.Text, 100))
-		if err != nil {
-			warn(err)
-			return
-		}
-		//app.SuperTranslate(ctx, user, message.Chat.ID, from, to, text, entities)
-
-		keyboard, err := buildLangsPagination(user, 0, 18, tr.FromLang, fmt.Sprintf("setup_langs:%s:%s", tr.FromLang, "%s"), fmt.Sprintf("setup_langs_pagination:%s:0", tr.FromLang), fmt.Sprintf("setup_langs_pagination:%s:18", tr.FromLang), fmt.Sprintf("choose_another_lang:%s", tr.FromLang))
-		if err != nil {
-			warn(err)
-		}
-		if _, err = app.bot.Send(tgbotapi.MessageConfig{
+		app.bot.Send(tgbotapi.CopyMessageConfig{
 			BaseChat: tgbotapi.BaseChat{
 				ChatID:                   message.From.ID,
 				ChannelUsername:          "",
-				ReplyToMessageID:         message.MessageID,
-				ReplyMarkup:              keyboard,
-				DisableNotification:      true,
+				ReplyToMessageID:         0,
+				ReplyMarkup:              &keyboard,
+				DisableNotification:      false,
 				AllowSendingWithoutReply: false,
 			},
-			Text:                  user.Localize("На какой язык перевести?"),
-			ParseMode:             "",
-			Entities:              nil,
-			DisableWebPagePreview: true,
-		}); err != nil {
-			pp.Println(err)
+			FromChatID:          config.AdminID,
+			FromChannelUsername: "",
+			MessageID:           mailingMessageIdInt,
+			Caption:             "",
+			ParseMode:           "",
+			CaptionEntities:     nil,
+		})
+
+		usersNumber, err := app.db.GetUsersNumber()
+		if err != nil {
+			return
 		}
+
+		slice := make([]int64, 0, 100)
+		var i int64
+		for ; usersNumber/100 < i; i++ { // iterate over each 100 users
+			offset := i*100 + 100
+			if err = app.db.GetUsersSlice(offset, 100, slice); err != nil {
+				warn(err)
+				return
+			}
+			for j := 0; j < 100; j++ {
+				if _, err = app.bot.Send(tgbotapi.CopyMessageConfig{
+					BaseChat: tgbotapi.BaseChat{
+						ChatID:                   slice[j],
+						ChannelUsername:          "",
+						ReplyToMessageID:         0,
+						ReplyMarkup:              &keyboard,
+						DisableNotification:      false,
+						AllowSendingWithoutReply: false,
+					},
+					FromChatID:          config.AdminID,
+					FromChannelUsername: "",
+					MessageID:           mailingMessageIdInt,
+					Caption:             "",
+					ParseMode:           "",
+					CaptionEntities:     nil,
+				}); err != nil {
+					pp.Println(err)
+				}
+				log.Info("mailing was sent", zap.Int64("recepient_id", slice[j]), zap.Int64("queue_position", i*100+int64(j)))
+			}
+		}
+
+		app.bot.Send(tgbotapi.NewMessage(message.From.ID, "рассылка закончена"))
 		return
 	}
 
@@ -464,7 +436,10 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		entities = message.CaptionEntities
 	}
 	text = applyEntitiesHtml(norm.NFKC.String(text), entities)
-	if err = app.SuperTranslate(ctx, user, message.Chat.ID, from, to, text, message.MessageID, message); err != nil && !errors.Is(err, context.Canceled) {
+	app.bot.Send(tgbotapi.NewChatAction(message.From.ID, "typing"))
+	rand.Seed(time.Now().UnixNano())
+	time.Sleep(time.Millisecond * time.Duration(rand.Intn(3500)+1500)) // 1.5-5s
+	if err = app.SuperTranslate(ctx, user, message.Chat.ID, from, to, text, message); err != nil && !errors.Is(err, context.Canceled) {
 		err = fmt.Errorf("%s\nuser's text:%s", err.Error(), text)
 		warn(err)
 		if e, ok := err.(errors.Error); ok {

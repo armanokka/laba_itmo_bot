@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/armanokka/translobot/pkg/errors"
+	"github.com/armanokka/translobot/pkg/helpers"
 	"github.com/go-resty/resty/v2"
 	"github.com/k0kubun/pp"
 	"github.com/tidwall/gjson"
@@ -110,15 +111,21 @@ func detectLanguageGoogle(ctx context.Context, text string) (string, error) {
 	req.Header["sec-ch-ua"] = []string{`" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"`}
 	req.Header["user-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.101 Safari/537.36"}
 
-	res, err := http.DefaultClient.Do(req)
-
-	if res.StatusCode != 200 {
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode != 200 {
 		return "", HTTPError{
-			Code:        res.StatusCode,
-			Description: "detectLanguageGoogle: non 200 http code",
+			Code:        resp.StatusCode,
+			Description: "detectLanguageGoogle: non 200 http code\n" + string(body),
 		}
 	}
-	doc, err := goquery.NewDocumentFromReader(res.Body)
+	doc, err := goquery.NewDocumentFromReader(bytes.NewBuffer(body))
 	if err != nil {
 		return "", err
 	}
@@ -559,6 +566,9 @@ func ReversoTranslate(ctx context.Context, from, to, text string) (ReversoTransl
 		return ReversoTranslation{}, err
 	}
 	if res.StatusCode != 200 {
+		if res.StatusCode == 403 {
+			return ReversoTranslation{}, nil
+		}
 		return ReversoTranslation{}, fmt.Errorf("Not 200 CODE from Reverso [%d]\n%s->%s,text:%s\nresponse:%s", res.StatusCode, from, to, text, string(body))
 	}
 
@@ -745,6 +755,10 @@ type MicrosoftTranslation struct {
 }
 
 func MicrosoftTranslate(ctx context.Context, from, to, text string) (MicrosoftTranslation, error) { // с помощью расширения Mate Translate
+	if helpers.In(MicrosoftUnsupportedLanguages, from, to) {
+		return MicrosoftTranslation{}, ErrLangNotSupported
+	}
+	ctx, _ = context.WithTimeout(ctx, time.Second*5)
 	params := url.Values{}
 	params.Set("appId", `"000000000A9F426B41914349A3EC94D7073FF941"`)
 	texts, err := json.Marshal(strings.Split(text, "."))
@@ -788,9 +802,12 @@ func MicrosoftTranslate(ctx context.Context, from, to, text string) (MicrosoftTr
 
 	i := bytes.Index(body, []byte("["))
 	if i == -1 {
-		time.Sleep(time.Second)
-		return MicrosoftTranslate(ctx, from, to, text)
-		//return MicrosoftTranslation{}, fmt.Errorf("%s", body)
+		response := string(body)
+		//if strings.HasPrefix(strings.TrimSpace(response), `"ArgumentOutOfRangeException: 'from' must be a valid language`) {
+		//	return MicrosoftTranslation{}, nil
+		//}
+		//fmt.Println(string(body))
+		return MicrosoftTranslation{}, fmt.Errorf("MicrosoftTranslate [%d]: bytes.Index(body, \"[\" not found:%s->%s\ntext:%s\nresponse:%s", resp.StatusCode, from, to, text, response)
 	}
 	body = body[i:]
 

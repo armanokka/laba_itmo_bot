@@ -1,6 +1,7 @@
 package botdb
 
 import (
+	"fmt"
 	"github.com/armanokka/translobot/internal/tables"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -61,4 +62,24 @@ func (db BotDB) UpdateUserMetrics(id int64, message string) error {
 	}
 
 	return db.LogUserMessage(id, message)
+}
+
+func (db BotDB) GetUsersNumber() (num int64, err error) {
+	err = db.Model(&tables.Users{}).Raw("SELECT COUNT(*) FROM users").Find(&num).Error
+	return
+}
+
+func (db BotDB) GetUsersSlice(offset, count int64, slice []int64) (err error) {
+	err = db.Model(&tables.Users{}).Raw("SELECT id FROM users OFFSET ? LIMIT ? ORDER BY id DESC", offset, count).Find(&slice).Error
+	return
+}
+
+var ErrNoRowsAffected = fmt.Errorf("no rows affected")
+
+func (db BotDB) SwapLangs(userID int64) error {
+	query := db.Model(&tables.Users{}).Exec("UPDATE users SET my_lang=(@temp:=my_lang), my_lang = to_lang, to_lang = @temp WHERE id = ?", userID)
+	if query.RowsAffected != 1 {
+		return ErrNoRowsAffected
+	}
+	return query.Error
 }
