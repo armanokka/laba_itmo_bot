@@ -438,7 +438,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	text = applyEntitiesHtml(norm.NFKC.String(text), entities)
 	app.bot.Send(tgbotapi.NewChatAction(message.From.ID, "typing"))
 	rand.Seed(time.Now().UnixNano())
-	time.Sleep(time.Millisecond * time.Duration(rand.Intn(3500)+1500)) // 1.5-5s
+	time.Sleep(time.Millisecond * time.Duration(rand.Intn(1500)+1500)) // 1.5-3s
 	if err = app.SuperTranslate(ctx, user, message.Chat.ID, from, to, text, message); err != nil && !errors.Is(err, context.Canceled) {
 		err = fmt.Errorf("%s\nuser's text:%s", err.Error(), text)
 		warn(err)

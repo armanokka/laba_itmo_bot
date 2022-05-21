@@ -48,7 +48,7 @@ func main() {
 	}()
 
 	db := config.DB()
-	arangodb := config.ArangoDB() // yUY2EePG
+	arangodb := config.ArangoDB()
 	botAPI := config.BotAPI()
 
 	if _, err := net.DialTimeout("tcp", net.JoinHostPort("127.0.0.1", "8081"), time.Second); err == nil {
