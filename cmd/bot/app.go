@@ -140,13 +140,16 @@ func (app App) Run(ctx context.Context) error {
 	g.Go(func() error {
 		defer func() {
 			if err := recover(); err != nil {
-				app.log.Error("%w", zap.Any("error", err))
+				app.log.Error("", zap.Any("error", err))
 				app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Panic:"+fmt.Sprint(err)))
 			}
 		}()
 		keyboard := tgbotapi.InlineKeyboardMarkup{}
 		k, err := app.bc.Get([]byte("mailing_keyboard_raw_text"))
-		if err != nil && !errors.Is(err, bitcask.ErrKeyNotFound) {
+		if err != nil {
+			if errors.Is(err, bitcask.ErrKeyNotFound) {
+				return nil
+			}
 			return err
 		}
 		keyboard = parseKeyboard(string(k))
@@ -169,9 +172,9 @@ func (app App) Run(ctx context.Context) error {
 		mailingMessageId, err := app.bc.Get([]byte("mailing_message_id"))
 		if err != nil {
 			if errors.Is(err, bitcask.ErrKeyNotFound) {
-				return err
+				return nil
 			}
-			return nil
+			return err
 		}
 		mailingMessageIdInt, err := strconv.Atoi(string(mailingMessageId))
 		if err != nil {
