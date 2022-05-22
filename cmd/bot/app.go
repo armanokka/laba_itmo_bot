@@ -316,6 +316,7 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 	g.Go(func() error {
 		tr, from, err = app.translate(ctx, from, to, text) // examples мы сохраняем, чтобы соединить с keyboard.Examples и положить в кэш
 		tr = replace(to, tr)
+		tr += "\n❤️ @TransloBot"
 		return errors.Wrap(err)
 	})
 
@@ -386,7 +387,6 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 				ParseMode: tgbotapi.ModeHTML,
 			})
 		default:
-			chunk += "\n<a href=\"https://t.me/translobot\">Translo</a>"
 			var keyboard interface{}
 			if userMessage.ReplyToMessage == nil {
 				keyboard = tgbotapi.NewReplyKeyboard(

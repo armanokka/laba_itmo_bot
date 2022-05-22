@@ -12,7 +12,6 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/text/unicode/norm"
 	"gorm.io/gorm"
-	"math/rand"
 	"os"
 	"runtime/debug"
 	"strconv"
@@ -89,6 +88,11 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	log = log.With(zap.String("my_lang", user.MyLang), zap.String("to_lang", user.ToLang))
 	switch message.Command() {
 	case "start":
+		// UtyaDuck 👋
+		if _, err = app.bot.Send(tgbotapi.NewSticker(message.From.ID, tgbotapi.FileID("CAACAgIAAxkBAAEP5rViieLUfMyMYArLNLl12AOggTEAAVAAAgEBAAJWnb0KIr6fDrjC5jQkBA"))); err != nil {
+			warn(err)
+			return
+		}
 		app.bot.Send(tgbotapi.MessageConfig{
 			BaseChat: tgbotapi.BaseChat{
 				ChatID:           message.From.ID,
@@ -236,7 +240,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 						tgbotapi.NewKeyboardButton("↔️"),
 						tgbotapi.NewKeyboardButton(langs[message.From.LanguageCode][user.ToLang]+" "+flags[user.ToLang].Emoji))),
 			},
-			Text: user.Localize("Просто напиши мне текст, а я его переведу"),
+			Text: "OK",
 		})
 		return
 	case concatNonEmpty(" ", langs[message.From.LanguageCode][user.MyLang], flags[user.MyLang].Emoji):
@@ -437,8 +441,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	}
 	text = applyEntitiesHtml(norm.NFKC.String(text), entities)
 	app.bot.Send(tgbotapi.NewChatAction(message.From.ID, "typing"))
-	rand.Seed(time.Now().UnixNano())
-	time.Sleep(time.Millisecond * time.Duration(rand.Intn(1500)+1500)) // 1.5-3s
 	if err = app.SuperTranslate(ctx, user, message.Chat.ID, from, to, text, message); err != nil && !errors.Is(err, context.Canceled) {
 		err = fmt.Errorf("%s\nuser's text:%s", err.Error(), text)
 		warn(err)
