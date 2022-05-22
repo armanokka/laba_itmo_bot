@@ -239,7 +239,8 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	switch message.Text {
 	case "↔️":
 		if err = app.db.SwapLangs(message.Chat.ID); err != nil {
-			panic(err)
+			warn(err)
+			return
 		}
 		user.MyLang, user.ToLang = user.ToLang, user.MyLang
 		app.bot.Send(tgbotapi.MessageConfig{
@@ -257,7 +258,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	case concatNonEmpty(" ", langs[message.From.LanguageCode][user.MyLang], flags[user.MyLang].Emoji):
 		kb, err := buildLangsPagination(user, 0, 18, "",
 			fmt.Sprintf("set_my_lang:%s:%d", "%s", 0),
-			fmt.Sprintf("set_my_lang_pagination:%d", 0),
+			fmt.Sprintf("set_my_lang_pagination:%d", len(codes[user.Lang])/18*18),
 			fmt.Sprintf("set_my_lang_pagination:%d", 18))
 		if err != nil {
 			warn(err)
@@ -273,7 +274,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	case concatNonEmpty(" ", langs[message.From.LanguageCode][user.ToLang], flags[user.ToLang].Emoji):
 		kb, err := buildLangsPagination(user, 0, 18, "",
 			fmt.Sprintf("set_to_lang:%s:%d", "%s", 0),
-			fmt.Sprintf("set_to_lang_pagination:%d", 0),
+			fmt.Sprintf("set_to_lang_pagination:%d", len(codes[user.Lang])/18*18),
 			fmt.Sprintf("set_to_lang_pagination:%d", 18))
 		if err != nil {
 			warn(err)

@@ -11,14 +11,17 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
-	"time"
 )
 
 func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQuery) {
 	log := app.log.With(zap.Int64("id", callback.From.ID))
 	defer func() {
 		if err := recover(); err != nil {
-			log.Error("%w", zap.Any("error", err), zap.String("stack_trace", string(debug.Stack())))
+			if e, ok := err.(error); ok {
+				log.Error("", zap.Error(e))
+			} else {
+				log.Error("", zap.Any("error", err), zap.String("stack_trace", string(debug.Stack())))
+			}
 			app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Panic:"+fmt.Sprint(err)))
 		}
 	}()
@@ -78,45 +81,6 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		})
 		app.db.LogBotMessage(callback.From.ID, "cb_delete", "")
 		return
-	case "choose_another_lang": // arr[1] - lang
-		app.bot.Send(tgbotapi.NewCallbackWithAlert(callback.ID, user.Localize("Твое сообщение и так на %s языке. Выбери другой язык, на который надо переводить", langs[user.Lang][arr[1]])))
-	case "setup_langs": // arr[1] - source language, arr[2] - direction to translate, in replied message there is source text
-		if err := app.db.UpdateUserByMap(callback.From.ID, map[string]interface{}{
-			"my_lang":       arr[1],
-			"to_lang":       arr[2],
-			"last_activity": time.Now(),
-			"act":           "",
-		}); err != nil {
-			warn(err)
-			return
-		}
-		app.bot.Send(tgbotapi.NewDeleteMessage(callback.From.ID, callback.Message.MessageID))
-		if err = app.SuperTranslate(ctx, user, callback.From.ID, arr[1], arr[2], callback.Message.ReplyToMessage.Text, *callback.Message.ReplyToMessage); err != nil {
-			warn(err)
-			return
-		}
-		app.bot.Send(tgbotapi.NewCallback(callback.ID, ""))
-
-		//if _, err := app.bot.Send(tgbotapi.DocumentConfig{
-		//	BaseFile: tgbotapi.BaseFile{
-		//		BaseChat: tgbotapi.BaseChat{
-		//			ChatID:                   callback.From.ID,
-		//			ChannelUsername:          "",
-		//			ReplyToMessageID:         0,
-		//			ReplyMarkup:              nil,
-		//			DisableNotification:      false,
-		//			AllowSendingWithoutReply: false,
-		//		},
-		//		File: tgbotapi.FilePath("inline.gif"),
-		//	},
-		//	Thumb:                       nil,
-		//	Caption:                     user.Localize("Как переводить еще удобнее"),
-		//	ParseMode:                   "",
-		//	CaptionEntities:             nil,
-		//	DisableContentTypeDetection: false,
-		//}); err != nil {
-		//	pp.Println(err)
-		//}
 	case "set_my_lang": // arr[1] - lang, arr[2] - keyboard offset
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, "Translo"))
 		if err = app.db.UpdateUser(callback.From.ID, tables.Users{MyLang: arr[1]}); err != nil {
@@ -142,7 +106,9 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			fmt.Sprintf("set_my_lang_pagination:%d", back),
 			fmt.Sprintf("set_my_lang_pagination:%d", offset+18))
 		if err != nil {
+			log.Error("", zap.Error(err))
 			warn(err)
+			return
 		}
 		app.bot.Send(tgbotapi.EditMessageReplyMarkupConfig{
 			BaseEdit: tgbotapi.BaseEdit{
@@ -196,7 +162,9 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			fmt.Sprintf("set_to_lang_pagination:%d", back),
 			fmt.Sprintf("set_to_lang_pagination:%d", offset+18))
 		if err != nil {
+			log.Error("", zap.Error(err))
 			warn(err)
+			return
 		}
 		app.bot.Send(tgbotapi.EditMessageReplyMarkupConfig{
 			BaseEdit: tgbotapi.BaseEdit{
@@ -225,7 +193,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			warn(err)
 			return
 		}
-	case "set_my_lang_pagination": // arr[2] - offset to show
+	case "set_my_lang_pagination": // arr[1] - offset to show
 		offset, err := strconv.Atoi(arr[1])
 		if err != nil {
 			warn(err)
@@ -241,21 +209,24 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			count = len(codes[user.Lang]) - 1 - offset
 		}
 
-		if count == 0 {
-			app.bot.Send(tgbotapi.NewCallback(callback.ID, ""))
-			return
-		}
-
 		back := offset - 18
 		if back < 0 {
-			back = 0
+			back = 180
 		}
+
+		next := offset + 18
+		if next >= len(codes[user.Lang])-1 {
+			next = 0 // from start
+		}
+
 		kb, err := buildLangsPagination(user, offset, count, "",
 			fmt.Sprintf("set_my_lang:%s:%d", "%s", offset),
 			fmt.Sprintf("set_my_lang_pagination:%d", back),
-			fmt.Sprintf("set_my_lang_pagination:%d", offset+count))
+			fmt.Sprintf("set_my_lang_pagination:%d", next))
 		if err != nil {
+			log.Error("", zap.Error(err))
 			warn(err)
+			return
 		}
 
 		if reflect.DeepEqual(*callback.Message.ReplyMarkup, kb) {
@@ -302,21 +273,24 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			count = len(codes[user.Lang]) - 1 - offset
 		}
 
-		if count == 0 {
-			app.bot.Send(tgbotapi.NewCallback(callback.ID, ""))
-			return
-		}
-
 		back := offset - 18
 		if back < 0 {
-			back = 0
+			back = 180 // end
 		}
+
+		next := offset + 18
+		if next >= len(codes[user.Lang])-1 {
+			next = 0 // start
+		}
+
 		kb, err := buildLangsPagination(user, offset, count, "",
-			fmt.Sprintf("set_to_lang:%s:%d", "%s", offset),
-			fmt.Sprintf("set_to_lang_pagination:%d", back),
-			fmt.Sprintf("set_to_lang_pagination:%d", offset+count))
+			fmt.Sprintf("set_my_lang:%s:%d", "%s", offset),
+			fmt.Sprintf("set_my_lang_pagination:%d", back),
+			fmt.Sprintf("set_my_lang_pagination:%d", next))
 		if err != nil {
+			log.Error("", zap.Error(err))
 			warn(err)
+			return
 		}
 
 		if reflect.DeepEqual(*callback.Message.ReplyMarkup, kb) {

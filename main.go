@@ -13,11 +13,9 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/sync/errgroup"
-	"net"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 func main() {
@@ -51,10 +49,10 @@ func main() {
 	arangodb := config.ArangoDB()
 	botAPI := config.BotAPI()
 
-	if _, err := net.DialTimeout("tcp", net.JoinHostPort("127.0.0.1", "8081"), time.Second); err == nil {
-		fmt.Println("Set local bot API endpoint")
-		botAPI.SetAPIEndpoint("http://127.0.0.1:8081/bot%s/%s")
-	}
+	//if _, err := net.DialTimeout("tcp", net.JoinHostPort("127.0.0.1", "8081"), time.Second); err == nil {
+	//	fmt.Println("Set local bot API endpoint")
+	//	botAPI.SetAPIEndpoint("http://127.0.0.1:8081/bot%s/%s")
+	//}
 	analytics := config.Analytics()
 	bc, err := bitcask.Open("bitcask_db")
 	if err != nil {

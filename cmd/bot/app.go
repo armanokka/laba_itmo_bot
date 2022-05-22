@@ -17,12 +17,12 @@ import (
 	"github.com/k0kubun/pp"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
+	"html"
 	"os"
 	"regexp"
 	"runtime/debug"
 	"strconv"
 	"sync"
-	"time"
 )
 
 //TODO: заменить fuzzywuzzy и отпрофилировать бота, чтобы убрать утечки памяти
@@ -317,7 +317,7 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 		err error
 	)
 	g.Go(func() error {
-		tr, from, err = app.translate(ctx, from, to, text) // examples мы сохраняем, чтобы соединить с keyboard.Examples и положить в кэш
+		tr, from, err = app.translate(ctx, from, to, html.EscapeString(text)) // examples мы сохраняем, чтобы соединить с keyboard.Examples и положить в кэш
 		tr = replace(to, tr)
 		tr += "\n❤️ @TransloBot"
 		return errors.Wrap(err)
@@ -326,7 +326,7 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 	if err = g.Wait(); err != nil {
 		return err
 	}
-	time.Sleep(time.Second / 2)
+
 	chunks := translate2.SplitIntoChunksBySentences(tr, 4000)
 	for _, chunk := range chunks {
 		switch {

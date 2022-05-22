@@ -251,7 +251,6 @@ func buildLangsPagination(user tables.Users, offset int, count int, tickLang, bu
 		return tgbotapi.InlineKeyboardMarkup{}, nil
 	}
 	out := tgbotapi.NewInlineKeyboardMarkup()
-
 	for i, code := range codes[user.Lang][offset : offset+count] {
 		lang, ok := langs[user.Lang][code]
 		//if offset+count <= 18 {
@@ -283,7 +282,7 @@ func buildLangsPagination(user tables.Users, offset int, count int, tickLang, bu
 	}
 	out.InlineKeyboard = append(out.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
 		tgbotapi.NewInlineKeyboardButtonData("⬅️", buttonBackCallback),
-		tgbotapi.NewInlineKeyboardButtonData(strconv.Itoa(offset)+"/"+strconv.Itoa(len(codes[user.Lang])/18*18), buttonBackCallback),
+		tgbotapi.NewInlineKeyboardButtonData(strconv.Itoa(offset)+"/"+strconv.Itoa(len(codes[user.Lang])/18*18), "none"),
 		tgbotapi.NewInlineKeyboardButtonData("➡️", buttonNextCallback)))
 	return out, nil
 }
