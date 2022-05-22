@@ -11,7 +11,9 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -138,4 +140,50 @@ func detectLanguageYandex(ctx context.Context, text string) (string, error) {
 		return "", fmt.Errorf("detectLanguageYandex: %s\nBody:%s", out.Message, string(body))
 	}
 	return out.Lang, nil
+}
+
+func YandexQueryCorpus(ctx context.Context, from, to, text string) ([]string, error) {
+	pair := from + "-" + to
+	escaped := url.PathEscape(text)
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://dictionary.yandex.net/dicservice.json/queryCorpus?sid="+generateSid()+"&ui=ru&srv=tr-text&text="+escaped+"&type&lang="+pair+"&flags=1063&src="+escaped+"&dst&options=0&chunks=1&maxlen=200&v=2&yu=9456730081652787081&yum=1648283397624970429", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header["Accept"] = []string{"*/*"}
+	req.Header["Accept-Language"] = []string{"ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"}
+	req.Header["User-Agent"] = []string{"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36"}
+	req.Header["Origin"] = []string{"https://translate.yandex.ru"}
+	req.Header["Referrer"] = []string{"https://translate.yandex.ru/?lang=" + pair}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	if res.StatusCode != 200 {
+		return nil, fmt.Errorf("YandexDictionary error [HTTP %d]:%s->%s, text: %s, response:%s", res.StatusCode, from, to, text, string(body))
+	}
+	results := gjson.GetBytes(body, "result.examples").Array()
+	if len(results) == 0 {
+		return nil, nil
+		//return Dictionary{}, fmt.Errorf("word %s not found\n%s->%s\nresponse:%s", text, from, to, string(body))
+	}
+	examples := make([]string, 0, len(results))
+	for _, result := range results {
+		e := result.Get("dst").String()
+		e = strings.TrimSpace(strings.Trim(e, "–-"))
+		e = strings.NewReplacer("<", "<b>", ">", "</b>").Replace(e)
+		examples = append(examples, e)
+	}
+	sort.Slice(examples, func(i, j int) bool {
+		return len(examples[i]) < len(examples[j])
+	})
+	if len(examples) > 3 {
+		examples = examples[:3]
+	}
+	return examples, nil
 }

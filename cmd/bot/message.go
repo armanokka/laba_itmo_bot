@@ -86,14 +86,23 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	}
 	user.SetLang(message.From.LanguageCode)
 	log = log.With(zap.String("my_lang", user.MyLang), zap.String("to_lang", user.ToLang))
+
 	switch message.Command() {
 	case "start":
-		// UtyaDuck 👋
-		if _, err = app.bot.Send(tgbotapi.NewSticker(message.From.ID, tgbotapi.FileID("CAACAgIAAxkBAAEP5rViieLUfMyMYArLNLl12AOggTEAAVAAAgEBAAJWnb0KIr6fDrjC5jQkBA"))); err != nil {
-			warn(err)
-			return
+		if user.Blocked { // разбанил
+			app.analytics.User("{bot_was_UNblocked}", message.From)
+			app.bot.Send(tgbotapi.NewSticker(message.From.ID, tgbotapi.FileID("CAACAgIAAxkBAAEP5w5iif1KBEzJZ-6N49pvKBvTcz5BYwACBAEAAladvQreBNF6Zmb3bCQE")))
+			app.bot.Send(tgbotapi.NewMessage(message.From.ID, user.Localize("Рад видеть вас снова.\nС возвращением.")))
+			if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"blocked": false}); err != nil {
+				app.notifyAdmin(fmt.Errorf("%w", err))
+			}
+		} else {
+			if _, err = app.bot.Send(tgbotapi.NewSticker(message.From.ID, tgbotapi.FileID("CAACAgIAAxkBAAEP5rViieLUfMyMYArLNLl12AOggTEAAVAAAgEBAAJWnb0KIr6fDrjC5jQkBA"))); err != nil {
+				warn(err)
+			}
 		}
-		app.bot.Send(tgbotapi.MessageConfig{
+
+		if _, err = app.bot.Send(tgbotapi.MessageConfig{
 			BaseChat: tgbotapi.BaseChat{
 				ChatID:           message.From.ID,
 				ChannelUsername:  "",
@@ -107,7 +116,9 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				AllowSendingWithoutReply: false,
 			},
 			Text: user.Localize("Просто напиши мне текст, а я его переведу"),
-		})
+		}); err != nil {
+			warn(err)
+		}
 
 		if err = app.db.UpdateUser(message.From.ID, tables.Users{Act: ""}); err != nil {
 			warn(err)

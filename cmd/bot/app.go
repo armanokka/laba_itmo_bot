@@ -111,7 +111,12 @@ func (app App) Run(ctx context.Context) error {
 				wg.Add(1)
 				go func() {
 					defer wg.Done()
-					if update.Message != nil {
+					if update.MyChatMember != nil {
+						if update.MyChatMember.From.LanguageCode == "" || !in(config.BotLocalizedLangs, update.MyChatMember.From.LanguageCode) {
+							update.MyChatMember.From.LanguageCode = "en"
+						}
+						app.onMyChatMember(*update.MyChatMember)
+					} else if update.Message != nil {
 						if update.Message.From.LanguageCode == "" || !in(config.BotLocalizedLangs, update.Message.From.LanguageCode) {
 							update.Message.From.LanguageCode = "en"
 						}
@@ -126,11 +131,6 @@ func (app App) Run(ctx context.Context) error {
 							update.InlineQuery.From.LanguageCode = "en"
 						}
 						app.onInlineQuery(ctx, *update.InlineQuery)
-					} else if update.MyChatMember != nil {
-						if update.MyChatMember.From.LanguageCode == "" || !in(config.BotLocalizedLangs, update.MyChatMember.From.LanguageCode) {
-							update.MyChatMember.From.LanguageCode = "en"
-						}
-						app.onMyChatMember(*update.MyChatMember)
 					}
 				}()
 

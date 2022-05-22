@@ -127,7 +127,6 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 				LingvoTr = writeLingvo(l)
 				return nil
 			})
-
 		}
 	}
 

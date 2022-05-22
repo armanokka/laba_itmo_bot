@@ -366,6 +366,7 @@ func IsCtxError(err error) bool {
 func writeLingvo(lingvo []lingvo.Dictionary) string {
 	out := new(bytes.Buffer)
 	usedWords := make([]string, 0, 10)
+	//examples := make([]string, 0, 3)
 	lastLineLen := 0
 	for _, r := range lingvo {
 		words := strings.FieldsFunc(r.Translations, func(r rune) bool {
@@ -392,6 +393,24 @@ func writeLingvo(lingvo []lingvo.Dictionary) string {
 			}
 			out.WriteString(word)
 		}
+
+		//examplesSlice := strings.FieldsFunc(r.Examples, func(r rune) bool {
+		//	return r == '\n' || r == '\r' || r == ','
+		//})
+		//for _, e := range examplesSlice {
+		//	if strings.TrimSpace(e) == "" {
+		//		continue
+		//	}
+		//	if len(examples) > 2 {
+		//		break
+		//	}
+		//	e = strings.TrimSuffix(e, "...")
+		//	examples = append(examples, e)
+		//}
 	}
+	//if len(examples) > 0 {
+	//	out.WriteString("\n\n")
+	//	out.WriteString(strings.Join(examples, "\n"))
+	//}
 	return out.String()
 }
