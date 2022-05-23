@@ -11,23 +11,20 @@ import (
 	"github.com/k0kubun/pp"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"os"
+	"strings"
 	"sync"
 	"time"
 )
 
 const (
-	DashBotAPIKey = "cjVjdWDRijXDk5kl9yGi5TTS9XImME7HbZMOg09F"
-	AdminID       = 579515224
-	botToken      = "1737819626:AAHxpILplsDRqQgpi8p4SMQ3lKz67123Zuk" // production
-	//botToken string = "1934369237:AAGzGrSPC8hOf6suvJEv_fbC8lxqhqHrEs4" // home
-
-	arangoHost     = "http://94.228.112.221:8529"
-	arangoUser     = "root"
-	arangoPassword = "SWWy9J"
-	arangoDBName   = "translobot"
+	AdminID = 579515224
 )
 
 var (
+	botToken, dashBotAPIKey                              string
+	arangoHost, arangoUser, arangoPassword, arangoDBName string
+
 	db        *gorm.DB
 	arangodb  driver.Database
 	analytics dashbot.DashBot
@@ -58,7 +55,22 @@ func Load() (err error) {
 	return
 }
 
+func mustLoadEnv(name string, v *string) {
+	str := strings.TrimSpace(os.Getenv(name))
+	if str == "" {
+		panic("$" + name + " is empty")
+	}
+	*v = str
+}
+
 func load() (err error) {
+	mustLoadEnv("TRANSLOBOT_TOKEN", &botToken)
+	mustLoadEnv("TRANSLOBOT_DASHBOT_TOKEN", &dashBotAPIKey)
+	mustLoadEnv("TRANSLOBOT_ARANGODB_HOST", &arangoHost)
+	mustLoadEnv("TRANSLOBOT_ARANGODB_USER", &arangoUser)
+	mustLoadEnv("TRANSLOBOT_ARANGODB_PASSWORD", &arangoPassword)
+	mustLoadEnv("TRANSLOBOT_ARANGODB_DBNAME", &arangoDBName)
+
 	// Initializing MySQL DB
 	db, err = gorm.Open(mysql.Open("translo:oEr|ea5uiKS@tcp(94.228.112.221:3306)/translo?charset=utf8mb4&parseTime=True&loc=Local"), &gorm.Config{
 		SkipDefaultTransaction: true,
@@ -80,6 +92,7 @@ func load() (err error) {
 	var api *tgbotapi.BotAPI
 	api, err = tgbotapi.NewBotAPI(botToken)
 	if err != nil {
+		fmt.Println("Something with bot")
 		return err
 	}
 	bot = &botapi.BotAPI{api}
@@ -93,7 +106,7 @@ func load() (err error) {
 	botID = me.ID
 
 	// Initializing analytics
-	analytics = dashbot.NewAPI(DashBotAPIKey, func(err error) {
+	analytics = dashbot.NewAPI(dashBotAPIKey, func(err error) {
 		pp.Println(err)
 		bot.Send(tgbotapi.NewMessage(AdminID, fmt.Sprint(err)))
 	})

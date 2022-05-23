@@ -11,6 +11,7 @@ import (
 )
 
 func Run(ctx context.Context, log *zap.Logger) error {
+	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 	pprof.Register(r)
 	r.GET("/", func(c *gin.Context) {
