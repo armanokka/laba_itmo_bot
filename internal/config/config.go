@@ -24,6 +24,7 @@ const (
 var (
 	botToken, dashBotAPIKey                              string
 	arangoHost, arangoUser, arangoPassword, arangoDBName string
+	dsn                                                  string
 
 	db        *gorm.DB
 	arangodb  driver.Database
@@ -70,9 +71,10 @@ func load() (err error) {
 	mustLoadEnv("TRANSLOBOT_ARANGODB_USER", &arangoUser)
 	mustLoadEnv("TRANSLOBOT_ARANGODB_PASSWORD", &arangoPassword)
 	mustLoadEnv("TRANSLOBOT_ARANGODB_DBNAME", &arangoDBName)
+	mustLoadEnv("TRANSLOBOT_DSN", &dsn)
 
 	// Initializing MySQL DB
-	db, err = gorm.Open(mysql.Open("translo:oEr|ea5uiKS@tcp(94.228.112.221:3306)/translo?charset=utf8mb4&parseTime=True&loc=Local"), &gorm.Config{
+	db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
 		SkipDefaultTransaction: true,
 		CreateBatchSize:        5000,
 		PrepareStmt:            true,
