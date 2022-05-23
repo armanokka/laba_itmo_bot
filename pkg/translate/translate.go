@@ -133,7 +133,7 @@ func detectLanguageGoogle(ctx context.Context, text string) (string, error) {
 }
 
 func TTS(lang, text string) ([]byte, error) {
-	parts := splitIntoChunks(text, 200)
+	parts := SplitIntoChunks(text, 200)
 
 	type result struct {
 		idx int
@@ -233,7 +233,7 @@ func ttsRequest(lang, text string) (string, error) {
 	return out.TranslateTTS[0], err
 }
 
-func splitIntoChunks(s string, chunkLength int) []string {
+func SplitIntoChunks(s string, chunkLength int) []string {
 	length := len(s)
 
 	chunksCount := length / chunkLength

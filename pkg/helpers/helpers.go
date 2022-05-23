@@ -31,7 +31,7 @@ func InMapValues(m map[string]string, values ...string) bool {
 }
 
 // cutString cut string using runes by limit
-func CutStringUTF16 (text string, limit int) string {
+func CutStringUTF16(text string, limit int) string {
 	points := utf16.Encode([]rune(text))
 	if len(points) > limit {
 		return string(utf16.Decode(points[:limit]))
@@ -43,14 +43,13 @@ func LenUTF16(text string) int {
 	return len(utf16.Encode([]rune(text)))
 }
 
-func CutString (text string, limit int) string {
+func CutString(text string, limit int) string {
 	runes := []rune(text)
 	if len(runes) > limit {
 		return string(runes[:limit])
 	}
 	return text
 }
-
 
 func ReversoType(reversoType string) string {
 	switch reversoType {

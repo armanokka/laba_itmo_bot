@@ -30,3 +30,10 @@ func Wrap(err error) error {
 func Is(err, target error) bool {
 	return errors.Is(err, target)
 }
+
+func Unwrap(err error) error {
+	if e, ok := err.(Error); ok {
+		return Unwrap(e.Err)
+	}
+	return err
+}

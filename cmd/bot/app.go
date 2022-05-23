@@ -261,7 +261,7 @@ func (app App) notifyAdmin(args ...interface{}) {
 		Entities:              nil,
 		DisableWebPagePreview: false,
 	}); err != nil {
-		app.log.Error(fmt.Sprintf("%w", err), zap.Error(err))
+		app.log.Error("", zap.Error(err), zap.String("stack", string(debug.Stack())))
 	}
 }
 
@@ -312,22 +312,15 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 		}
 		// TODO: apply entities to the answer and translate it
 	}
-	var (
-		tr  string
-		err error
-	)
-	g.Go(func() error {
-		tr, from, err = app.translate(ctx, from, to, html.EscapeString(text)) // examples мы сохраняем, чтобы соединить с keyboard.Examples и положить в кэш
-		tr = replace(to, tr)
-		tr += "\n❤️ @TransloBot"
-		return errors.Wrap(err)
-	})
 
-	if err = g.Wait(); err != nil {
-		return err
+	tr, from, err := app.translate(ctx, from, to, html.EscapeString(text)) // examples мы сохраняем, чтобы соединить с keyboard.Examples и положить в кэш
+	if err != nil {
+		return errors.Unwrap(err)
 	}
+	tr = replace(to, tr)
+	tr += "\n❤️ @TransloBot"
 
-	chunks := translate2.SplitIntoChunksBySentences(tr, 4000)
+	chunks := translate2.SplitIntoChunks(tr, 4096)
 	for _, chunk := range chunks {
 		switch {
 		case userMessage.Poll != nil:

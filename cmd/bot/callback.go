@@ -97,14 +97,24 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			warn(fmt.Errorf("offset is too big, len(codes[user.Lang]) is %d, offset ois %d", len(codes[user.Lang]), offset))
 			return
 		}
+		count := 18
+		if offset+count > len(codes[user.Lang])-1 {
+			count = len(codes[user.Lang]) - 1 - offset
+		}
+
 		back := offset - 18
 		if back < 0 {
-			back = 0
+			back = 180 // from end
 		}
-		kb, err := buildLangsPagination(user, offset, 18, user.MyLang,
+
+		next := offset + 18
+		if next >= len(codes[user.Lang])-1 {
+			next = 0 // from start
+		}
+		kb, err := buildLangsPagination(user, offset, count, user.MyLang,
 			fmt.Sprintf("set_my_lang:%s:%d", "%s", offset),
 			fmt.Sprintf("set_my_lang_pagination:%d", back),
-			fmt.Sprintf("set_my_lang_pagination:%d", offset+18))
+			fmt.Sprintf("set_my_lang_pagination:%d", next))
 		if err != nil {
 			log.Error("", zap.Error(err))
 			warn(err)
@@ -153,14 +163,24 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			warn(fmt.Errorf("offset is too big, len(codes[user.Lang]) is %d, offset ois %d", len(codes[user.Lang]), offset))
 			return
 		}
+		count := 18
+		if offset+count > len(codes[user.Lang])-1 {
+			count = len(codes[user.Lang]) - 1 - offset
+		}
+
 		back := offset - 18
 		if back < 0 {
-			back = 0
+			back = 180 // from end
 		}
-		kb, err := buildLangsPagination(user, offset, 18, user.ToLang,
+
+		next := offset + 18
+		if next >= len(codes[user.Lang])-1 {
+			next = 0 // from start
+		}
+		kb, err := buildLangsPagination(user, offset, count, user.ToLang,
 			fmt.Sprintf("set_to_lang:%s:%d", "%s", offset),
 			fmt.Sprintf("set_to_lang_pagination:%d", back),
-			fmt.Sprintf("set_to_lang_pagination:%d", offset+18))
+			fmt.Sprintf("set_to_lang_pagination:%d", next))
 		if err != nil {
 			log.Error("", zap.Error(err))
 			warn(err)

@@ -79,9 +79,9 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			}
 			user.MyLang = message.From.LanguageCode
 			user.ToLang = tolang
-
 		} else {
 			warn(err)
+			return
 		}
 	}
 	user.SetLang(message.From.LanguageCode)

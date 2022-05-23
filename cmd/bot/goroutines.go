@@ -68,6 +68,7 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 				if IsCtxError(err) || errors.Is(err, translate.ErrLangNotSupported) {
 					return nil
 				}
+				log.Error("microsoft err")
 				return err
 			}
 			MicrosoftTr = tr.TranslatedText
@@ -86,6 +87,7 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 			if IsCtxError(err) {
 				return nil
 			}
+			log.Error("google err")
 			return err
 		}
 		tr.Text = strings.ReplaceAll(tr.Text, ` \ n`, `\n`)
@@ -105,6 +107,7 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 				if IsCtxError(err) {
 					return nil
 				}
+				log.Error("google err")
 				return err
 			}
 			tr.Text = strings.ReplaceAll(tr.Text, ` \ n`, `\n`)
@@ -115,13 +118,14 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 		})
 		_, ok1 := lingvo.Lingvo[from]
 		_, ok2 := lingvo.Lingvo[to]
-		if ok1 && ok2 {
+		if ok1 && ok2 && len(text) < 50 {
 			g.Go(func() error {
 				l, err := lingvo.GetDictionary(ctx, from, to, strings.ToLower(text))
 				if err != nil {
 					if IsCtxError(err) {
 						return nil
 					}
+					log.Error("lingvo err")
 					return err
 				}
 				LingvoTr = writeLingvo(l)
@@ -141,6 +145,7 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 				if IsCtxError(err) {
 					return nil
 				}
+				log.Error("yandex err")
 				return err
 			}
 			log = log.With(zap.String("yandex", time.Since(start).String()))
