@@ -22,7 +22,8 @@ func replace(textlang, text string) string {
 	switch textlang {
 	case "en":
 		text = strings.NewReplacer(
-			"do not", "don't").Replace(text)
+			"do not", "don't",
+			"will not", "won't").Replace(text)
 	}
 	return text
 }
@@ -134,24 +135,24 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 		}
 	}
 
-	_, ok1 := translate.YandexSupportedLanguages[from]
-	_, ok2 := translate.YandexSupportedLanguages[to]
-
-	if ok1 && ok2 && from != "" && from != "auto" {
-		g.Go(func() (err error) {
-			start := time.Now()
-			YandexTr, err = translate.YandexTranslate(ctx, from, to, text)
-			if err != nil {
-				if IsCtxError(err) {
-					return nil
-				}
-				log.Error("yandex err")
-				return err
-			}
-			log = log.With(zap.String("yandex", time.Since(start).String()))
-			return nil
-		})
-	}
+	//_, ok1 := translate.YandexSupportedLanguages[from]
+	//_, ok2 := translate.YandexSupportedLanguages[to]
+	//
+	//if ok1 && ok2 && from != "" && from != "auto" {
+	//	g.Go(func() (err error) {
+	//		start := time.Now()
+	//		YandexTr, err = translate.YandexTranslate(ctx, from, to, text)
+	//		if err != nil {
+	//			if IsCtxError(err) {
+	//				return nil
+	//			}
+	//			log.Error("yandex err")
+	//			return err
+	//		}
+	//		log = log.With(zap.String("yandex", time.Since(start).String()))
+	//		return nil
+	//	})
+	//}
 
 	if err := g.Wait(); err != nil {
 		switch {

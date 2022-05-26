@@ -17,6 +17,7 @@ import (
 	"github.com/k0kubun/pp"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/text/unicode/norm"
 	"html"
 	"os"
 	"regexp"
@@ -266,6 +267,22 @@ func (app App) notifyAdmin(args ...interface{}) {
 }
 
 func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int64, from, to, text string, userMessage tgbotapi.Message) error {
+	entities := userMessage.Entities
+	if len(userMessage.CaptionEntities) > 0 {
+		entities = userMessage.CaptionEntities
+	}
+	text = norm.NFKC.String(text)
+	isHtml := app.htmlTagsRe.MatchString(text)
+	parseMode := tgbotapi.ModeHTML
+	if isHtml {
+		parseMode = ""
+		if !validHtml(text) {
+			text = html.EscapeString(text)
+		}
+	} else {
+		text = applyEntitiesHtml(text, entities)
+	}
+
 	log := app.log.With(zap.String("from", from), zap.String("to", to), zap.String("text", text), zap.Int64("chat_id", chatID))
 	if user.ID == 0 {
 		user.ID = chatID
@@ -313,10 +330,12 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 		// TODO: apply entities to the answer and translate it
 	}
 
-	tr, from, err := app.translate(ctx, from, to, html.EscapeString(text)) // examples мы сохраняем, чтобы соединить с keyboard.Examples и положить в кэш
+	tr, from, err := app.translate(ctx, from, to, text) // examples мы сохраняем, чтобы соединить с keyboard.Examples и положить в кэш
 	if err != nil {
 		return errors.Unwrap(err)
 	}
+
+	tr = html.UnescapeString(tr)
 	tr = replace(to, tr)
 	tr += "\n❤️ @TransloBot"
 
@@ -341,7 +360,7 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 				AllowsMultipleAnswers: userMessage.Poll.AllowsMultipleAnswers,
 				CorrectOptionID:       int64(userMessage.Poll.CorrectOptionID),
 				Explanation:           userMessage.Poll.Explanation,
-				ExplanationParseMode:  tgbotapi.ModeHTML,
+				ExplanationParseMode:  parseMode,
 				ExplanationEntities:   nil,
 				OpenPeriod:            userMessage.Poll.OpenPeriod,
 				CloseDate:             userMessage.Poll.CloseDate,
@@ -363,7 +382,7 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 				},
 				Thumb:     tgbotapi.FileID(thumbnail),
 				Caption:   tr,
-				ParseMode: tgbotapi.ModeHTML,
+				ParseMode: parseMode,
 				Duration:  userMessage.Audio.Duration,
 				Performer: userMessage.Audio.Performer,
 				Title:     userMessage.Audio.Title,
@@ -380,7 +399,7 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 					File: tgbotapi.FileID(maxResolutionPhoto.FileID),
 				},
 				Caption:   chunk,
-				ParseMode: tgbotapi.ModeHTML,
+				ParseMode: parseMode,
 			})
 		default:
 			var keyboard interface{}
@@ -399,7 +418,7 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 					ReplyMarkup: keyboard,
 				},
 				Text:                  chunk,
-				ParseMode:             tgbotapi.ModeHTML,
+				ParseMode:             parseMode,
 				Entities:              nil,
 				DisableWebPagePreview: true,
 			})

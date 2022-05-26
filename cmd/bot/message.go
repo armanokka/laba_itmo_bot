@@ -10,7 +10,6 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
 	"go.uber.org/zap"
-	"golang.org/x/text/unicode/norm"
 	"gorm.io/gorm"
 	"os"
 	"runtime/debug"
@@ -447,14 +446,9 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		to = user.MyLang
 	}
 
-	entities := message.Entities
-	if len(message.CaptionEntities) > 0 {
-		entities = message.CaptionEntities
-	}
-	text = applyEntitiesHtml(norm.NFKC.String(text), entities)
 	app.bot.Send(tgbotapi.NewChatAction(message.From.ID, "typing"))
 	if err = app.SuperTranslate(ctx, user, message.Chat.ID, from, to, text, message); err != nil && !errors.Is(err, context.Canceled) {
-		err = fmt.Errorf("%s\nuser's text:%s", err.Error(), text)
+		err = fmt.Errorf("%s\nuser's text:%s\ntranslation:%s", err.Error(), text)
 		warn(err)
 		if e, ok := err.(errors.Error); ok {
 			log.Error("", zap.Error(e), zap.String("stack", string(e.Stack())))

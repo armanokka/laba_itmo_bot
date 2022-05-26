@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
@@ -84,75 +85,34 @@ func inFuzzy(arr []string, keys ...string) bool {
 	return true
 }
 
-func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
-	if len(entities) == 0 {
-		return text
-	}
+var SupportedFormattingTags = []string{"b", "strong", "i", "em", "u", "ins", "s", "strike", "del", "span", "tg-spoiler", "a", "code", "pre"}
 
-	encoded := utf16.Encode([]rune(text))
-	pointers := make(map[int]string)
-
-	for _, entity := range entities {
-		var startTag string
-		switch entity.Type {
-		case "code", "pre":
-			startTag = `<label class="notranslate"><code>`
-		case "mention", "hashtag", "cashtag", "bot_command", "url", "email", "phone_number":
-			startTag = `<label class="notranslate">` // very important to keep '<label class="notranslate">' strongly correct, without any spaces or another
-		case "bold":
-			startTag = `<b>`
-		case "italic":
-			startTag = `<i>`
-		case "underline":
-			startTag = `<u>`
-		case "strikethrough":
-			startTag = `<s>`
-		case "text_link":
-			startTag = `<a href="` + entity.URL + `">`
-		case "text_mention":
-			startTag = `<a href="tg://user?id=` + strconv.FormatInt(entity.User.ID, 10) + `">`
+func validHtml(s string) bool {
+	d := xml.NewDecoder(strings.NewReader(s))
+	tags := make(map[string]bool, 10)
+	for {
+		token, err := d.Token()
+		if err != nil && err != io.EOF {
+			return false
 		}
-
-		pointers[entity.Offset] += startTag
-
-		//startTag = strings.TrimPrefix(startTag, "<")
-		var endTag string
-		switch entity.Type {
-		case "code", "pre":
-			endTag = "</code></label>" // very important to keep '</label>' strongly correct, without any spaces or another
-		case "mention", "hashtag", "cashtag", "bot_command", "url", "email", "phone_number":
-			endTag = `</label>`
-		case "bold":
-			endTag = `</b>`
-		case "italic":
-			endTag = `</i>`
-		case "underline":
-			endTag = `</u>`
-		case "strikethrough":
-			endTag = `</s>`
-		case "text_link", "text_mention":
-			endTag = `</a>`
+		if token == nil {
+			break
 		}
-		pointers[entity.Offset+entity.Length] = endTag + pointers[entity.Offset+entity.Length]
-	}
-
-	var out = make([]uint16, 0, len(encoded))
-
-	for i, ch := range encoded {
-		if m, ok := pointers[i]; ok {
-			out = append(out, utf16.Encode([]rune(m))...)
-		}
-		out = append(out, ch)
-
-		if i == len(encoded)-1 {
-			if m, ok := pointers[i+1]; ok {
-				out = append(out, utf16.Encode([]rune(m))...)
+		switch t := token.(type) {
+		case xml.StartElement:
+			if !in(SupportedFormattingTags, t.Name.Local) {
+				return false
 			}
+			tags[t.Name.Local] = false
+		case xml.EndElement:
+			if _, ok := tags[t.Name.Local]; !ok || !in(SupportedFormattingTags, t.Name.Local) { // закрытый тег, не имеющий открытого, или неподдерживаемый тег
+				return false
+			}
+			delete(tags, t.Name.Local)
 		}
 	}
-	return strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "", "<br>", "\n").Replace(string(utf16.Decode(out)))
+	return len(tags) == 0
 }
-
 func inMapValues(m map[string]string, values ...string) bool {
 	for _, v := range values {
 		var ok bool
@@ -215,6 +175,79 @@ func index(arr []string, k string) int {
 		}
 	}
 	return 0
+}
+
+func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
+	if len(entities) == 0 {
+		return text
+	}
+
+	encoded := utf16.Encode([]rune(text))
+	pointers := make(map[int]string)
+
+	for _, entity := range entities {
+		var startTag string
+		switch entity.Type {
+		case "code", "pre":
+			startTag = `<label class="notranslate"><code>`
+		case "mention", "hashtag", "cashtag", "bot_command", "url", "email", "phone_number":
+			startTag = `<label class="notranslate">` // very important to keep '<label class="notranslate">' strongly correct, without any spaces or another
+		case "bold":
+			startTag = `<b>`
+		case "italic":
+			startTag = `<i>`
+		case "underline":
+			startTag = `<u>`
+		case "strikethrough":
+			startTag = `<s>`
+		case "text_link":
+			startTag = `<a href="` + entity.URL + `">`
+		case "text_mention":
+			startTag = `<a href="tg://user?id=` + strconv.FormatInt(entity.User.ID, 10) + `">`
+		case "spoiler":
+			startTag = "<tg-spoiler>"
+		}
+
+		pointers[entity.Offset] += startTag
+
+		//startTag = strings.TrimPrefix(startTag, "<")
+		var endTag string
+		switch entity.Type {
+		case "code", "pre":
+			endTag = "</code></label>" // very important to keep '</label>' strongly correct, without any spaces or another
+		case "mention", "hashtag", "cashtag", "bot_command", "url", "email", "phone_number":
+			endTag = `</label>`
+		case "bold":
+			endTag = `</b>`
+		case "italic":
+			endTag = `</i>`
+		case "underline":
+			endTag = `</u>`
+		case "strikethrough":
+			endTag = `</s>`
+		case "text_link", "text_mention":
+			endTag = `</a>`
+		case "spoiler":
+			startTag = "</tg-spoiler>"
+		}
+		pointers[entity.Offset+entity.Length] = endTag + pointers[entity.Offset+entity.Length]
+	}
+
+	var out = make([]uint16, 0, len(encoded))
+
+	for i, ch := range encoded {
+		if m, ok := pointers[i]; ok {
+			out = append(out, utf16.Encode([]rune(m))...)
+		}
+		out = append(out, ch)
+
+		if i == len(encoded)-1 {
+			if m, ok := pointers[i+1]; ok {
+				out = append(out, utf16.Encode([]rune(m))...)
+			}
+		}
+	}
+	return strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "", "<br>", "\n").Replace(string(utf16.Decode(out)))
 }
 
 func highlightDiffs(s1, s2, start, stop string) string {
