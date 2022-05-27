@@ -33,7 +33,7 @@ import (
 //	if err != nil {
 //		return TranslateGoogleAPIResponse{}, err
 //	}
-//	req.Header["content-type"] = []string{"application/x-www-form-urlencoded;charset=UTF-8"}
+//	req.Header["content-type"] = []string{"application/x-www-form-urlencoded;charset=UTF-16"}
 //	// req.Header["accept"] = []string{"*/*"}
 //	// req.Header["accept-encoding"] = []string{"gzip, deflate, br"}
 //	// req.Header["accept-language"] = []string{"ru-RU,ru;q=0.9"}
@@ -100,7 +100,7 @@ func detectLanguageGoogle(ctx context.Context, text string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	req.Header["content-type"] = []string{"application/x-www-form-urlencoded;charset=UTF-8"}
+	req.Header["content-type"] = []string{"application/x-www-form-urlencoded;charset=UTF-16"}
 	req.Header["cookie"] = []string{"NID=217=mKKVUv88-BW4Vouxnh-qItLKFt7zm0Gj3yDLC8oDKb_PuLIb-p6fcPVcsXZWeNwkjDSFfypZ8BKqy27dcJH-vFliM4dKaiKdFrm7CherEXVt-u_DPr9Yecyv_tZRSDU7E52n5PWwOkaN2I0-naa85Tb9-uTjaKjO0gmdbShqba5MqKxuTLY; 1P_JAR=2021-06-18-16; DV=A3qPWv6ELckmsH4dFRGdR1fe4Gj-oRcZWqaFSPtAjwAAAAA"}
 	req.Header["origin"] = []string{"https://www.google.com"}
 	req.Header["referer"] = []string{"https://www.google.com/"}
@@ -186,7 +186,7 @@ func ttsRequest(lang, text string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	req.Header["content-type"] = []string{"application/x-www-form-urlencoded;charset=UTF-8"}
+	req.Header["content-type"] = []string{"application/x-www-form-urlencoded;charset=UTF-16"}
 	req.Header["cookie"] = []string{"NID=217=mKKVUv88-BW4Vouxnh-qItLKFt7zm0Gj3yDLC8oDKb_PuLIb-p6fcPVcsXZWeNwkjDSFfypZ8BKqy27dcJH-vFliM4dKaiKdFrm7CherEXVt-u_DPr9Yecyv_tZRSDU7E52n5PWwOkaN2I0-naa85Tb9-uTjaKjO0gmdbShqba5MqKxuTLY; 1P_JAR=2021-06-18-16; DV=A3qPWv6ELckmsH4dFRGdR1fe4Gj-oRcZWqaFSPtAjwAAAAA"}
 	req.Header["origin"] = []string{"https://www.google.com"}
 	req.Header["referer"] = []string{"https://www.google.com/"}
@@ -455,7 +455,7 @@ func googleTranslate(ctx context.Context, from, to, text string) (result Transla
 	if err != nil {
 		return TranslateGoogleAPIResponse{}, err
 	}
-	req.Header["content-type"] = []string{"application/x-www-form-urlencoded;charset=UTF-8"}
+	req.Header["content-type"] = []string{"application/x-www-form-urlencoded;charset=UTF-16"}
 	req.Header["accept"] = []string{"*/*"}
 	req.Header["cookie"] = []string{"NID=217=mKKVUv88-BW4Vouxnh-qItLKFt7zm0Gj3yDLC8oDKb_PuLIb-p6fcPVcsXZWeNwkjDSFfypZ8BKqy27dcJH-vFliM4dKaiKdFrm7CherEXVt-u_DPr9Yecyv_tZRSDU7E52n5PWwOkaN2I0-naa85Tb9-uTjaKjO0gmdbShqba5MqKxuTLY; 1P_JAR=2021-06-18-16; DV=A3qPWv6ELckmsH4dFRGdR1fe4Gj-oRcZWqaFSPtAjwAAAAA"}
 	req.Header["origin"] = []string{"https://www.google.com"}
@@ -548,7 +548,7 @@ func ReversoTranslate(ctx context.Context, from, to, text string) (ReversoTransl
 	if err != nil {
 		return ReversoTranslation{}, err
 	}
-	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Add("Content-Type", "application/json; charset=UTF-16")
 	req.Header.Add("accept-language", "en-US,en;q=0.8")
 	req.Header.Add("user-agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36")
 	req.Header.Add("X-Reverso-Origin", "translation.web")
@@ -604,12 +604,12 @@ func ReversoQueryService(sourceText, sourceLang, targetText, targetLang string) 
 		if err != nil {
 			return nil, err
 		}
-		//req.Header.Add("Content-Type", "application/json; charset=UTF-8")
+		//req.Header.Add("Content-Type", "application/json; charset=UTF-16")
 		//req.Header.Add("Accept-Language", "en-US,en;q=0.8")
 		//req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36")
 		//
 		req.Header = http.Header{
-			"Content-Type":    []string{"application/json; charset=UTF-8"},
+			"Content-Type":    []string{"application/json; charset=UTF-16"},
 			"Accept-Language": []string{"en-US,en;q=0.8"},
 			"User-Agent":      []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36"},
 		}
@@ -645,7 +645,7 @@ func googleDictionary(ctx context.Context, lang, text string) (GoogleDictionaryR
 	if err != nil {
 		return GoogleDictionaryResponse{}, err
 	}
-	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Add("Content-Type", "application/json; charset=UTF-16")
 	req.Header.Add("X-Origin", "chrome-extension://mgijmajocgfcbeboacabfgobmjgjcoja")
 
 	res, err := http.DefaultClient.Do(req)
@@ -669,7 +669,7 @@ func YandexTranscription(from, to, text string) (YandexTranscriptionResponse, er
 	req.Header["cookie"] = []string{""}
 	req.Header["origin"] = []string{"https://translate.yandex.ru"}
 	req.Header["referrer"] = []string{"https://translate.yandex.ru/?lang=ru-en"}
-	req.Header["content-type"] = []string{"application/x-www-form-urlencoded; charset=UTF-8"}
+	req.Header["content-type"] = []string{"application/x-www-form-urlencoded; charset=UTF-16"}
 	req.Header["sec-fetch-site"] = []string{"cross-site"}
 	req.Header["sec-fetch-mode"] = []string{"cors"}
 	req.Header["sec-fetch-dest"] = []string{"empty"}
@@ -733,7 +733,7 @@ func ReversoSuggestions(ctx context.Context, from, to, text string) (ReversoSugg
 	if err != nil {
 		return ReversoSuggestionsResponse{}, err
 	}
-	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Add("Content-Type", "application/json; charset=UTF-16")
 	req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36")
 	var res *http.Response
 	for i := 0; i < 3; i++ {
@@ -777,7 +777,7 @@ func MicrosoftTranslate(ctx context.Context, from, to, text string) (MicrosoftTr
 	if err != nil {
 		return MicrosoftTranslation{}, err
 	}
-	req.Header["Content-Type"] = []string{"application/json; charset=UTF-8"}
+	req.Header["Content-Type"] = []string{"application/json; charset=UTF-16"}
 	req.Header["Accept-Language"] = []string{"ru-RU,ru;q=0.9"}
 	req.Header["Accept"] = []string{"application/json, text/javascript, */*; q=0.01"}
 	req.Header["User-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.174 YaBrowser/22.1.5.810 Yowser/2.5 Safari/537.36"}

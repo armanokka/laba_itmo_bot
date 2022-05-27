@@ -228,7 +228,7 @@ func applyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
 		case "text_link", "text_mention":
 			endTag = `</a>`
 		case "spoiler":
-			startTag = "</tg-spoiler>"
+			endTag = "</tg-spoiler>"
 		}
 		pointers[entity.Offset+entity.Length] = endTag + pointers[entity.Offset+entity.Length]
 	}

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/arangodb/go-driver"
 	"github.com/armanokka/translobot/pkg/errors"
-	"github.com/armanokka/translobot/pkg/helpers"
 	"github.com/armanokka/translobot/pkg/lingvo"
 	"github.com/armanokka/translobot/pkg/translate"
 	"github.com/forPelevin/gomoji"
@@ -61,25 +60,25 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 		YandexTr       string
 		LingvoTr       string
 	)
-	if app.htmlTagsRe.MatchString(text) && from != "" && from != "auto" && !helpers.In(translate.MicrosoftUnsupportedLanguages, from, to) { // есть html теги
-		g.Go(func() error {
-			start := time.Now()
-			tr, err := translate.MicrosoftTranslate(ctx, from, to, strings.ReplaceAll(text, "\n", "<br>"))
-			if err != nil {
-				if IsCtxError(err) || errors.Is(err, translate.ErrLangNotSupported) {
-					return nil
-				}
-				log.Error("microsoft err")
-				return err
-			}
-			MicrosoftTr = tr.TranslatedText
-			if from == "" {
-				from = tr.From
-			}
-			log = log.With(zap.String("microsoft", time.Since(start).String()))
-			return nil
-		})
-	}
+	//if app.htmlTagsRe.MatchString(text) && from != "" && from != "auto" && !helpers.In(translate.MicrosoftUnsupportedLanguages, from, to) { // есть html теги
+	//	g.Go(func() error {
+	//		start := time.Now()
+	//		tr, err := translate.MicrosoftTranslate(ctx, from, to, strings.ReplaceAll(text, "\n", "<br>"))
+	//		if err != nil {
+	//			if IsCtxError(err) || errors.Is(err, translate.ErrLangNotSupported) {
+	//				return nil
+	//			}
+	//			log.Error("microsoft err")
+	//			return err
+	//		}
+	//		MicrosoftTr = tr.TranslatedText
+	//		if from == "" {
+	//			from = tr.From
+	//		}
+	//		log = log.With(zap.String("microsoft", time.Since(start).String()))
+	//		return nil
+	//	})
+	//}
 
 	g.Go(func() error {
 		start := time.Now()

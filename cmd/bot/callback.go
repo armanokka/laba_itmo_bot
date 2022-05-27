@@ -304,9 +304,9 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		}
 
 		kb, err := buildLangsPagination(user, offset, count, "",
-			fmt.Sprintf("set_my_lang:%s:%d", "%s", offset),
-			fmt.Sprintf("set_my_lang_pagination:%d", back),
-			fmt.Sprintf("set_my_lang_pagination:%d", next))
+			fmt.Sprintf("set_to_lang:%s:%d", "%s", offset),
+			fmt.Sprintf("set_to_lang_pagination:%d", back),
+			fmt.Sprintf("set_to_lang_pagination:%d", next))
 		if err != nil {
 			log.Error("", zap.Error(err))
 			warn(err)

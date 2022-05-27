@@ -88,6 +88,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 
 	switch message.Command() {
 	case "start":
+		// TODO: быстрая смена текста hello mi hao ola
 		if user.Blocked { // разбанил
 			app.analytics.User("{bot_was_UNblocked}", message.From)
 			app.bot.Send(tgbotapi.NewSticker(message.From.ID, tgbotapi.FileID("CAACAgIAAxkBAAEP5w5iif1KBEzJZ-6N49pvKBvTcz5BYwACBAEAAladvQreBNF6Zmb3bCQE")))
@@ -96,9 +97,59 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				app.notifyAdmin(fmt.Errorf("%w", err))
 			}
 		} else {
+			hello := map[string]string{
+				"en": "Hello",
+				"zh": "Nǐ hǎo",
+				"uk": "Привіт",
+				"ar": "As-salām ‘alaykum",
+				"pt": "Olá",
+				"fr": "Salut",
+				"fy": "Gouden Dai",
+			}
+			if _, ok := hello[user.Lang]; ok {
+				delete(hello, user.Lang)
+			}
+			var msg tgbotapi.Message
+			i := 0
+			for _, text := range hello {
+				if msg.MessageID == 0 {
+					msg, err = app.bot.Send(tgbotapi.NewMessage(message.From.ID, text))
+					i++
+					continue
+				}
+				app.bot.Send(tgbotapi.EditMessageTextConfig{
+					BaseEdit: tgbotapi.BaseEdit{
+						ChatID:          message.From.ID,
+						ChannelUsername: "",
+						MessageID:       msg.MessageID,
+						InlineMessageID: "",
+						ReplyMarkup:     nil,
+					},
+					Text:                  text,
+					ParseMode:             "",
+					Entities:              nil,
+					DisableWebPagePreview: false,
+				})
+				time.Sleep(time.Second / 3)
+				i++
+			}
+			app.bot.Send(tgbotapi.EditMessageTextConfig{
+				BaseEdit: tgbotapi.BaseEdit{
+					ChatID:          message.From.ID,
+					ChannelUsername: "",
+					MessageID:       msg.MessageID,
+					InlineMessageID: "",
+					ReplyMarkup:     nil,
+				},
+				Text:                  user.Localize("Привет"),
+				ParseMode:             "",
+				Entities:              nil,
+				DisableWebPagePreview: false,
+			})
 			if _, err = app.bot.Send(tgbotapi.NewSticker(message.From.ID, tgbotapi.FileID("CAACAgIAAxkBAAEP5rViieLUfMyMYArLNLl12AOggTEAAVAAAgEBAAJWnb0KIr6fDrjC5jQkBA"))); err != nil {
 				warn(err)
 			}
+			time.Sleep(time.Second)
 		}
 
 		if _, err = app.bot.Send(tgbotapi.MessageConfig{
@@ -446,7 +497,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		to = user.MyLang
 	}
 
-	app.bot.Send(tgbotapi.NewChatAction(message.From.ID, "typing"))
+	app.bot.Send(tgbotapi.NewChatAction(message.From.ID, "typing")) // TODO: encode translation to utf-8
 	if err = app.SuperTranslate(ctx, user, message.Chat.ID, from, to, text, message); err != nil && !errors.Is(err, context.Canceled) {
 		err = fmt.Errorf("%s\nuser's text:%s\ntranslation:%s", err.Error(), text)
 		warn(err)

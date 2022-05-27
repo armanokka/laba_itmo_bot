@@ -338,6 +338,8 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 	tr = html.UnescapeString(tr)
 	tr = replace(to, tr)
 	tr += "\n❤️ @TransloBot"
+	pp.Println(tr)
+	// TODO: convert to utf-8
 
 	chunks := translate2.SplitIntoChunks(tr, 4096)
 	for _, chunk := range chunks {
