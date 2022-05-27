@@ -88,7 +88,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 
 	switch message.Command() {
 	case "start":
-		// TODO: быстрая смена текста hello mi hao ola
 		if user.Blocked { // разбанил
 			app.analytics.User("{bot_was_UNblocked}", message.From)
 			app.bot.Send(tgbotapi.NewSticker(message.From.ID, tgbotapi.FileID("CAACAgIAAxkBAAEP5w5iif1KBEzJZ-6N49pvKBvTcz5BYwACBAEAAladvQreBNF6Zmb3bCQE")))

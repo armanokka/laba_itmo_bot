@@ -26,8 +26,6 @@ import (
 	"sync"
 )
 
-//TODO: заменить fuzzywuzzy и отпрофилировать бота, чтобы убрать утечки памяти
-
 type App struct {
 	htmlTagsRe          *regexp.Regexp
 	reSpecialCharacters *regexp.Regexp
@@ -40,7 +38,7 @@ type App struct {
 
 	arangodb driver.Database
 	cache    driver.Collection
-} // TODO: сократить объем lingvo
+}
 
 func New(bot *botapi.BotAPI, db repos.BotDB, analytics dashbot.DashBot, log *zap.Logger, bc *bitcask.Bitcask /* deepl translate2.Deepl*/, arangodb driver.Database) (App, error) {
 	app := App{
@@ -327,7 +325,6 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 				return errors.Wrap(err)
 			})
 		}
-		// TODO: apply entities to the answer and translate it
 	}
 
 	tr, from, err := app.translate(ctx, from, to, text) // examples мы сохраняем, чтобы соединить с keyboard.Examples и положить в кэш
@@ -338,7 +335,6 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 	tr = html.UnescapeString(tr)
 	tr = replace(to, tr)
 	tr += "\n❤️ @TransloBot"
-	pp.Println(tr)
 	// TODO: convert to utf-8
 
 	chunks := translate2.SplitIntoChunks(tr, 4096)
