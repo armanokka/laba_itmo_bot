@@ -3,6 +3,7 @@ package botdb
 import (
 	"fmt"
 	"github.com/armanokka/translobot/internal/tables"
+	"github.com/k0kubun/pp"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"time"
@@ -26,6 +27,8 @@ func (db BotDB) GetUserByID(id int64) (tables.Users, error) {
 	req := db.Model(&tables.Users{}).Where("id = ?", id).Find(&user)
 	if req.RowsAffected == 0 {
 		return tables.Users{}, gorm.ErrRecordNotFound
+	} else if req.RowsAffected > 1 {
+		return tables.Users{}, fmt.Errorf("there are more rows than 1")
 	}
 	return user, req.Error
 }
@@ -71,15 +74,21 @@ func (db BotDB) GetUsersNumber() (num int64, err error) {
 
 func (db BotDB) GetUsersSlice(offset, count int64, slice []int64) (err error) {
 	err = db.Model(&tables.Users{}).Raw("SELECT id FROM users OFFSET ? LIMIT ? ORDER BY id DESC", offset, count).Find(&slice).Error
+	pp.Println(slice)
 	return
 }
 
 var ErrNoRowsAffected = fmt.Errorf("no rows affected")
 
 func (db BotDB) SwapLangs(userID int64) error {
-	query := db.Model(&tables.Users{}).Exec("UPDATE users SET my_lang=(@temp:=my_lang), my_lang = to_lang, to_lang = @temp WHERE id = ?", userID)
-	if query.RowsAffected != 1 {
+	query := db.Model(&tables.Users{}).Clauses(clause.Locking{
+		Strength: "SHARE",
+		Table:    clause.Table{Name: clause.CurrentTable},
+	}).Exec("UPDATE users SET my_lang=(@temp:=my_lang), my_lang = to_lang, to_lang = @temp WHERE id = ? LIMIT 1", userID)
+	if query.RowsAffected == 0 {
 		return ErrNoRowsAffected
+	} else if query.RowsAffected > 1 {
+		return fmt.Errorf("there are more rows than 1")
 	}
 	return query.Error
 }

@@ -16,6 +16,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
 	"go.uber.org/zap"
+	"golang.org/x/net/html/charset"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/text/unicode/norm"
 	"html"
@@ -233,6 +234,13 @@ func (app App) Run(ctx context.Context) error {
 		}
 
 		app.bot.Send(tgbotapi.NewMessage(config.AdminID, "рассылка закончена"))
+		if err = app.bc.Delete([]byte("mailing_keyboard_raw_text")); err != nil {
+			return err
+		}
+		if err = app.bc.Delete([]byte("mailing_message_id")); err != nil {
+			return err
+		}
+
 		return nil
 	})
 	return g.Wait()
@@ -331,13 +339,16 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 	if err != nil {
 		return errors.Unwrap(err)
 	}
+	tr = replace(to, html.UnescapeString(tr)) + "\n❤️ @TransloBot"
 
-	tr = html.UnescapeString(tr)
-	tr = replace(to, tr)
-	tr += "\n❤️ @TransloBot"
-	// TODO: convert to utf-8
+	// Converting to utf-8
+	e, _, _ := charset.DetermineEncoding([]byte(tr), "text/plain")
+	tr, err = e.NewDecoder().String(tr)
+	if err != nil {
+		return err
+	}
 
-	chunks := translate2.SplitIntoChunks(tr, 4096)
+	chunks := translate2.SplitIntoChunksBySentences(tr, 4096)
 	for _, chunk := range chunks {
 		switch {
 		case userMessage.Poll != nil:

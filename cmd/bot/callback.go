@@ -6,6 +6,7 @@ import (
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/k0kubun/pp"
 	"go.uber.org/zap"
 	"reflect"
 	"runtime/debug"
@@ -104,7 +105,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 
 		back := offset - 18
 		if back < 0 {
-			back = 180 // from end
+			back = len(codes[user.Lang]) / count * count // from end
 		}
 
 		next := offset + 18
@@ -170,7 +171,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 
 		back := offset - 18
 		if back < 0 {
-			back = 180 // from end
+			back = len(codes[user.Lang]) / count * count // from end
 		}
 
 		next := offset + 18
@@ -231,12 +232,12 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 
 		back := offset - 18
 		if back < 0 {
-			back = 180
+			back = len(codes[user.Lang]) / count * count // end
 		}
 
 		next := offset + 18
 		if next >= len(codes[user.Lang])-1 {
-			next = 0 // from start
+			next = 0 // start
 		}
 
 		kb, err := buildLangsPagination(user, offset, count, "",
@@ -295,7 +296,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 
 		back := offset - 18
 		if back < 0 {
-			back = 180 // end
+			back = len(codes[user.Lang]) / count * count // end
 		}
 
 		next := offset + 18
@@ -341,6 +342,92 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			})
 		}
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
+	case "start_mailing":
+		mailingMessageId, err := app.bc.Get([]byte("mailing_message_id"))
+		if err != nil {
+			warn(err)
+			return
+		}
+		mailingMessageIdInt, err := strconv.Atoi(string(mailingMessageId))
+		if err != nil {
+			warn(err)
+			return
+		}
 
+		keyboardBytes, err := app.bc.Get([]byte("mailing_keyboard_raw_text"))
+		if err != nil {
+			warn(err)
+			return
+		}
+		keyboardText := string(keyboardBytes)
+		keyboard := tgbotapi.NewInlineKeyboardMarkup()
+		if keyboardText != "Empty" {
+			keyboard = parseKeyboard(keyboardText)
+		}
+
+		if _, err = app.bot.Send(tgbotapi.CopyMessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:                   callback.From.ID,
+				ChannelUsername:          "",
+				ReplyToMessageID:         0,
+				ReplyMarkup:              &keyboard,
+				DisableNotification:      false,
+				AllowSendingWithoutReply: false,
+			},
+			FromChatID:          config.AdminID,
+			FromChannelUsername: "",
+			MessageID:           mailingMessageIdInt,
+			Caption:             "",
+			ParseMode:           "",
+			CaptionEntities:     nil,
+		}); err != nil {
+			warn(err)
+			return
+		}
+		usersNumber, err := app.db.GetUsersNumber()
+		if err != nil {
+			return
+		}
+
+		slice := make([]int64, 0, 100)
+		for n := usersNumber / 100; n < usersNumber/100; n++ { // iterate over each 100 users
+			offset := n*100 + 100
+			if err = app.db.GetUsersSlice(offset, 100, slice); err != nil {
+				warn(err)
+				return
+			}
+			pp.Println(slice)
+			for j := 0; j < 100; j++ {
+				if _, err = app.bot.Send(tgbotapi.CopyMessageConfig{
+					BaseChat: tgbotapi.BaseChat{
+						ChatID:                   slice[j],
+						ChannelUsername:          "",
+						ReplyToMessageID:         0,
+						ReplyMarkup:              &keyboard,
+						DisableNotification:      false,
+						AllowSendingWithoutReply: false,
+					},
+					FromChatID:          config.AdminID,
+					FromChannelUsername: "",
+					MessageID:           mailingMessageIdInt,
+					Caption:             "",
+					ParseMode:           "",
+					CaptionEntities:     nil,
+				}); err != nil {
+					pp.Println(err)
+				}
+				log.Info("mailing was sent", zap.Int64("recepient_id", slice[j]))
+			}
+		}
+
+		app.bot.Send(tgbotapi.NewMessage(callback.From.ID, "рассылка закончена"))
+		if err = app.bc.Delete([]byte("mailing_keyboard_raw_text")); err != nil {
+			warn(err)
+			return
+		}
+		if err = app.bc.Delete([]byte("mailing_message_id")); err != nil {
+			warn(err)
+			return
+		}
 	}
 }

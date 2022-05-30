@@ -8,7 +8,6 @@ import (
 	"github.com/armanokka/translobot/pkg/errors"
 	"github.com/armanokka/translobot/pkg/translate"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/k0kubun/pp"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"os"
@@ -368,13 +367,12 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		keyboard := tgbotapi.InlineKeyboardMarkup{}
 		if message.Text != "Empty" {
 			keyboard = parseKeyboard(message.Text)
-			if err = app.bc.Put([]byte("mailing_keyboard_raw_text"), []byte(message.Text)); err != nil {
-				warn(err)
-				return
-			}
 		}
-
-		if err := app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": ""}); err != nil {
+		if err = app.bc.Put([]byte("mailing_keyboard_raw_text"), []byte(message.Text)); err != nil {
+			warn(err)
+			return
+		}
+		if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": ""}); err != nil {
 			warn(err)
 			return
 		}
@@ -387,7 +385,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				DisableNotification:      false,
 				AllowSendingWithoutReply: false,
 			},
-			Text:                  "рассылка начата",
+			Text:                  "проверь",
 			ParseMode:             "",
 			Entities:              nil,
 			DisableWebPagePreview: false,
@@ -404,7 +402,11 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			return
 		}
 
-		app.bot.Send(tgbotapi.CopyMessageConfig{
+		keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("Подтвердить", "start_mailing")))
+
+		if _, err = app.bot.Send(tgbotapi.CopyMessageConfig{
 			BaseChat: tgbotapi.BaseChat{
 				ChatID:                   message.From.ID,
 				ChannelUsername:          "",
@@ -419,45 +421,10 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			Caption:             "",
 			ParseMode:           "",
 			CaptionEntities:     nil,
-		})
-
-		usersNumber, err := app.db.GetUsersNumber()
-		if err != nil {
+		}); err != nil {
+			warn(err)
 			return
 		}
-
-		slice := make([]int64, 0, 100)
-		var i int64
-		for ; usersNumber/100 < i; i++ { // iterate over each 100 users
-			offset := i*100 + 100
-			if err = app.db.GetUsersSlice(offset, 100, slice); err != nil {
-				warn(err)
-				return
-			}
-			for j := 0; j < 100; j++ {
-				if _, err = app.bot.Send(tgbotapi.CopyMessageConfig{
-					BaseChat: tgbotapi.BaseChat{
-						ChatID:                   slice[j],
-						ChannelUsername:          "",
-						ReplyToMessageID:         0,
-						ReplyMarkup:              &keyboard,
-						DisableNotification:      false,
-						AllowSendingWithoutReply: false,
-					},
-					FromChatID:          config.AdminID,
-					FromChannelUsername: "",
-					MessageID:           mailingMessageIdInt,
-					Caption:             "",
-					ParseMode:           "",
-					CaptionEntities:     nil,
-				}); err != nil {
-					pp.Println(err)
-				}
-				log.Info("mailing was sent", zap.Int64("recepient_id", slice[j]), zap.Int64("queue_position", i*100+int64(j)))
-			}
-		}
-
-		app.bot.Send(tgbotapi.NewMessage(message.From.ID, "рассылка закончена"))
 		return
 	}
 
@@ -493,7 +460,12 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	} else if from == user.MyLang {
 		to = user.ToLang
 	} else { // никакой из
-		to = user.MyLang
+		if user.ToLang == message.From.LanguageCode {
+			to = user.ToLang
+		} else {
+			to = user.MyLang
+		}
+
 	}
 
 	app.bot.Send(tgbotapi.NewChatAction(message.From.ID, "typing")) // TODO: encode translation to utf-8

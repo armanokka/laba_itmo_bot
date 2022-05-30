@@ -712,10 +712,11 @@ var MicrosoftUnsupportedLanguages = []string{
 }
 
 func SplitIntoChunksBySentences(text string, limit int) []string {
-	sentences := strings.FieldsFunc(text, func(r rune) bool {
-		return r == '.' || r == '!' || r == '?'
-	})
-	out := make([]string, 0, len(text)/limit)
+	//sentences := strings.FieldsFunc(text, func(r rune) bool {
+	//	return r == '.' || r == '!' || r == '?'
+	//})
+	sentences := strings.Split(text, ".")
+	out := make([]string, len(text)/limit)
 
 	for i, sentence := range sentences {
 		last := len(out) - 1
