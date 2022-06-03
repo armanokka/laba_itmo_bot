@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"github.com/PuerkitoBio/goquery"
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
 	"github.com/armanokka/translobot/pkg/errors"
@@ -445,4 +446,24 @@ func writeLingvo(lingvo []lingvo.Dictionary) string {
 	//	out.WriteString(strings.Join(examples, "\n"))
 	//}
 	return out.String()
+}
+
+func closeUnclosedTags(s string) string {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(s))
+	if err != nil {
+		return s
+	}
+	raw, err := doc.Html()
+	if err != nil {
+		return s
+	}
+	i1 := strings.Index(raw, "<body>") + len("<body>")
+	if i1 == -1 {
+		return ""
+	}
+	i2 := strings.Index(raw[i1:], "</body>")
+	if i2 == -1 {
+		return ""
+	}
+	return raw[i1 : i1+i2]
 }

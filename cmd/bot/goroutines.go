@@ -3,7 +3,6 @@ package bot
 import (
 	"context"
 	"fmt"
-	"github.com/arangodb/go-driver"
 	"github.com/armanokka/translobot/pkg/errors"
 	"github.com/armanokka/translobot/pkg/lingvo"
 	"github.com/armanokka/translobot/pkg/translate"
@@ -27,38 +26,16 @@ func replace(textlang, text string) string {
 	return text
 }
 
-func (app App) seekForCache(ctx context.Context, from, to, text string) (RecordTranslationCache, error) {
-	cursor, err := app.arangodb.Query(ctx, "FOR doc IN cache FILTER doc.text == @text AND doc.from == @from AND doc.to == @to LIMIT 1 RETURN doc", map[string]interface{}{
-		"text": text,
-		"from": from,
-		"to":   to,
-	})
-	if err != nil {
-		return RecordTranslationCache{}, err
-	}
-	defer cursor.Close()
-
-	var record RecordTranslationCache
-	meta, err := cursor.ReadDocument(ctx, &record)
-	if err != nil && !driver.IsNoMoreDocuments(err) {
-		return RecordTranslationCache{}, err
-	}
-	if meta.Key != "" {
-		return record, nil
-	}
-	return record, ErrCacheNotFound
-}
-
 // translate may return translation, language and error
 func (app App) translate(ctx context.Context, from, to, text string) (string, string, error) {
 	log := app.log.With(zap.String("from", from), zap.String("to", to), zap.String("text", text))
 	g, ctx := errgroup.WithContext(ctx)
 	var (
-		MicrosoftTr    string
+		//MicrosoftTr    string
 		GoogleFromToTr string
-		GoogleToFromTr string
-		YandexTr       string
-		LingvoTr       string
+		//GoogleToFromTr string
+		//YandexTr       string
+		LingvoTr string
 	)
 	//if app.htmlTagsRe.MatchString(text) && from != "" && from != "auto" && !helpers.In(translate.MicrosoftUnsupportedLanguages, from, to) { // есть html теги
 	//	g.Go(func() error {
@@ -100,22 +77,22 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 		return nil
 	})
 	if from != "" && from != "auto" {
-		g.Go(func() error {
-			start := time.Now()
-			tr, err := translate.GoogleTranslate(ctx, to, from, text)
-			if err != nil {
-				if IsCtxError(err) {
-					return nil
-				}
-				log.Error("google err")
-				return err
-			}
-			tr.Text = strings.ReplaceAll(tr.Text, ` \ n`, `\n`)
-			tr.Text = strings.ReplaceAll(tr.Text, `\ n`, `\n`)
-			GoogleToFromTr = tr.Text
-			log = log.With(zap.String("google to-from", time.Since(start).String()))
-			return nil
-		})
+		//g.Go(func() error {
+		//	start := time.Now()
+		//	tr, err := translate.GoogleTranslate(ctx, to, from, text)
+		//	if err != nil {
+		//		if IsCtxError(err) {
+		//			return nil
+		//		}
+		//		log.Error("google err")
+		//		return err
+		//	}
+		//	tr.Text = strings.ReplaceAll(tr.Text, ` \ n`, `\n`)
+		//	tr.Text = strings.ReplaceAll(tr.Text, `\ n`, `\n`)
+		//	GoogleToFromTr = tr.Text
+		//	log = log.With(zap.String("google to-from", time.Since(start).String()))
+		//	return nil
+		//})
 		_, ok1 := lingvo.Lingvo[from]
 		_, ok2 := lingvo.Lingvo[to]
 		if ok1 && ok2 && len(text) < 50 {
@@ -161,43 +138,36 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 		case GoogleFromToTr != "":
 			log.Error("translated via google from-to")
 			return GoogleFromToTr, from, err
-		case GoogleToFromTr != "":
-			log.Error("translated via google to-from")
-			return GoogleToFromTr, from, err
-		case YandexTr != "":
-			log.Error("translated via yandex")
-			return YandexTr, from, err
-		case MicrosoftTr != "":
-			log.Error("translated via microsoft")
-			return MicrosoftTr, from, err
+			//case GoogleToFromTr != "":
+			//	log.Error("translated via google to-from")
+			//	return GoogleToFromTr, from, err
+			//case YandexTr != "":
+			//	log.Error("translated via yandex")
+			//	return YandexTr, from, err
+			//case MicrosoftTr != "":
+			//	log.Error("translated via microsoft")
+			//	return MicrosoftTr, from, err
 		}
 		return "", from, err
 	}
 	if LingvoTr != "" {
 		log.Info("translated via lingvo")
 		return LingvoTr, from, nil
-	} else if GoogleFromToTr != "" && GoogleToFromTr != "" {
-		if diff(text, GoogleFromToTr) > diff(text, GoogleToFromTr) || (diff(GoogleFromToTr, YandexTr) < diff(GoogleFromToTr, GoogleToFromTr)) && YandexTr != "" {
-			log.Info("translated via google")
-			return GoogleFromToTr, from, nil
-		} else {
-			log.Info("translated via google")
-			return GoogleToFromTr, from, nil
-		}
 	} else if GoogleFromToTr != "" {
 		log.Info("translated via google")
 		return GoogleFromToTr, from, nil
-	} else if GoogleToFromTr != "" {
-		log.Info("translated via google")
-		return GoogleToFromTr, from, nil
-	} else if YandexTr != "" {
-		log.Info("translated via yandex")
-		return YandexTr, from, nil
-	} else if MicrosoftTr != "" {
-		MicrosoftTr = strings.ReplaceAll(MicrosoftTr, "<br>", "\n")
-		log.Info("translated via microsoft")
-		return MicrosoftTr, from, nil
 	}
+	//} else if GoogleToFromTr != "" {
+	//	log.Info("translated via google")
+	//	return GoogleToFromTr, from, nil
+	//} else if YandexTr != "" {
+	//	log.Info("translated via yandex")
+	//	return YandexTr, from, nil
+	//} else if MicrosoftTr != "" {
+	//	MicrosoftTr = strings.ReplaceAll(MicrosoftTr, "<br>", "\n")
+	//	log.Info("translated via microsoft")
+	//	return MicrosoftTr, from, nil
+	//}
 	return GoogleFromToTr, from, nil
 	//return "", fmt.Errorf("all translators returned empty result\n%s->%s\n%s", from, to, text)
 }

@@ -28,11 +28,4 @@ type BotDB interface {
 	GetUsersSlice(offset, count int64, slice []int64) (err error)
 
 	GetAllUsers() ([]tables.Users, error)
-	BotLogs
-}
-
-type BotLogs interface {
-	LogUserMessage(id int64, text string) error
-	LogBotMessage(toID int64, intent string, text string) error
-	GetUserLogs(id int64, limit int) ([]tables.UsersLogs, error)
 }

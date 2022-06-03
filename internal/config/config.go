@@ -3,8 +3,6 @@ package config
 import (
 	"database/sql"
 	"fmt"
-	"github.com/arangodb/go-driver"
-	"github.com/arangodb/go-driver/http"
 	"github.com/armanokka/translobot/pkg/botapi"
 	"github.com/armanokka/translobot/pkg/dashbot"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -22,12 +20,10 @@ const (
 )
 
 var (
-	botToken, dashBotAPIKey                              string
-	arangoHost, arangoUser, arangoPassword, arangoDBName string
-	dsn                                                  string
+	botToken, dashBotAPIKey string
+	dsn                     string
 
 	db        *gorm.DB
-	arangodb  driver.Database
 	analytics dashbot.DashBot
 	bot       *botapi.BotAPI
 	botID     int64
@@ -67,10 +63,6 @@ func mustLoadEnv(name string, v *string) {
 func load() (err error) {
 	mustLoadEnv("TRANSLOBOT_TOKEN", &botToken)
 	mustLoadEnv("TRANSLOBOT_DASHBOT_TOKEN", &dashBotAPIKey)
-	mustLoadEnv("TRANSLOBOT_ARANGODB_HOST", &arangoHost)
-	mustLoadEnv("TRANSLOBOT_ARANGODB_USER", &arangoUser)
-	mustLoadEnv("TRANSLOBOT_ARANGODB_PASSWORD", &arangoPassword)
-	mustLoadEnv("TRANSLOBOT_ARANGODB_DBNAME", &arangoDBName)
 	mustLoadEnv("TRANSLOBOT_DSN", &dsn)
 
 	// Initializing MySQL DB
@@ -112,34 +104,6 @@ func load() (err error) {
 		pp.Println(err)
 		bot.Send(tgbotapi.NewMessage(AdminID, fmt.Sprint(err)))
 	})
-
-	var conn driver.Connection
-	conn, err = http.NewConnection(http.ConnectionConfig{
-		Endpoints: []string{arangoHost},
-	})
-	if err != nil {
-		return err
-	}
-	// Client object
-	var client driver.Client
-	client, err = driver.NewClient(driver.ClientConfig{
-		Connection:     conn,
-		Authentication: driver.BasicAuthentication(arangoUser, arangoPassword),
-	})
-	if err != nil {
-		return err
-	}
-	// Open "examples_books" database
-	var exists bool
-	exists, err = client.DatabaseExists(nil, arangoDBName)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		arangodb, err = client.CreateDatabase(nil, arangoDBName, &driver.CreateDatabaseOptions{})
-	} else {
-		arangodb, err = client.Database(nil, arangoDBName)
-	}
 	return nil
 }
 
@@ -153,10 +117,6 @@ func BotAPI() *botapi.BotAPI {
 
 func Analytics() dashbot.DashBot {
 	return analytics
-}
-
-func ArangoDB() driver.Database {
-	return arangodb
 }
 
 func BotID() int64 {

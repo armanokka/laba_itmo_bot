@@ -46,7 +46,6 @@ func main() {
 	}()
 
 	db := config.DB()
-	arangodb := config.ArangoDB()
 	botAPI := config.BotAPI()
 
 	//if _, err := net.DialTimeout("tcp", net.JoinHostPort("127.0.0.1", "8081"), time.Second); err == nil {
@@ -61,7 +60,7 @@ func main() {
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
-		Bot, err := boto.New(botAPI, botdb.New(db), analytics, log, bc /*, d*/, arangodb)
+		Bot, err := boto.New(botAPI, botdb.New(db), analytics, log, bc)
 		if err != nil {
 			return err
 		}

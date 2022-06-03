@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"git.mills.io/prologic/bitcask"
-	"github.com/arangodb/go-driver"
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
 	"github.com/armanokka/translobot/pkg/botapi"
@@ -36,14 +35,10 @@ type App struct {
 	db                  repos.BotDB
 	analytics           dashbot.DashBot
 	bc                  *bitcask.Bitcask
-
-	arangodb driver.Database
-	cache    driver.Collection
 }
 
-func New(bot *botapi.BotAPI, db repos.BotDB, analytics dashbot.DashBot, log *zap.Logger, bc *bitcask.Bitcask /* deepl translate2.Deepl*/, arangodb driver.Database) (App, error) {
+func New(bot *botapi.BotAPI, db repos.BotDB, analytics dashbot.DashBot, log *zap.Logger, bc *bitcask.Bitcask) (App, error) {
 	app := App{
-		arangodb:            arangodb,
 		htmlTagsRe:          regexp.MustCompile("<\\s*[^>]+>(.*?)"),
 		reSpecialCharacters: regexp.MustCompile(`[[:punct:]]`),
 		//deepl:      translate2.Deepl{},
@@ -53,38 +48,7 @@ func New(bot *botapi.BotAPI, db repos.BotDB, analytics dashbot.DashBot, log *zap
 		analytics: analytics,
 		bc:        bc,
 	}
-	if err := app.prepareCollections(); err != nil {
-		return App{}, err
-	}
 	return app, nil
-}
-
-func (app *App) prepareCollections() error {
-	cacheEnabled := true
-	options := &driver.CreateCollectionOptions{CacheEnabled: &cacheEnabled, WaitForSync: true}
-
-	cache, err := app.createCollectionIfNotExists("cache", options) // IT MUST HAVE UNIQUE INDEX ON from, to and original_text!
-	if err != nil {
-		return err
-	}
-	app.cache = cache
-	//if _, _, err = app.cache.EnsureTTLIndex(nil, "createdAt", 60*60*24, nil); err != nil {
-	//	return err
-	//}
-	return nil
-}
-
-func (app App) createCollectionIfNotExists(collection string, options *driver.CreateCollectionOptions) (driver.Collection, error) {
-	col, err := app.arangodb.Collection(nil, collection)
-	if err != nil {
-		if driver.IsNotFound(err) {
-			col, err = app.arangodb.CreateCollection(nil, collection, options)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-	return col, nil
 }
 
 func (app App) Run(ctx context.Context) error {
@@ -348,8 +312,9 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 		return err
 	}
 
-	chunks := translate2.SplitIntoChunksBySentences(tr, 4096)
+	chunks := translate2.SplitIntoChunks(tr, 4096)
 	for _, chunk := range chunks {
+		chunk = closeUnclosedTags(chunk)
 		switch {
 		case userMessage.Poll != nil:
 			options := make([]string, 0, len(userMessage.Poll.Options))

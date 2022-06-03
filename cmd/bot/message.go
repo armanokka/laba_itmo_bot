@@ -110,6 +110,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			var msg tgbotapi.Message
 			i := 0
 			for _, text := range hello {
+				text += ", " + message.From.FirstName
 				if msg.MessageID == 0 {
 					msg, err = app.bot.Send(tgbotapi.NewMessage(message.From.ID, text))
 					i++
@@ -139,7 +140,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 					InlineMessageID: "",
 					ReplyMarkup:     nil,
 				},
-				Text:                  user.Localize("Привет"),
+				Text:                  user.Localize("Привет") + ", " + message.From.FirstName,
 				ParseMode:             "",
 				Entities:              nil,
 				DisableWebPagePreview: false,
@@ -199,17 +200,11 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		doc := tgbotapi.NewInputMediaDocument(tgbotapi.FilePath(f.Name()))
 		group := tgbotapi.NewMediaGroup(message.From.ID, []interface{}{doc})
 		app.bot.Send(group)
-		if err = app.db.LogBotMessage(message.From.ID, "pm_users", "shared users' ids"); err != nil {
-			app.notifyAdmin(fmt.Errorf("%w", err))
-		}
 		return
 	case "id":
 		log.Info("/id")
 		msg := tgbotapi.NewMessage(message.From.ID, strconv.FormatInt(message.From.ID, 10))
 		app.bot.Send(msg)
-		if err = app.db.LogBotMessage(message.From.ID, "pm_id", msg.Text); err != nil {
-			app.notifyAdmin(fmt.Errorf("%w", err))
-		}
 
 		return
 	case "mailing":
@@ -238,49 +233,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			Entities:              nil,
 			DisableWebPagePreview: false,
 		})
-		return
-	case "analytics":
-		log.Info("/analytics")
-		user, err := app.db.GetRandomUser()
-		if err != nil {
-			warn(err)
-			return
-		}
-		fmt.Println("Getting logs for", user.ID)
-		logs, err := app.db.GetUserLogs(user.ID, 10)
-		if err != nil {
-			warn(err)
-			return
-		}
-		msg := ""
-		for _, log := range logs {
-			if log.FromBot {
-				msg += "🤖: "
-				switch log.Intent.String {
-				case "cb_meaning":
-					msg += "<i>Lookup meaning</i>"
-				case "cb_exmp":
-					msg += "<i>Open examples</i>"
-				case "cb_dict":
-					msg += "<i>Lookup in dictionary</i>"
-				case "bot_was_blocked":
-					msg += "<i>Bot was blocked</i>"
-				case "bot_was_unblocked":
-					msg += "<i>Bot was unblocked</i>"
-				case "inline_succeeded":
-					msg += "<i>Inline query was handled</i>"
-				}
-				msg += " " + log.Text
-			} else {
-				msg += "👤:" + log.Text
-			}
-
-			msg += "\n"
-
-		}
-		if _, err = app.bot.Send(tgbotapi.NewMessage(message.From.ID, msg)); err != nil {
-			fmt.Println(err)
-		}
 		return
 	}
 
@@ -470,7 +422,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 
 	app.bot.Send(tgbotapi.NewChatAction(message.From.ID, "typing")) // TODO: encode translation to utf-8
 	if err = app.SuperTranslate(ctx, user, message.Chat.ID, from, to, text, message); err != nil && !errors.Is(err, context.Canceled) {
-		err = fmt.Errorf("%s\nuser's text:%s\ntranslation:%s", err.Error(), text)
+		err = fmt.Errorf("%s\nuser's text:%s\ntranslation:%s", err.Error())
 		warn(err)
 		if e, ok := err.(errors.Error); ok {
 			log.Error("", zap.Error(e), zap.String("stack", string(e.Stack())))

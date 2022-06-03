@@ -60,11 +60,7 @@ func (db BotDB) GetAllUsers() (users []tables.Users, err error) {
 }
 
 func (db BotDB) UpdateUserMetrics(id int64, message string) error {
-	if err := db.Model(&tables.Users{}).Exec("UPDATE users SET usings=usings+1, last_activity=? WHERE id=?", time.Now(), id).Error; err != nil {
-		return err
-	}
-
-	return db.LogUserMessage(id, message)
+	return db.Model(&tables.Users{}).Exec("UPDATE users SET usings=usings+1, last_activity=? WHERE id=?", time.Now(), id).Error
 }
 
 func (db BotDB) GetUsersNumber() (num int64, err error) {
@@ -85,9 +81,7 @@ func (db BotDB) SwapLangs(userID int64) error {
 		Strength: "SHARE",
 		Table:    clause.Table{Name: clause.CurrentTable},
 	}).Exec("UPDATE users SET my_lang=(@temp:=my_lang), my_lang = to_lang, to_lang = @temp WHERE id = ? LIMIT 1", userID)
-	if query.RowsAffected == 0 {
-		return ErrNoRowsAffected
-	} else if query.RowsAffected > 1 {
+	if query.RowsAffected > 1 {
 		return fmt.Errorf("there are more rows than 1")
 	}
 	return query.Error

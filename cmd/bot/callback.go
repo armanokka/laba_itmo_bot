@@ -47,18 +47,6 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 	}()
 
 	switch arr[0] {
-	case "delete_cache": // arr[1] - document's ._key
-		if _, err = app.cache.RemoveDocument(ctx, arr[1]); err != nil {
-			_, err = app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, err.Error()))
-		} else {
-			_, err = app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, "OK"))
-		}
-		if err != nil {
-			warn(err)
-			log.Error("", zap.Error(err))
-			return
-		}
-		log.Info("cache was deleted", zap.String("_key", arr[1]))
 	case "cancel_mailing_act":
 		if err := app.db.UpdateUserByMap(callback.From.ID, map[string]interface{}{"act": ""}); err != nil {
 			warn(err)
@@ -69,7 +57,6 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, "OK"))
 	case "none":
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
-		app.db.LogBotMessage(callback.From.ID, "cb_none", "")
 	case "delete": // arr[1] - text for callback query
 		text := ""
 		if len(arr) > 1 {
@@ -80,7 +67,6 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			ChatID:    callback.From.ID,
 			MessageID: callback.Message.MessageID,
 		})
-		app.db.LogBotMessage(callback.From.ID, "cb_delete", "")
 		return
 	case "set_my_lang": // arr[1] - lang, arr[2] - keyboard offset
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, "Translo"))

@@ -1,7 +1,6 @@
 package tables
 
 import (
-	"database/sql"
 	"fmt"
 	"strings"
 	"time"
@@ -470,14 +469,6 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 		}
 	}
 	return fmt.Sprintf(key, placeholders...)
-}
-
-type UsersLogs struct {
-	ID      int64          // fk users.id
-	Intent  sql.NullString // varchar(25)
-	Text    string         // varchar(518)
-	FromBot bool
-	Date    time.Time
 }
 
 type Mailing struct {
