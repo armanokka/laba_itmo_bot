@@ -7,7 +7,6 @@ import (
 	"git.mills.io/prologic/bitcask"
 	boto "github.com/armanokka/translobot/cmd/bot"
 	"github.com/armanokka/translobot/cmd/botdb"
-	"github.com/armanokka/translobot/cmd/server"
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/k0kubun/pp"
 	"go.uber.org/zap"
@@ -67,11 +66,11 @@ func main() {
 		return Bot.Run(ctx)
 	})
 
-	g.Go(func() error {
-		return server.Run(ctx, log)
-	})
+	//g.Go(func() error {
+	//	return server.Run(ctx, log)
+	//})
 
-	if err := g.Wait(); err != nil && err != context.Canceled {
+	if err = g.Wait(); err != nil && err != context.Canceled {
 		panic(err)
 	}
 }
