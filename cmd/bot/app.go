@@ -242,16 +242,17 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 		entities = userMessage.CaptionEntities
 	}
 	text = norm.NFKC.String(text)
-	isHtml := app.htmlTagsRe.MatchString(text)
+	//isHtml := app.htmlTagsRe.MatchString(text)
 	parseMode := tgbotapi.ModeHTML
-	if isHtml {
-		parseMode = ""
-		if !validHtml(text) {
-			text = html.EscapeString(text)
-		}
-	} else {
-		text = applyEntitiesHtml(text, entities)
-	}
+	//if isHtml {
+	//	parseMode = ""
+	//	if !validHtml(text) {
+	//		text = html.EscapeString(text)
+	//	}
+	//} else {
+	//text = closeUnclosedTags(text)
+	text = applyEntitiesHtml(text, entities)
+	//}
 
 	log := app.log.With(zap.String("from", from), zap.String("to", to), zap.String("text", text), zap.Int64("chat_id", chatID))
 	if user.ID == 0 {
@@ -303,8 +304,10 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 	if err != nil {
 		return errors.Unwrap(err)
 	}
-	tr = replace(to, html.UnescapeString(tr)) + "\n❤️ @TransloBot"
-
+	tr = replace(to, tr)
+	if !validHtml(tr) {
+		tr = html.EscapeString(tr)
+	}
 	// Converting to utf-8
 	e, _, _ := charset.DetermineEncoding([]byte(tr), "text/plain")
 	tr, err = e.NewDecoder().String(tr)
@@ -377,7 +380,7 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 			})
 		default:
 			var keyboard interface{}
-			if userMessage.ReplyToMessage == nil {
+			if userMessage.ReplyMarkup != nil {
 				keyboard = tgbotapi.NewReplyKeyboard(
 					tgbotapi.NewKeyboardButtonRow(
 						tgbotapi.NewKeyboardButton(langs[user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
@@ -401,9 +404,7 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 			log.Error("", zap.Error(err), zap.String("translation", chunk))
 			return err
 		}
-
 	}
-
 	return nil
 }
 

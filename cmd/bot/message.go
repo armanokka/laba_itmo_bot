@@ -417,12 +417,22 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		} else {
 			to = user.MyLang
 		}
-
 	}
 
-	app.bot.Send(tgbotapi.NewChatAction(message.From.ID, "typing")) // TODO: encode translation to utf-8
+	if from != user.MyLang {
+		tr, err := translate.GoogleTranslate(ctx, from, to, text)
+		if err != nil {
+			warn(err)
+			return
+		}
+		if diff(text, tr.Text) < 2 {
+			from = user.MyLang
+			to = user.ToLang
+		}
+	}
+
 	if err = app.SuperTranslate(ctx, user, message.Chat.ID, from, to, text, message); err != nil && !errors.Is(err, context.Canceled) {
-		err = fmt.Errorf("%s\nuser's text:%s\ntranslation:%s", err.Error())
+		err = fmt.Errorf("%s\nuser's text:%s", err.Error(), text)
 		warn(err)
 		if e, ok := err.(errors.Error); ok {
 			log.Error("", zap.Error(e), zap.String("stack", string(e.Stack())))

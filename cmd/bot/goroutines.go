@@ -36,6 +36,7 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 		//GoogleToFromTr string
 		//YandexTr       string
 		LingvoTr string
+		//Dict     string
 	)
 	//if app.htmlTagsRe.MatchString(text) && from != "" && from != "auto" && !helpers.In(translate.MicrosoftUnsupportedLanguages, from, to) { // есть html теги
 	//	g.Go(func() error {
@@ -56,6 +57,12 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 	//		return nil
 	//	})
 	//}
+	//g.Go(func() error {
+	//	d, phonetics, err := translate.GoogleDictionary(ctx, from, text)
+	//	if err != nil {
+	//
+	//	}
+	//})
 
 	g.Go(func() error {
 		start := time.Now()
@@ -310,19 +317,6 @@ func (app App) reverseTranslationsExamples(ctx context.Context, from, to, text s
 }
 
 func (app App) dictionary(ctx context.Context, lang, text string) ([]string, error) {
-	meaning, err := translate.GoogleDictionary(ctx, lang, strings.ToLower(text))
-	if err != nil {
-		return nil, errors.Wrap(err)
-	}
-	out := make([]string, 0, 7)
-	for _, data := range meaning.DictionaryData {
-		for _, entry := range data.Entries {
-			for _, senseFamily := range entry.SenseFamilies {
-				for _, sense := range senseFamily.Senses {
-					out = append(out, sense.Definition.Text)
-				}
-			}
-		}
-	}
-	return out, nil
+	meaning, _, err := translate.GoogleDictionary(ctx, lang, strings.ToLower(text))
+	return meaning, err
 }

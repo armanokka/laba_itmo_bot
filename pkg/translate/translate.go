@@ -630,9 +630,9 @@ func ReversoQueryService(sourceText, sourceLang, targetText, targetLang string) 
 	return ret, nil
 }
 
-func GoogleDictionary(ctx context.Context, lang, text string) (dict GoogleDictionaryResponse, err error) {
+func GoogleDictionary(ctx context.Context, lang, text string) (dict []string, phonetics string, err error) {
 	for i := 0; i < 3; i++ {
-		dict, err = googleDictionary(ctx, lang, text)
+		dict, phonetics, err = googleDictionary(ctx, lang, text)
 		if err == nil {
 			break
 		}
@@ -640,25 +640,61 @@ func GoogleDictionary(ctx context.Context, lang, text string) (dict GoogleDictio
 	return
 }
 
-func googleDictionary(ctx context.Context, lang, text string) (GoogleDictionaryResponse, error) {
+func googleDictionary(ctx context.Context, lang, text string) (dict []string, phonetics string, err error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", "https://content-dictionaryextension-pa.googleapis.com/v1/dictionaryExtensionData?term="+url.PathEscape(text)+"&corpus="+url.PathEscape(lang)+"&key=AIzaSyA6EEtrDCfBkHV8uU2lgGY-N383ZgAOo7Y", nil)
 	if err != nil {
-		return GoogleDictionaryResponse{}, err
+		return nil, "", err
 	}
-	req.Header.Add("Content-Type", "application/json; charset=UTF-16")
+	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Add("X-Origin", "chrome-extension://mgijmajocgfcbeboacabfgobmjgjcoja")
 
-	res, err := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return GoogleDictionaryResponse{}, err
+		return nil, "", err
 	}
-	var result GoogleDictionaryResponse
-	if err = json.NewDecoder(res.Body).Decode(&result); err != nil {
-		return GoogleDictionaryResponse{}, err
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, "", err
 	}
-	return result, err
-}
+	if resp.StatusCode != 200 || gjson.GetBytes(body, "status").Int() != 200 {
+		return nil, "", fmt.Errorf("googleDictionary: not 200 code [%d]\nlang:%s\ntext:%s\nresponse:%s", resp.StatusCode, lang, text, string(body))
+	}
+	// debug
+	//f, err := os.Create("response.json")
+	//if err != nil {
+	//	return nil, err
+	//}
+	//defer f.Close()
+	//f.Write(body)
+	dict = make([]string, 0, 20)
+	for _, v := range gjson.GetBytes(body, "dictionaryData").Array() {
+		for _, entry := range v.Get("entries").Array() {
+			for _, phonetic := range entry.Get("phonetics").Array() {
+				if p := phonetic.Get("text").String(); p != "" {
+					phonetics = p
+					break
+				}
+			}
+			if s := entry.Get("etymology.etymology.text").String(); s != "" {
+				dict = append(dict, s)
+			}
+			if s := entry.Get("note.text").String(); s != "" {
+				dict = append(dict, s)
+			}
+			for _, senseFamily := range entry.Get("senseFamilies").Array() {
 
+				for _, sense := range senseFamily.Get("senses").Array() {
+					dict = append(dict, sense.Get("conciseDefinition").String())
+					//for _, subSence := range sense.Get("subsenses").Array() {
+					//	result = append(result, subSence.Get("conciseDefinition").String())
+					//}
+				}
+			}
+		}
+	}
+
+	return dict, phonetics, err
+}
 func YandexTranscription(from, to, text string) (YandexTranscriptionResponse, error) {
 	fromto := url.PathEscape(from) + "-" + url.PathEscape(to)
 	req, err := http.NewRequest("GET", "https://dictionary.yandex.net/dicservice.json/lookupMultiple?ui=en&srv=tr-text&text="+url.PathEscape(text)+"&type=regular,syn,ant,deriv&lang="+fromto+"&flags=7591&dict="+fromto, nil)

@@ -13,12 +13,10 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/text/unicode/norm"
 	"gorm.io/gorm"
-	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
-	"unicode"
 )
 
 func removeArticles(user tables.Users, articles []interface{}, codes ...string) []interface{} {
@@ -52,15 +50,6 @@ func removeIndex(obj []interface{}, idx int) []interface{} {
 	return append(obj[:idx], obj[idx+1:]...)
 }
 
-func Title(s string) string {
-	runes := []rune(s)
-	if len(runes) == 0 {
-		return ""
-	}
-	runes[0] = unicode.ToUpper(runes[0])
-	return string(runes)
-}
-
 func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -78,66 +67,12 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 		})
 		app.notifyAdmin(err)
 		pp.Println("onInlineQuery: error", err)
-		pp.Println(string(debug.Stack()))
+	}
+	if len(update.Query) > 0 {
+		update.Query = strings.ToTitle(string(update.Query[0])) + update.Query[1:]
 	}
 
 	user := tables.Users{Lang: update.From.LanguageCode}
-
-	if update.Query == "" {
-		kbLoc := tgbotapi.NewInlineKeyboardMarkup(
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonURL(user.Localize("Попробовать"), "https://t.me/translobot?start=from_inline")))
-
-		elemLoc := tgbotapi.InlineQueryResultArticle{
-			Type:  "article",
-			ID:    "ad_local",
-			Title: user.Localize("Порекомендовать бота"),
-			InputMessageContent: map[string]interface{}{
-				"message_text":             user.Localize("inline_ad"),
-				"disable_web_page_preview": true,
-				"parse_mode":               tgbotapi.ModeHTML,
-			},
-			ReplyMarkup: &kbLoc,
-			URL:         "",
-			HideURL:     true,
-			Description: user.Localize("кликните, чтобы порекомендовать бота в чате"),
-			ThumbURL:    "https://i.yapx.ru/PdNIa.png",
-			ThumbWidth:  200,
-			ThumbHeight: 200,
-		}
-
-		kbEn := tgbotapi.NewInlineKeyboardMarkup(
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonURL("Try it out", "https://t.me/translobot?start=from_inline")))
-
-		elemEn := tgbotapi.InlineQueryResultArticle{
-			Type:  "article",
-			ID:    "ad_en",
-			Title: "Recommend the bot",
-			InputMessageContent: map[string]interface{}{
-				"message_text":             `🔥 <a href="https://t.me/translobot">Translo</a> 🌐 - <i>The best Telegram translator bot in the whole world</i>`,
-				"disable_web_page_preview": true,
-				"parse_mode":               tgbotapi.ModeHTML,
-			},
-			ReplyMarkup: &kbEn,
-			URL:         "",
-			HideURL:     true,
-			Description: "click to recommend a bot in the chat",
-			ThumbURL:    "https://i.yapx.ru/PdNIa.png",
-			ThumbWidth:  200,
-			ThumbHeight: 200,
-		}
-		app.bot.AnswerInlineQuery(tgbotapi.InlineConfig{
-			InlineQueryID:     update.ID,
-			Results:           []interface{}{elemLoc, elemEn},
-			CacheTime:         0,
-			IsPersonal:        true,
-			NextOffset:        "",
-			SwitchPMText:      "Type text to translate",
-			SwitchPMParameter: "from_inline",
-		})
-		return
-	}
 
 	var offset int // смещение для пагинации
 	if update.Offset != "" {
@@ -274,19 +209,12 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 		blocks = blocks[:len(blocks)-diff]
 	}
 
-	pmtext := "Translo"
-	if update.Query == "" {
-		pmtext = "Enter text"
-	}
-
 	if _, err := app.bot.AnswerInlineQuery(tgbotapi.InlineConfig{
-		InlineQueryID:     update.ID,
-		Results:           blocks,
-		CacheTime:         0,
-		NextOffset:        strconv.Itoa(nextOffset),
-		IsPersonal:        true,
-		SwitchPMText:      pmtext,
-		SwitchPMParameter: "from_inline",
+		InlineQueryID: update.ID,
+		Results:       blocks,
+		CacheTime:     0,
+		NextOffset:    strconv.Itoa(nextOffset),
+		IsPersonal:    true,
 	}); err != nil {
 		warn(errors.Wrap(err))
 		pp.Println(blocks)
