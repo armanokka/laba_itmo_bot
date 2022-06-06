@@ -213,7 +213,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 
 		count := 18
 		if offset+count > len(codes[user.Lang])-1 {
-			count = len(codes[user.Lang]) - 1 - offset
+			count = len(codes[user.Lang]) - offset
 		}
 
 		back := offset - 18
@@ -277,7 +277,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 
 		count := 18
 		if offset+count > len(codes[user.Lang])-1 {
-			count = len(codes[user.Lang]) - 1 - offset
+			count = len(codes[user.Lang]) - offset
 		}
 
 		back := offset - 18

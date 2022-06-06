@@ -84,14 +84,14 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 		}
 	}
 
-	if offset > len(codes[user.Lang])-1 {
+	if offset > len(codes[user.Lang]) {
 		warn(fmt.Errorf("слишком большое смещение: %d", offset))
 		return
 	}
 
 	count := 50
 	if offset+count > len(codes[user.Lang])-1 {
-		count = len(codes[user.Lang]) - 1 - offset
+		count = len(codes[user.Lang]) - offset
 	}
 
 	nextOffset := offset + count
@@ -119,9 +119,9 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 		i := i
 		g.Go(func() error {
 			title := langs[user.Lang][code]
-			if offset == 0 && i < 19 {
-				title += " 📌"
-			}
+			//if offset == 0 && i < 19 {
+			//	title += " 📌"
+			//}
 
 			tr, err := translate2.GoogleTranslate(ctx, "auto", code, update.Query)
 			if err != nil || tr.Text == "" {
@@ -169,24 +169,24 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 
 	blocks = removeArticles(user, blocks, from)
 
-	if offset == 0 && user.Usings > 0 {
-		nextOffset -= 2
-		for i, lang := range []string{user.MyLang, user.ToLang} {
-			if lang == from {
-				continue
-			}
-			block := getArticle(user, blocks, lang)
-			if block == nil {
-				continue
-			}
-			article := block.(tgbotapi.InlineQueryResultArticle)
-			blocks = removeArticles(user, blocks, lang)
-			article.Title = strings.TrimSuffix(article.Title, " 📌")
-			article.Title += " 🙍‍♂️"
-			article.ID = strconv.Itoa(-1 - i)
-			blocks = append(blocks, article)
-		}
-	}
+	//if offset == 0 && user.Usings > 0 {
+	//	nextOffset -= 2
+	//	for i, lang := range []string{user.MyLang, user.ToLang} {
+	//		if lang == from {
+	//			continue
+	//		}
+	//		block := getArticle(user, blocks, lang)
+	//		if block == nil {
+	//			continue
+	//		}
+	//		article := block.(tgbotapi.InlineQueryResultArticle)
+	//		blocks = removeArticles(user, blocks, lang)
+	//		article.Title = strings.TrimSuffix(article.Title, " 📌")
+	//		article.Title += " 🙍‍♂️"
+	//		article.ID = strconv.Itoa(-1 - i)
+	//		blocks = append(blocks, article)
+	//	}
+	//}
 
 	sort.Slice(blocks, func(i, j int) bool {
 		block1 := blocks[i].(tgbotapi.InlineQueryResultArticle)

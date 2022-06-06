@@ -19,13 +19,8 @@ github.com/abcum/lcp
 github.com/andybalholm/cascadia
 # github.com/arangodb/go-driver v1.3.1
 ## explicit; go 1.16
-github.com/arangodb/go-driver
-github.com/arangodb/go-driver/cluster
-github.com/arangodb/go-driver/http
-github.com/arangodb/go-driver/util
 # github.com/arangodb/go-velocypack v0.0.0-20200318135517-5af53c29c67e
 ## explicit; go 1.12
-github.com/arangodb/go-velocypack
 # github.com/fogleman/gg v1.3.0
 ## explicit
 github.com/fogleman/gg
@@ -111,6 +106,9 @@ github.com/pkg/errors
 # github.com/plar/go-adaptive-radix-tree v1.0.4
 ## explicit; go 1.12
 github.com/plar/go-adaptive-radix-tree
+# github.com/qiniu/iconv v1.2.0
+## explicit; go 1.14
+github.com/qiniu/iconv
 # github.com/rivo/uniseg v0.2.0
 ## explicit; go 1.12
 github.com/rivo/uniseg
@@ -119,6 +117,9 @@ github.com/rivo/uniseg
 # github.com/sirupsen/logrus v1.8.1
 ## explicit; go 1.13
 github.com/sirupsen/logrus
+# github.com/softlandia/cpd v1.0.0
+## explicit; go 1.17
+github.com/softlandia/cpd
 # github.com/tidwall/gjson v1.13.0
 ## explicit; go 1.12
 github.com/tidwall/gjson

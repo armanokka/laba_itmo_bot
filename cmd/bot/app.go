@@ -14,8 +14,8 @@ import (
 	"github.com/armanokka/translobot/repos"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
+	"github.com/qiniu/iconv"
 	"go.uber.org/zap"
-	"golang.org/x/net/html/charset"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/text/unicode/norm"
 	"html"
@@ -38,6 +38,7 @@ type App struct {
 }
 
 func New(bot *botapi.BotAPI, db repos.BotDB, analytics dashbot.DashBot, log *zap.Logger, bc *bitcask.Bitcask) (App, error) {
+	iconv.Open("utf-8", "")
 	app := App{
 		htmlTagsRe:          regexp.MustCompile("<\\s*[^>]+>(.*?)"),
 		reSpecialCharacters: regexp.MustCompile(`[[:punct:]]`),
@@ -242,19 +243,8 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 		entities = userMessage.CaptionEntities
 	}
 	text = norm.NFKC.String(text)
-	//isHtml := app.htmlTagsRe.MatchString(text)
-	parseMode := tgbotapi.ModeHTML
-	//if isHtml {
-	//	parseMode = ""
-	//	if !validHtml(text) {
-	//		text = html.EscapeString(text)
-	//	}
-	//} else {
-	//text = closeUnclosedTags(text)
 	text = applyEntitiesHtml(text, entities)
-	//}
 
-	log := app.log.With(zap.String("from", from), zap.String("to", to), zap.String("text", text), zap.Int64("chat_id", chatID))
 	if user.ID == 0 {
 		user.ID = chatID
 	}
@@ -308,14 +298,9 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 	if !validHtml(tr) {
 		tr = html.EscapeString(tr)
 	}
-	// Converting to utf-8
-	e, _, _ := charset.DetermineEncoding([]byte(tr), "text/plain")
-	tr, err = e.NewDecoder().String(tr)
-	if err != nil {
-		return err
-	}
 
-	chunks := translate2.SplitIntoChunks(tr, 4096)
+	app.bot.Send(tgbotapi.NewDeleteMessage(chatID, userMessage.MessageID))
+	chunks := translate2.SplitIntoChunksBySentences(tr, 4096)
 	for _, chunk := range chunks {
 		chunk = closeUnclosedTags(chunk)
 		switch {
@@ -337,7 +322,7 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 				AllowsMultipleAnswers: userMessage.Poll.AllowsMultipleAnswers,
 				CorrectOptionID:       int64(userMessage.Poll.CorrectOptionID),
 				Explanation:           userMessage.Poll.Explanation,
-				ExplanationParseMode:  parseMode,
+				ExplanationParseMode:  tgbotapi.ModeHTML,
 				ExplanationEntities:   nil,
 				OpenPeriod:            userMessage.Poll.OpenPeriod,
 				CloseDate:             userMessage.Poll.CloseDate,
@@ -359,7 +344,7 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 				},
 				Thumb:     tgbotapi.FileID(thumbnail),
 				Caption:   tr,
-				ParseMode: parseMode,
+				ParseMode: tgbotapi.ModeHTML,
 				Duration:  userMessage.Audio.Duration,
 				Performer: userMessage.Audio.Performer,
 				Title:     userMessage.Audio.Title,
@@ -376,7 +361,7 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 					File: tgbotapi.FileID(maxResolutionPhoto.FileID),
 				},
 				Caption:   chunk,
-				ParseMode: parseMode,
+				ParseMode: tgbotapi.ModeHTML,
 			})
 		default:
 			var keyboard interface{}
@@ -395,13 +380,12 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 					ReplyMarkup: keyboard,
 				},
 				Text:                  chunk,
-				ParseMode:             parseMode,
+				ParseMode:             tgbotapi.ModeHTML,
 				Entities:              nil,
 				DisableWebPagePreview: true,
 			})
 		}
 		if err != nil {
-			log.Error("", zap.Error(err), zap.String("translation", chunk))
 			return err
 		}
 	}

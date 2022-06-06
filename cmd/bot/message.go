@@ -95,57 +95,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				app.notifyAdmin(fmt.Errorf("%w", err))
 			}
 		} else {
-			hello := map[string]string{
-				"en": "Hello",
-				"zh": "Nǐ hǎo",
-				"uk": "Привіт",
-				"ar": "As-salām ‘alaykum",
-				"pt": "Olá",
-				"fr": "Salut",
-				"fy": "Gouden Dai",
-			}
-			if _, ok := hello[user.Lang]; ok {
-				delete(hello, user.Lang)
-			}
-			var msg tgbotapi.Message
-			i := 0
-			for _, text := range hello {
-				text += ", " + message.From.FirstName
-				if msg.MessageID == 0 {
-					msg, err = app.bot.Send(tgbotapi.NewMessage(message.From.ID, text))
-					i++
-					continue
-				}
-				app.bot.Send(tgbotapi.EditMessageTextConfig{
-					BaseEdit: tgbotapi.BaseEdit{
-						ChatID:          message.From.ID,
-						ChannelUsername: "",
-						MessageID:       msg.MessageID,
-						InlineMessageID: "",
-						ReplyMarkup:     nil,
-					},
-					Text:                  text,
-					ParseMode:             "",
-					Entities:              nil,
-					DisableWebPagePreview: false,
-				})
-				time.Sleep(time.Second / 3)
-				i++
-			}
-			app.bot.Send(tgbotapi.EditMessageTextConfig{
-				BaseEdit: tgbotapi.BaseEdit{
-					ChatID:          message.From.ID,
-					ChannelUsername: "",
-					MessageID:       msg.MessageID,
-					InlineMessageID: "",
-					ReplyMarkup:     nil,
-				},
-				Text:                  user.Localize("Привет") + ", " + message.From.FirstName,
-				ParseMode:             "",
-				Entities:              nil,
-				DisableWebPagePreview: false,
-			})
-			if _, err = app.bot.Send(tgbotapi.NewSticker(message.From.ID, tgbotapi.FileID("CAACAgIAAxkBAAEP5rViieLUfMyMYArLNLl12AOggTEAAVAAAgEBAAJWnb0KIr6fDrjC5jQkBA"))); err != nil {
+			if _, err = app.bot.Send(tgbotapi.NewSticker(message.From.ID, tgbotapi.FileID("CAACAgIAAxkBAAEQJrlinQ2sIDF1R3cjISx_cEv1pawdSgACQhAAAjPFKUmQDtQRpypKgiQE"))); err != nil {
 				warn(err)
 			}
 			time.Sleep(time.Second)
@@ -164,7 +114,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				DisableNotification:      true,
 				AllowSendingWithoutReply: false,
 			},
-			Text: user.Localize("Просто напиши мне текст, а я его переведу"),
+			Text: user.Localize("Пересылай мне посты с иностранных каналов 📣, а я буду их переводить."),
 		}); err != nil {
 			warn(err)
 		}
@@ -391,6 +341,38 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		//app.bot.Send(tgbotapi.NewDeleteMessage())
 		app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, user.Localize("Отправь текстовое сообщение, чтобы я его перевел")))
 		app.analytics.Bot(message.Chat.ID, "Please, send text message", "Message is not text message")
+		return
+	}
+	if message.ForwardDate == 0 {
+		app.bot.Send(tgbotapi.NewDeleteMessage(message.Chat.ID, message.MessageID))
+		text := user.Localize("text")
+		app.bot.Send(tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:           message.Chat.ID,
+				ChannelUsername:  "",
+				ProtectContent:   false,
+				ReplyToMessageID: 0,
+				ReplyMarkup: tgbotapi.NewInlineKeyboardMarkup(
+					tgbotapi.NewInlineKeyboardRow(
+						tgbotapi.InlineKeyboardButton{
+							Text:                         user.Localize("inline🔎"),
+							URL:                          nil,
+							LoginURL:                     nil,
+							CallbackData:                 nil,
+							WebApp:                       nil,
+							SwitchInlineQuery:            nil,
+							SwitchInlineQueryCurrentChat: &text,
+							CallbackGame:                 nil,
+							Pay:                          false,
+						})),
+				DisableNotification:      false,
+				AllowSendingWithoutReply: false,
+			},
+			Text:                  user.Localize("Перешли сообщение из канала 📣 или воспользуйся инлайном!"),
+			ParseMode:             "",
+			Entities:              nil,
+			DisableWebPagePreview: false,
+		})
 		return
 	}
 

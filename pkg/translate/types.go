@@ -712,30 +712,33 @@ var MicrosoftUnsupportedLanguages = []string{
 }
 
 func SplitIntoChunksBySentences(text string, limit int) []string {
-	//sentences := strings.FieldsFunc(text, func(r rune) bool {
-	//	return r == '.' || r == '!' || r == '?'
-	//})
-	sentences := strings.Split(text, ".")
-	out := make([]string, len(text)/limit)
-
-	for i, sentence := range sentences {
-		last := len(out) - 1
-		if last < 0 {
-			last = 0
+	runes := []rune(text)
+	chunks := len(runes)/limit + 1
+	out := make([]string, 0, chunks)
+	for i := 0; i < chunks; i++ {
+		i1 := i * limit
+		i2 := i1 + limit
+		if i2 > len(runes[i1:]) {
+			i2 = i1 + len(runes[i1:])
 		}
-
-		l := len([]rune(sentence))
-
-		if len(out) == 0 || l+len([]rune(out[last])) > limit {
-			chunks := SplitIntoChunks(sentence, limit)
-			if i > 0 && len(chunks) > 0 {
-				chunks[0] = "." + chunks[0]
-			}
-			out = append(out, chunks...)
+		part := string(runes[i1:i2])
+		if len(part) < limit {
+			out = append(out, part)
 			continue
 		}
-
-		out[last] += "." + sentence
+		idx := strings.LastIndexAny(part, ".?!") + 1
+		if idx == 0 {
+			out = append(out, SplitIntoChunks(part, limit)...)
+			continue
+		} else if idx == len(part)-1 {
+			idx++
+		}
+		if idx != 0 {
+			out = append(out, part[:idx])
+		}
+		if idx != len(part) {
+			out = append(out, part[idx:])
+		}
 	}
 
 	return out

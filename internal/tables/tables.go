@@ -461,14 +461,63 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"ru": "💡Подсказка:\nТолько Translo может переводить такие форматированные тексты, как: \"𝑴𝒓 𝒑𝒂𝒖𝒍𝒔𝒐𝒏 𝑷𝒊𝒆𝒕𝒆𝒓\"\nНи гугл, ни яндекс, ни любой другой переводчик так не могут. Попробуйте и убедитесь в этом",
 			"ar": "💡تلميح:\nفقط Translo يمكن أن تترجم تنسيق النصوص مثل: \"𝑴𝒓 𝒑𝒂𝒖𝒍𝒔𝒐𝒏 𝑷𝒊𝒆𝒕𝒆𝒓\"\nأي جوجل أو ياندكس ، أو أي مترجم لا تستطيع أن تفعل ذلك. محاولة وانظر لنفسك",
 		},
+		"Пересылай мне посты с иностранных каналов 📣, а я буду их переводить.": map[string]string{
+			"pt": "Envie-me posts de canais estrangeiros 📣, e eu os traduzirei.",
+			"ar": "أرسلوا لي منشورات من قنوات أجنبية 📣 وسأقوم بترجمتها.",
+			"es": "Envíame publicaciones de canales extranjeros 📣 y las traduciré.",
+			"ru": "Пересылай мне посты с иностранных каналов 📣, а я буду их переводить.",
+			"de": "Sende mir Posts von ausländischen Kanälen 📣, und ich übersetze sie.",
+			"en": "Send me posts from foreign channels 📣, and I will translate them.",
+			"it": "Mandami post da canali esteri 📣, e li tradurrò.",
+			"uk": "Пересилай мені пости з іноземних каналів 📣, а я їх перекладатиму.",
+			"uz": "Xorijiy kanallardan postlarni 📣 yuboring, men ularni tarjima qilaman.",
+			"id": "Kirimi saya posting dari saluran asing , dan saya akan menerjemahkannya.",
+		},
+		"Перешли сообщение из канала 📣 или воспользуйся инлайном!": map[string]string{
+			"pt": "Encaminhei uma mensagem do canal 📣 ou use inline!",
+			"uz": "Kanaldan xabar yo'naltirildi 📣 yoki inline-dan foydalaning!",
+			"it": "Inoltrato un messaggio dal canale 📣 oppure usa inline!",
+			"de": "Eine Nachricht vom Kanal weitergeleitet 📣 oder Inline verwenden!",
+			"ar": "إعادة توجيه رسالة من القناة 📣 أو استخدام مضمنة!",
+			"uk": "Перейшли повідомлення з каналу 📣 або скористайтесь інлайном!",
+			"es": "¡Reenvió un mensaje del canal 📣 o use en línea!",
+			"id": "Meneruskan pesan dari saluran atau gunakan sebaris!",
+			"en": "Forwarded a message from the channel 📣 or use inline!",
+			"ru": "Перешли сообщение из канала 📣 или воспользуйся инлайном!",
+		},
+		"inline🔎": map[string]string{
+			"de": "inline🔎",
+			"id": "sebaris",
+			"it": "inlinea🔎",
+			"ru": "инлайн🔎",
+			"uk": "инлайн🔎",
+			"pt": "emlinha🔎",
+			"en": "inline🔎",
+			"ar": "مضمنة🔎",
+			"es": "en línea🔎",
+			"uz": "inline🔎",
+		},
+		"text": map[string]string{
+			"ru": "текст",
+			"es": "texto",
+			"uz": "matn",
+			"pt": "texto",
+			"ar": "نص",
+			"de": "Text",
+			"it": "testo",
+			"uk": "текст",
+			"id": "teks",
+			"en": "text",
+		},
 	}
 
 	if v, ok := localization[key]; ok {
 		if v, ok := v[u.Lang]; ok {
 			return fmt.Sprintf(v, placeholders...)
 		}
+		return "LOCALIZATION_KEY_NOT_FOUND"
 	}
-	return fmt.Sprintf(key, placeholders...)
+	return "LOCALIZATION_NOT_FOUND"
 }
 
 type Mailing struct {

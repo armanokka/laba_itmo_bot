@@ -35,7 +35,7 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 		GoogleFromToTr string
 		//GoogleToFromTr string
 		//YandexTr       string
-		LingvoTr string
+		//LingvoTr string
 		//Dict     string
 	)
 	//if app.htmlTagsRe.MatchString(text) && from != "" && from != "auto" && !helpers.In(translate.MicrosoftUnsupportedLanguages, from, to) { // есть html теги
@@ -100,22 +100,22 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 		//	log = log.With(zap.String("google to-from", time.Since(start).String()))
 		//	return nil
 		//})
-		_, ok1 := lingvo.Lingvo[from]
-		_, ok2 := lingvo.Lingvo[to]
-		if ok1 && ok2 && len(text) < 50 {
-			g.Go(func() error {
-				l, err := lingvo.GetDictionary(ctx, from, to, strings.ToLower(text))
-				if err != nil {
-					if IsCtxError(err) {
-						return nil
-					}
-					log.Error("lingvo err")
-					return err
-				}
-				LingvoTr = writeLingvo(l)
-				return nil
-			})
-		}
+		//_, ok1 := lingvo.Lingvo[from]
+		//_, ok2 := lingvo.Lingvo[to]
+		//if ok1 && ok2 && len(text) < 50 {
+		//	g.Go(func() error {
+		//		l, err := lingvo.GetDictionary(ctx, from, to, strings.ToLower(text))
+		//		if err != nil {
+		//			if IsCtxError(err) {
+		//				return nil
+		//			}
+		//			log.Error("lingvo err")
+		//			return err
+		//		}
+		//		LingvoTr = writeLingvo(l)
+		//		return nil
+		//	})
+		//}
 	}
 
 	//_, ok1 := translate.YandexSupportedLanguages[from]
@@ -139,9 +139,9 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 
 	if err := g.Wait(); err != nil {
 		switch {
-		case LingvoTr != "":
-			log.Error("translated via lingvo")
-			return LingvoTr, from, err
+		//case LingvoTr != "":
+		//log.Error("translated via lingvo")
+		//return LingvoTr, from, err
 		case GoogleFromToTr != "":
 			log.Error("translated via google from-to")
 			return GoogleFromToTr, from, err
@@ -157,10 +157,10 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 		}
 		return "", from, err
 	}
-	if LingvoTr != "" {
-		log.Info("translated via lingvo")
-		return LingvoTr, from, nil
-	} else if GoogleFromToTr != "" {
+	//if LingvoTr != "" {
+	//	log.Info("translated via lingvo")
+	//	return LingvoTr, from, nil
+	if GoogleFromToTr != "" {
 		log.Info("translated via google")
 		return GoogleFromToTr, from, nil
 	}
