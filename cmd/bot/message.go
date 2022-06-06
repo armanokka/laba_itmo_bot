@@ -343,38 +343,38 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		app.analytics.Bot(message.Chat.ID, "Please, send text message", "Message is not text message")
 		return
 	}
-	if message.ForwardDate == 0 {
-		app.bot.Send(tgbotapi.NewDeleteMessage(message.Chat.ID, message.MessageID))
-		text := user.Localize("text")
-		app.bot.Send(tgbotapi.MessageConfig{
-			BaseChat: tgbotapi.BaseChat{
-				ChatID:           message.Chat.ID,
-				ChannelUsername:  "",
-				ProtectContent:   false,
-				ReplyToMessageID: 0,
-				ReplyMarkup: tgbotapi.NewInlineKeyboardMarkup(
-					tgbotapi.NewInlineKeyboardRow(
-						tgbotapi.InlineKeyboardButton{
-							Text:                         user.Localize("inline🔎"),
-							URL:                          nil,
-							LoginURL:                     nil,
-							CallbackData:                 nil,
-							WebApp:                       nil,
-							SwitchInlineQuery:            nil,
-							SwitchInlineQueryCurrentChat: &text,
-							CallbackGame:                 nil,
-							Pay:                          false,
-						})),
-				DisableNotification:      false,
-				AllowSendingWithoutReply: false,
-			},
-			Text:                  user.Localize("Перешли сообщение из канала 📣 или воспользуйся инлайном!"),
-			ParseMode:             "",
-			Entities:              nil,
-			DisableWebPagePreview: false,
-		})
-		return
-	}
+	//if message.ForwardDate == 0 {
+	//	app.bot.Send(tgbotapi.NewDeleteMessage(message.Chat.ID, message.MessageID))
+	//	text := user.Localize("text")
+	//	app.bot.Send(tgbotapi.MessageConfig{
+	//		BaseChat: tgbotapi.BaseChat{
+	//			ChatID:           message.Chat.ID,
+	//			ChannelUsername:  "",
+	//			ProtectContent:   false,
+	//			ReplyToMessageID: 0,
+	//			ReplyMarkup: tgbotapi.NewInlineKeyboardMarkup(
+	//				tgbotapi.NewInlineKeyboardRow(
+	//					tgbotapi.InlineKeyboardButton{
+	//						Text:                         user.Localize("inline🔎"),
+	//						URL:                          nil,
+	//						LoginURL:                     nil,
+	//						CallbackData:                 nil,
+	//						WebApp:                       nil,
+	//						SwitchInlineQuery:            nil,
+	//						SwitchInlineQueryCurrentChat: &text,
+	//						CallbackGame:                 nil,
+	//						Pay:                          false,
+	//					})),
+	//			DisableNotification:      false,
+	//			AllowSendingWithoutReply: false,
+	//		},
+	//		Text:                  user.Localize("Перешли сообщение из канала 📣 или воспользуйся инлайном!"),
+	//		ParseMode:             "",
+	//		Entities:              nil,
+	//		DisableWebPagePreview: false,
+	//	})
+	//	return
+	//}
 
 	from, err := translate.DetectLanguageGoogle(ctx, cutStringUTF16(text, 100))
 	if err != nil {

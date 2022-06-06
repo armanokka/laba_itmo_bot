@@ -299,7 +299,7 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 	//	tr = html.EscapeString(tr)
 	//}
 
-	app.bot.Send(tgbotapi.NewDeleteMessage(chatID, userMessage.MessageID))
+	//app.bot.Send(tgbotapi.NewDeleteMessage(chatID, userMessage.MessageID))
 	chunks := translate2.SplitIntoChunksBySentences(tr, 4096)
 	for _, chunk := range chunks {
 		chunk = closeUnclosedTags(chunk)

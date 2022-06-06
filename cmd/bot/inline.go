@@ -69,7 +69,8 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 		pp.Println("onInlineQuery: error", err)
 	}
 	if len(update.Query) > 0 {
-		update.Query = strings.ToTitle(string(update.Query[0])) + update.Query[1:]
+		runes := []rune(update.Query)
+		update.Query = strings.ToTitle(string(runes[0])) + string(runes[1:])
 	}
 
 	user := tables.Users{Lang: update.From.LanguageCode}
