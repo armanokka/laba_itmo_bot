@@ -23,6 +23,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -422,6 +423,7 @@ func GoogleHTMLTranslate(ctx context.Context, from, to, text string) (GoogleHTML
 
 func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateGoogleAPIResponse, err error) {
 	chunks := SplitIntoChunksBySentences(text, 400)
+	var mu sync.Mutex
 	g, ctx := errgroup.WithContext(ctx)
 	for i, chunk := range chunks {
 		i := i
@@ -437,6 +439,8 @@ func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateG
 			if out.FromLang == "" {
 				out.FromLang = tr.FromLang
 			}
+			mu.Lock()
+			defer mu.Unlock()
 			chunks[i] = tr.Text
 			return nil
 		})

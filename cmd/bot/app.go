@@ -18,7 +18,6 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/text/unicode/norm"
-	"html"
 	"os"
 	"regexp"
 	"runtime/debug"
@@ -294,10 +293,11 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 	if err != nil {
 		return errors.Unwrap(err)
 	}
-	tr = replace(to, tr)
-	if !validHtml(tr) {
-		tr = html.EscapeString(tr)
-	}
+	//if !validHtml(tr) {
+	//	tr =
+	//	pp.Println("escaping")
+	//	tr = html.EscapeString(tr)
+	//}
 
 	app.bot.Send(tgbotapi.NewDeleteMessage(chatID, userMessage.MessageID))
 	chunks := translate2.SplitIntoChunksBySentences(tr, 4096)
@@ -382,10 +382,25 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 				Text:                  chunk,
 				ParseMode:             tgbotapi.ModeHTML,
 				Entities:              nil,
-				DisableWebPagePreview: true,
+				DisableWebPagePreview: false,
 			})
 		}
 		if err != nil {
+			app.bot.Send(tgbotapi.MessageConfig{
+				BaseChat: tgbotapi.BaseChat{
+					ChatID:                   config.AdminID,
+					ChannelUsername:          "",
+					ProtectContent:           false,
+					ReplyToMessageID:         0,
+					ReplyMarkup:              nil,
+					DisableNotification:      false,
+					AllowSendingWithoutReply: false,
+				},
+				Text:                  fmt.Sprintf("Error: %s\nUser's text:%s\nTranslation:%s", err.Error(), text, tr),
+				ParseMode:             "",
+				Entities:              nil,
+				DisableWebPagePreview: false,
+			})
 			return err
 		}
 	}
