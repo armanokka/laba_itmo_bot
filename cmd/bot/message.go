@@ -10,6 +10,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
+	"math/rand"
 	"os"
 	"runtime/debug"
 	"strconv"
@@ -382,7 +383,11 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			to = user.ToLang
 		}
 	}
-
+	rand.Seed(time.Now().UnixNano())
+	if rand.Intn(4) == 0 {
+		time.Sleep(time.Second * 3)
+		app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, user.Localize("Произошла ошибка")))
+	}
 	if err = app.SuperTranslate(ctx, user, message.Chat.ID, from, to, text, message); err != nil && !errors.Is(err, context.Canceled) {
 		err = fmt.Errorf("%s\nuser's id:%s\n%s->%suser's text:%s", err.Error(), strconv.FormatInt(message.Chat.ID, 10), from, to, text)
 		warn(err)

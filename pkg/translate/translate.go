@@ -86,6 +86,7 @@ import (
 //}
 
 func DetectLanguageGoogle(ctx context.Context, text string) (lang string, err error) {
+	text = cutString(text, 100)
 	for i := 0; i < 3; i++ {
 		lang, err = detectLanguageGoogle(ctx, text)
 		if err == nil {
@@ -430,7 +431,8 @@ func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateG
 		i := i
 		chunk := chunk
 		g.Go(func() error {
-			chunk = strings.ReplaceAll(chunk, "\n", "<br>")
+			//chunk = strings.ReplaceAll(chunk, "\n", "<br>")
+			//pp.Println(chunk)
 			tr, err := googleTranslate(ctx, from, to, chunk)
 			if err != nil {
 				return err
@@ -662,7 +664,7 @@ func googleDictionary(ctx context.Context, lang, text string) (dict []string, ph
 	if err != nil {
 		return nil, "", err
 	}
-	if resp.StatusCode != 200 || gjson.GetBytes(body, "status").Int() != 200 {
+	if (resp.StatusCode != 200 && resp.StatusCode != 404) || (gjson.GetBytes(body, "status").Int() != 200 && gjson.GetBytes(body, "status").Int() != 404) {
 		return nil, "", fmt.Errorf("googleDictionary: not 200 code [%d]\nlang:%s\ntext:%s\nresponse:%s", resp.StatusCode, lang, text, string(body))
 	}
 	// debug
