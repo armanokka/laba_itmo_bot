@@ -235,7 +235,8 @@ func ttsRequest(lang, text string) (string, error) {
 }
 
 func SplitIntoChunks(s string, chunkLength int) []string {
-	length := len(s)
+	runes := []rune(s)
+	length := len(runes)
 
 	chunksCount := length / chunkLength
 	if length%chunkLength != 0 {
@@ -252,7 +253,7 @@ func SplitIntoChunks(s string, chunkLength int) []string {
 		} else {
 			to = from + chunkLength
 		}
-		chunks[i] = s[from:to]
+		chunks[i] = string(runes[from:to])
 	}
 
 	return chunks
@@ -428,14 +429,15 @@ func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateG
 	for i, chunk := range chunks {
 		i := i
 		chunk := chunk
-		chunks := chunks
 		g.Go(func() error {
+			chunk = strings.ReplaceAll(chunk, "\n", "<br>")
 			tr, err := googleTranslate(ctx, from, to, chunk)
 			if err != nil {
 				return err
 			}
 			tr.Text = strings.ReplaceAll(tr.Text, ` \ n`, `\n`)
 			tr.Text = strings.ReplaceAll(tr.Text, `\ n`, `\n`)
+			tr.Text = strings.ReplaceAll(tr.Text, "<br>", "\n")
 			if out.FromLang == "" {
 				out.FromLang = tr.FromLang
 			}

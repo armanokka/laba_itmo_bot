@@ -365,7 +365,7 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 			})
 		default:
 			var keyboard interface{}
-			if userMessage.ReplyMarkup != nil {
+			if userMessage.ReplyMarkup == nil {
 				keyboard = tgbotapi.NewReplyKeyboard(
 					tgbotapi.NewKeyboardButtonRow(
 						tgbotapi.NewKeyboardButton(langs[user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
@@ -404,6 +404,29 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 			return err
 		}
 	}
+	data, err := translate2.TTS(to, tr)
+	if err != nil {
+		return err
+	}
+	app.bot.Send(tgbotapi.AudioConfig{
+		BaseFile: tgbotapi.BaseFile{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID: chatID,
+			},
+			File: tgbotapi.FileBytes{
+				Name:  helpers.CutStringUTF16(tr, 50),
+				Bytes: data,
+			},
+		},
+		Thumb:           nil,
+		Caption:         "",
+		ParseMode:       "",
+		CaptionEntities: nil,
+		Duration:        0,
+		Performer:       "",
+		Title:           "",
+	})
+
 	return nil
 }
 

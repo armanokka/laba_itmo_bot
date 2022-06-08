@@ -8,12 +8,12 @@ import (
 
 // Users is table in DB
 type Users struct {
-	ID           int64 `gorm:"primaryKey;index;not null"`
-	MyLang       string
-	ToLang       string
-	Act          string
-	Usings       int  `gorm:"default:0"`
-	Blocked      bool `gorm:"default:false"`
+	ID           int64  `gorm:"primaryKey;index;not null"`
+	MyLang       string `gorm:"default:en"`
+	ToLang       string `gorm:"default:fr"`
+	Act          string `gorm:"default:en"`
+	Usings       int    `gorm:"default:0"`
+	Blocked      bool   `gorm:"default:false"`
 	LastActivity time.Time
 	Lang         string `gorm:"-"` // internal
 }
@@ -461,18 +461,19 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"ru": "💡Подсказка:\nТолько Translo может переводить такие форматированные тексты, как: \"𝑴𝒓 𝒑𝒂𝒖𝒍𝒔𝒐𝒏 𝑷𝒊𝒆𝒕𝒆𝒓\"\nНи гугл, ни яндекс, ни любой другой переводчик так не могут. Попробуйте и убедитесь в этом",
 			"ar": "💡تلميح:\nفقط Translo يمكن أن تترجم تنسيق النصوص مثل: \"𝑴𝒓 𝒑𝒂𝒖𝒍𝒔𝒐𝒏 𝑷𝒊𝒆𝒕𝒆𝒓\"\nأي جوجل أو ياندكس ، أو أي مترجم لا تستطيع أن تفعل ذلك. محاولة وانظر لنفسك",
 		},
-		"Пересылай мне посты с иностранных каналов 📣, а я буду их переводить.": map[string]string{
-			"pt": "Envie-me posts de canais estrangeiros 📣, e eu os traduzirei.",
-			"ar": "أرسلوا لي منشورات من قنوات أجنبية 📣 وسأقوم بترجمتها.",
-			"es": "Envíame publicaciones de canales extranjeros 📣 y las traduciré.",
-			"ru": "Пересылай мне посты с иностранных каналов 📣, а я буду их переводить.",
-			"de": "Sende mir Posts von ausländischen Kanälen 📣, und ich übersetze sie.",
-			"en": "Send me posts from foreign channels 📣, and I will translate them.",
-			"it": "Mandami post da canali esteri 📣, e li tradurrò.",
-			"uk": "Пересилай мені пости з іноземних каналів 📣, а я їх перекладатиму.",
-			"uz": "Xorijiy kanallardan postlarni 📣 yuboring, men ularni tarjima qilaman.",
-			"id": "Kirimi saya posting dari saluran asing , dan saya akan menerjemahkannya.",
+		"Send me (+ words, or) posts from foreign channels 📣 and I'll translate them.": map[string]string{
+			"uk": "Надсилайте мені (+ слова, або) дописи з іноземних каналів 📣 і я їх перекладу",
+			"uz": "Menga (+ soʻz yoki) xorijiy kanallardan postlarni yuboring 📣 va men ularni tarjima qilaman",
+			"it": "Mandami (+ parole, o) post da canali esteri 📣 e li tradurrò",
+			"es": "Envíame (+ palabras, o) publicaciones de canales extranjeros 📣 y las traduciré",
+			"ar": "أرسل لي (+ كلمات ، أو) منشورات من قنوات أجنبية 📣 وسأقوم بترجمتها",
+			"id": "Kirimi saya (+ kata, atau) posting dari saluran asing dan saya akan menerjemahkannya",
+			"de": "Schicken Sie mir (+ Worte oder) Posts von ausländischen Kanälen 📣 und ich übersetze sie",
+			"en": "Send me (+ words, or) posts from foreign channels 📣 and I'll translate them",
+			"ru": "Присылайте мне (+ слова, или) посты с иностранных каналов 📣 и я их переведу",
+			"pt": "Envie-me (+ palavras, ou) posts de canais estrangeiros 📣 e eu os traduzo",
 		},
+
 		"Перешли сообщение из канала 📣 или воспользуйся инлайном!": map[string]string{
 			"pt": "Encaminhei uma mensagem do canal 📣 ou use inline!",
 			"uz": "Kanaldan xabar yo'naltirildi 📣 yoki inline-dan foydalaning!",

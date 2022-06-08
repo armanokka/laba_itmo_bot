@@ -3,7 +3,6 @@ package translate
 import (
 	"errors"
 	"fmt"
-	"strings"
 )
 
 type HTTPError struct {
@@ -714,32 +713,40 @@ var MicrosoftUnsupportedLanguages = []string{
 func SplitIntoChunksBySentences(text string, limit int) []string {
 	runes := []rune(text)
 	chunks := len(runes)/limit + 1
+	minus := 0
 	out := make([]string, 0, chunks)
 	for i := 0; i < chunks; i++ {
-		i1 := i * limit
+		i1 := i*limit - minus
 		i2 := i1 + limit
-		if i2 > len(runes[i1:]) {
-			i2 = i1 + len(runes[i1:])
+		if l := len(runes) - 1; i2 > l {
+			i2 = l
 		}
-		part := string(runes[i1:i2])
-		if len(part) < limit {
-			out = append(out, part)
+		part := runes[i1:i2]
+		l := len(part)
+		if l < limit {
+			out = append(out, string(part))
 			continue
 		}
-		idx := strings.LastIndexAny(part, ".?!") + 1
-		if idx == 0 {
-			out = append(out, SplitIntoChunks(part, limit)...)
+		idx := LastIndexAny(part, ".?!")
+		if idx == -1 { // not found
+			fmt.Println("not found", i1, i2, idx)
+			out = append(out, SplitIntoChunks(string(part), limit)...)
 			continue
-		} else if idx == len(part)-1 {
-			idx++
 		}
-		if idx != 0 {
-			out = append(out, part[:idx])
-		}
-		if idx != len(part) {
-			out = append(out, part[idx:])
-		}
+		out = append(out, string(runes[i1:i1+idx+1]))
+		minus = ((i+1)*limit + limit - i2 - idx + 1) - 2
 	}
 
 	return out
+}
+
+func LastIndexAny(runes []rune, chars string) int {
+	for i := len(runes) - 1; i >= 0; i-- {
+		for _, ch := range chars {
+			if runes[i] == ch {
+				return i
+			}
+		}
+	}
+	return -1
 }

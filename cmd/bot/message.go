@@ -55,7 +55,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	var err error
 	user, err = app.db.GetUserByID(message.From.ID)
 	if err != nil {
-		if errors.Is(gorm.ErrRecordNotFound, err) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			tolang := ""
 			if message.From.LanguageCode == "" || message.From.LanguageCode == "en" {
 				message.From.LanguageCode = "en"
@@ -114,7 +114,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				DisableNotification:      true,
 				AllowSendingWithoutReply: false,
 			},
-			Text: user.Localize("Пересылай мне посты с иностранных каналов 📣, а я буду их переводить."),
+			Text: user.Localize("Send me (+ words, or) posts from foreign channels 📣 and I'll translate them."),
 		}); err != nil {
 			warn(err)
 		}
