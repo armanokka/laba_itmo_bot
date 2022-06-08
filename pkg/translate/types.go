@@ -721,7 +721,7 @@ func SplitIntoChunksBySentences(text string, limit int) []string {
 		if l := len(runes) - 1; i2 > l {
 			i2 = l
 		}
-		part := runes[i1:i2]
+		part := runes[i1 : i2+1]
 		l := len(part)
 		if l < limit {
 			out = append(out, string(part))
@@ -729,7 +729,6 @@ func SplitIntoChunksBySentences(text string, limit int) []string {
 		}
 		idx := LastIndexAny(part, ".?!")
 		if idx == -1 { // not found
-			fmt.Println("not found", i1, i2, idx)
 			out = append(out, SplitIntoChunks(string(part), limit)...)
 			continue
 		}

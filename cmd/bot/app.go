@@ -364,20 +364,21 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 				ParseMode: tgbotapi.ModeHTML,
 			})
 		default:
-			var keyboard interface{}
-			if userMessage.ReplyMarkup == nil {
-				keyboard = tgbotapi.NewReplyKeyboard(
-					tgbotapi.NewKeyboardButtonRow(
-						tgbotapi.NewKeyboardButton(langs[user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
-						tgbotapi.NewKeyboardButton("↔️"),
-						tgbotapi.NewKeyboardButton(langs[user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji)))
-			} else {
-				keyboard = userMessage.ReplyMarkup
+			if from != user.MyLang && from != user.ToLang {
+				if userMessage.ReplyMarkup == nil {
+					markup := tgbotapi.NewInlineKeyboardMarkup()
+					userMessage.ReplyMarkup = &markup
+				}
+				userMessage.ReplyMarkup.InlineKeyboard = append(userMessage.ReplyMarkup.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+					tgbotapi.NewInlineKeyboardButtonData(
+						langs[user.Lang][from]+" "+flags[from].Emoji, "show_from:"+from),
+				))
 			}
+
 			_, err = app.bot.Send(tgbotapi.MessageConfig{
 				BaseChat: tgbotapi.BaseChat{
 					ChatID:      chatID,
-					ReplyMarkup: keyboard,
+					ReplyMarkup: userMessage.ReplyMarkup,
 				},
 				Text:                  chunk,
 				ParseMode:             tgbotapi.ModeHTML,
@@ -406,12 +407,17 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 	}
 	data, err := translate2.TTS(to, tr)
 	if err != nil {
-		return err
+		//return err
 	}
 	app.bot.Send(tgbotapi.AudioConfig{
 		BaseFile: tgbotapi.BaseFile{
 			BaseChat: tgbotapi.BaseChat{
 				ChatID: chatID,
+				ReplyMarkup: tgbotapi.NewReplyKeyboard(
+					tgbotapi.NewKeyboardButtonRow(
+						tgbotapi.NewKeyboardButton(langs[user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
+						tgbotapi.NewKeyboardButton("↔️"),
+						tgbotapi.NewKeyboardButton(langs[user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji))),
 			},
 			File: tgbotapi.FileBytes{
 				Name:  helpers.CutStringUTF16(tr, 50),

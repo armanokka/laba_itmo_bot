@@ -473,6 +473,18 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"ru": "Присылайте мне (+ слова, или) посты с иностранных каналов 📣 и я их переведу",
 			"pt": "Envie-me (+ palavras, ou) posts de canais estrangeiros 📣 e eu os traduzo",
 		},
+		"Переведено с %s": map[string]string{
+			"de": "Übersetzt von %s",
+			"ar": "مترجمة من٪ %s",
+			"es": "Traducido de %s",
+			"ru": "Переведено с %s",
+			"pt": "Traduzido de %s",
+			"uk": "Перекладено з %s",
+			"en": "Translated from %s",
+			"id": "Diterjemahkan dari %s",
+			"it": "Tradotto da %s",
+			"uz": "%s dan tarjima qilingan",
+		},
 
 		"Перешли сообщение из канала 📣 или воспользуйся инлайном!": map[string]string{
 			"pt": "Encaminhei uma mensagem do canal 📣 ou use inline!",

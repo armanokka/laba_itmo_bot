@@ -328,6 +328,8 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			})
 		}
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
+	case "show_from": //arr[1] - lang
+		app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, user.Localize("Переведено с %s", langs[callback.From.LanguageCode][arr[1]]+" "+flags[arr[1]].Emoji)))
 	case "start_mailing":
 		mailingMessageId, err := app.bc.Get([]byte("mailing_message_id"))
 		if err != nil {
