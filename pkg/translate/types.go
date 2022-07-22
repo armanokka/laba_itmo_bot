@@ -3,6 +3,7 @@ package translate
 import (
 	"errors"
 	"fmt"
+	"github.com/k0kubun/pp"
 	"strings"
 )
 
@@ -714,9 +715,13 @@ var MicrosoftUnsupportedLanguages = []string{
 // SplitIntoChunksBySentences. You can merge output by ""
 func SplitIntoChunksBySentences(text string, limit int) []string {
 	runes := []rune(text)
+	if len(runes) < limit {
+		return []string{text}
+	}
 	chunks := make([]string, 0, len(runes)/limit+2)
 	for i := 0; i < len(runes); {
 		chunk, add, delim := takePiece(runes[i:], limit, ".!?;")
+		pp.Println(chunk, add, delim)
 		chunks = append(chunks, chunk+delim)
 		i += add
 	}
