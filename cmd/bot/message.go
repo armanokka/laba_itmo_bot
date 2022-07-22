@@ -6,15 +6,12 @@ import (
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
 	"github.com/armanokka/translobot/pkg/errors"
-	"github.com/armanokka/translobot/pkg/translate"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-	"math/rand"
 	"os"
 	"runtime/debug"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -347,47 +344,45 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 
-	from, err := translate.DetectLanguageGoogle(ctx, text)
-	if err != nil {
-		warn(err)
-		return
-	}
-	if strings.Contains(from, "-") {
-		parts := strings.Split(from, "-")
-		from = parts[0]
-	}
-	if from == "" {
-		from = "auto"
-	}
-	var to string // language into need to translate
-	if from == user.ToLang {
-		to = user.MyLang
-	} else if from == user.MyLang {
-		to = user.ToLang
-	} else { // никакой из
-		//if user.ToLang == message.From.LanguageCode {
-		//	to = user.ToLang
-		//} else {
-		to = user.MyLang
-		//}
-	}
+	//from, err := translate.DetectLanguageGoogle(ctx, text)
+	//if err != nil {
+	//	warn(err)
+	//	return
+	//}
+	//if strings.Contains(from, "-") {
+	//	parts := strings.Split(from, "-")
+	//	from = parts[0]
+	//}
+	//if from == "" {
+	//	from = "auto"
+	//}
+	//var to string // language into need to translate
+	//if from == user.ToLang {
+	//	to = user.MyLang
+	//} else if from == user.MyLang {
+	//	to = user.ToLang
+	//} else { // никакой из
+	//	//if user.ToLang == message.From.LanguageCode {
+	//	//	to = user.ToLang
+	//	//} else {
+	//	to = user.MyLang
+	//	//}
+	//}
+	//
+	//if from != user.MyLang {
+	//	tr, err := translate.GoogleTranslate(ctx, from, to, text)
+	//	if err != nil {
+	//		warn(err)
+	//		return
+	//	}
+	//	if diff(text, tr.Text) < 2 {
+	//		from = user.MyLang
+	//		to = user.ToLang
+	//	}
+	//}
+	from := user.MyLang
+	to := user.ToLang
 
-	if from != user.MyLang {
-		tr, err := translate.GoogleTranslate(ctx, from, to, text)
-		if err != nil {
-			warn(err)
-			return
-		}
-		if diff(text, tr.Text) < 2 {
-			from = user.MyLang
-			to = user.ToLang
-		}
-	}
-	rand.Seed(time.Now().UnixNano())
-	if rand.Intn(4) == 0 {
-		time.Sleep(time.Second * 3)
-		app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, user.Localize("Произошла ошибка")))
-	}
 	if err = app.SuperTranslate(ctx, user, message.Chat.ID, from, to, text, message); err != nil && !errors.Is(err, context.Canceled) {
 		err = fmt.Errorf("%s\nuser's id:%s\n%s->%suser's text:%s", err.Error(), strconv.FormatInt(message.Chat.ID, 10), from, to, text)
 		warn(err)

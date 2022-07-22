@@ -22,12 +22,11 @@ const (
 var (
 	botToken, dashBotAPIKey string
 	dsn                     string
-
-	db        *gorm.DB
-	analytics dashbot.DashBot
-	bot       *botapi.BotAPI
-	botID     int64
-	once      sync.Once
+	db                      *gorm.DB
+	analytics               dashbot.DashBot
+	bot                     *botapi.BotAPI
+	botID                   int64
+	once                    sync.Once
 )
 
 var BotLocalizedLangs = []string{

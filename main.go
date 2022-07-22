@@ -17,6 +17,7 @@ import (
 	"syscall"
 )
 
+// TODO: Error: Bad Request: can't parse entities: Unsupported start tag "!--" at byte offset 472
 func main() {
 	conf := zap.NewDevelopmentConfig()
 	conf.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder

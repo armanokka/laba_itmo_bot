@@ -14,7 +14,6 @@ import (
 	"github.com/armanokka/translobot/repos"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
-	"github.com/qiniu/iconv"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/text/unicode/norm"
@@ -37,7 +36,7 @@ type App struct {
 }
 
 func New(bot *botapi.BotAPI, db repos.BotDB, analytics dashbot.DashBot, log *zap.Logger, bc *bitcask.Bitcask) (App, error) {
-	iconv.Open("utf-8", "")
+	//iconv.Open("utf-8", "")
 	app := App{
 		htmlTagsRe:          regexp.MustCompile("<\\s*[^>]+>(.*?)"),
 		reSpecialCharacters: regexp.MustCompile(`[[:punct:]]`),
