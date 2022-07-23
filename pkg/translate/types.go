@@ -714,17 +714,20 @@ var MicrosoftUnsupportedLanguages = []string{
 
 // SplitIntoChunksBySentences. You can merge output by ""
 func SplitIntoChunksBySentences(text string, limit int) []string {
+	limit--
 	runes := []rune(text)
 	if len(runes) < limit {
 		return []string{text}
 	}
-	chunks := make([]string, 0, len(runes)/limit+2)
+	chunks := make([]string, 0, len(runes)/limit+1)
 	for i := 0; i < len(runes); {
-		chunk, add, delim := takePiece(runes[i:], limit, ".!?;")
-		pp.Println(chunk, add, delim)
+		chunk, cutIdx, delim := takePiece(runes[i:], limit, ".!?;\n\t\r")
+		cutIdx += len(delim)
+		pp.Println(chunk, delim, len(delim))
 		chunks = append(chunks, chunk+delim)
-		i += add
+		i += cutIdx
 	}
+	//pp.Println(chunks)
 	//minus := 0
 	//out := make([]string, 0, chunks)
 	//for i := 0; i < chunks; i++ {
