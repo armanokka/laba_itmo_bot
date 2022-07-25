@@ -386,7 +386,26 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	//to := user.ToLang
 
 	if err = app.SuperTranslate(ctx, user, message.Chat.ID, from, to, text, message); err != nil && !errors.Is(err, context.Canceled) {
-		err = fmt.Errorf("%s\nuser's id:%s\n%s->%suser's text:%s", err.Error(), strconv.FormatInt(message.Chat.ID, 10), from, to, text)
+
+
+		msg, err := app.bot.Send(tgbotapi.NewCopyMessage(config.AdminID, message.Chat.ID, message.MessageID))
+		if err == nil {
+			app.bot.Send(tgbotapi.MessageConfig{
+				BaseChat:              tgbotapi.BaseChat{
+					ChatID:                   config.AdminID,
+					ChannelUsername:          "",
+					ProtectContent:           false,
+					ReplyToMessageID:         msg.MessageID,
+					ReplyMarkup:              nil,
+					DisableNotification:      false,
+					AllowSendingWithoutReply: false,
+				},
+				Text:                  fmt.Sprintf("%s\nID:%s\nDirection:%s->%s\nTranslation:%s", err.Error(), strconv.FormatInt(message.Chat.ID, 10), from, to, text),
+				ParseMode:             "",
+				Entities:              nil,
+				DisableWebPagePreview: false,
+			})
+		}
 		warn(err)
 		if e, ok := err.(errors.Error); ok {
 			log.Error("", zap.Error(e), zap.String("stack", string(e.Stack())))

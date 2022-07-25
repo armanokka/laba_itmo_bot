@@ -3,7 +3,6 @@ package translate
 import (
 	"errors"
 	"fmt"
-	"github.com/k0kubun/pp"
 	"strings"
 )
 
@@ -714,66 +713,42 @@ var MicrosoftUnsupportedLanguages = []string{
 
 // SplitIntoChunksBySentences. You can merge output by ""
 func SplitIntoChunksBySentences(text string, limit int) []string {
-	limit--
-	runes := []rune(text)
-	if len(runes) < limit {
+	if len(text) < limit {
 		return []string{text}
 	}
-	chunks := make([]string, 0, len(runes)/limit+1)
-	for i := 0; i < len(runes); {
-		chunk, cutIdx, delim := takePiece(runes[i:], limit, ".!?;\n\t\r")
-		cutIdx += len(delim)
-		pp.Println(chunk, delim, len(delim))
-		chunks = append(chunks, chunk+delim)
-		i += cutIdx
+	chunks := make([]string, 0, len(text)/limit+1)
+	for i := 0; i < len(text); {
+		offset := cutUpToDelim(text[i:], limit, ".!?;\n\t\r<>")
+		ch := string(text[i : i+offset])
+		chunks = append(chunks, ch)
+		i += offset
 	}
-	//pp.Println(chunks)
-	//minus := 0
-	//out := make([]string, 0, chunks)
-	//for i := 0; i < chunks; i++ {
-	//	i1 := i*limit - minus
-	//	i2 := i1 + limit
-	//	if l := len(runes) - 1; i2 > l {
-	//		i2 = l
-	//	}
-	//	part := runes[i1 : i2+1]
-	//	l := len(part)
-	//	if l < limit {
-	//		out = append(out, string(part))
-	//		continue
-	//	}
-	//	idx := LastIndexAny(part, ".?!")
-	//	if idx == -1 { // not found
-	//		out = append(out, SplitIntoChunks(string(part), limit)...)
-	//		continue
-	//	}
-	//	out = append(out, string(runes[i1:i1+idx+1]))
-	//	minus = ((i+1)*limit + limit - i2 - idx + 1) - 2
-	//}
 
 	return chunks
 }
 
-func takePiece(text []rune, limit int, delims string) (s string, cutIdx int, delim string) {
-	if len(text) > limit {
+func cutUpToDelim(text string, limit int, delims string) (offset int) {
+	if len(text) < limit {
+		return len(text)
+	} else if len(text) > limit {
 		text = text[:limit]
 	}
-	s = string(text)
-	cutIdx, delim = lastIndexAny(s, delims)
-	if cutIdx < 1 {
-		return s, len(text), ""
+	offset = len(text)
+	if i := strings.LastIndexAny(text, delims); i > 0 {
+		i++
+		return i
 	}
-	return s[:cutIdx], cutIdx, delim
+	return offset
 }
 
-func lastIndexAny(text string, chars string) (idx int, delim string) {
-	idx--
-	for _, ch := range chars {
-		c := string(ch)
-		i := strings.LastIndex(text, c)
-		if i > idx {
-			idx, delim = i, c
-		}
-	}
-	return
-}
+//func lastIndexAny(text string, chars string) (idx int, delim string) {
+//	idx--
+//	for _, ch := range chars {
+//		c := string(ch)
+//		i := strings.LastIndex(text, c)
+//		if i > idx {
+//			idx, delim = i, c
+//		}
+//	}
+//	return
+//}

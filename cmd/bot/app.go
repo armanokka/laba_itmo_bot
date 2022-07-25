@@ -415,7 +415,7 @@ func (app App) SuperTranslate(ctx context.Context, user tables.Users, chatID int
 				ReplyMarkup: tgbotapi.NewReplyKeyboard(
 					tgbotapi.NewKeyboardButtonRow(
 						tgbotapi.NewKeyboardButton(langs[user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
-						tgbotapi.NewKeyboardButton("↔️"),
+						tgbotapi.NewKeyboardButton("↔"),
 						tgbotapi.NewKeyboardButton(langs[user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji))),
 			},
 			File: tgbotapi.FileBytes{
