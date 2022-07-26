@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -425,26 +426,25 @@ func GoogleHTMLTranslate(ctx context.Context, from, to, text string) (GoogleHTML
 
 func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateGoogleAPIResponse, err error) {
 	chunks := SplitIntoChunksBySentences(text, 400)
+	pp.Println(chunks)
 	var mu sync.Mutex
 	g, ctx := errgroup.WithContext(ctx)
 	for i, chunk := range chunks {
 		i := i
 		chunk := chunk
 		g.Go(func() error {
-			//chunk = strings.ReplaceAll(chunk, "\n", "<br>")
-			//pp.Println(chunk)
+			chunk = strings.ReplaceAll(chunk, "\n", "<br>")
 			tr, err := googleTranslate(ctx, from, to, chunk)
 			if err != nil {
 				return err
 			}
 			tr.Text = strings.ReplaceAll(tr.Text, ` \ n`, `\n`)
 			tr.Text = strings.ReplaceAll(tr.Text, `\ n`, `\n`)
-			tr.Text = strings.ReplaceAll(tr.Text, "<br>", "\n")
+			mu.Lock()
+			defer mu.Unlock()
 			if out.FromLang == "" {
 				out.FromLang = tr.FromLang
 			}
-			mu.Lock()
-			defer mu.Unlock()
 			chunks[i] = tr.Text
 			return nil
 		})
@@ -452,6 +452,7 @@ func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateG
 	if err = g.Wait(); err != nil {
 		return TranslateGoogleAPIResponse{}, err
 	}
+	pp.Println(chunks)
 	out.Text = strings.Join(chunks, "")
 	return out, err
 }
@@ -463,7 +464,7 @@ func googleTranslate(ctx context.Context, from, to, text string) (result Transla
 	if err != nil {
 		return TranslateGoogleAPIResponse{}, err
 	}
-	req.Header["content-type"] = []string{"application/x-www-form-urlencoded;charset=UTF-8"}
+	req.Header["content-type"] = []string{"application/x-www-form-urlencoded;charset=UTF-16"}
 	req.Header["accept"] = []string{"*/*"}
 	req.Header["cookie"] = []string{"NID=217=mKKVUv88-BW4Vouxnh-qItLKFt7zm0Gj3yDLC8oDKb_PuLIb-p6fcPVcsXZWeNwkjDSFfypZ8BKqy27dcJH-vFliM4dKaiKdFrm7CherEXVt-u_DPr9Yecyv_tZRSDU7E52n5PWwOkaN2I0-naa85Tb9-uTjaKjO0gmdbShqba5MqKxuTLY; 1P_JAR=2021-06-18-16; DV=A3qPWv6ELckmsH4dFRGdR1fe4Gj-oRcZWqaFSPtAjwAAAAA"}
 	req.Header["origin"] = []string{"https://www.google.com"}
@@ -494,8 +495,15 @@ func googleTranslate(ctx context.Context, from, to, text string) (result Transla
 	if result.FromLang == "" {
 		result.FromLang = doc.Find("span[id=tw-answ-detected-sl]").Text()
 	}
+
 	result.Text = doc.Find("span[id=tw-answ-target-text]").Text()
 	result.FromLang = doc.Find("span[id=tw-answ-detected-sl]").Text()
+
+	r, err := regexp.Compile("\\<\\s*[bB][rR]\\s*\\>")
+	if err != nil {
+		return TranslateGoogleAPIResponse{}, err
+	}
+	result.Text = r.ReplaceAllString(result.Text, "\n")
 	//result := &TranslateGoogleAPIResponse{
 	//	Text:     doc.Find("span[id=tw-answ-target-text]").Text(),
 	//	FromLang: doc.Find("span[id=tw-answ-detected-sl]").Text(),
