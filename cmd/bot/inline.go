@@ -140,6 +140,19 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 			//	app.bot.UploadFiles()
 			//	tgbotapi.InlineQueryResultAudio{}
 			//}
+			btn := tgbotapi.InlineKeyboardButton{
+				Text:                         user.Localize("перевести"),
+				URL:                          nil,
+				LoginURL:                     nil,
+				CallbackData:                 nil,
+				WebApp:                       nil,
+				SwitchInlineQuery:            nil,
+				SwitchInlineQueryCurrentChat: &tr.Text,
+				CallbackGame:                 nil,
+				Pay:                          false,
+			}
+			keyboard := tgbotapi.NewInlineKeyboardMarkup(
+				tgbotapi.NewInlineKeyboardRow(btn))
 
 			mu.Lock()
 			defer mu.Unlock()
@@ -151,7 +164,7 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 					"message_text":             tr.Text,
 					"disable_web_page_preview": true,
 				},
-				ReplyMarkup: nil,
+				ReplyMarkup: &keyboard,
 				URL:         "",
 				HideURL:     true,
 				Description: tr.Text,

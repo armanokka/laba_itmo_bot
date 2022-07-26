@@ -329,6 +329,7 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"pt": "não conseguimos traduzir",
 			"ru": "не получилось перевести",
 		},
+
 		"Report a bug or suggest a feature": map[string]string{
 			"en": "Report a bug or suggest a feature",
 			"es": "Informar de un error o sugerir una característica",
@@ -341,6 +342,19 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"pt": "Comunicar um erro ou \" sugerir um recurso",
 			"ar": "تقرير الشوائب أو اقتراح ميزة",
 		},
+		"перевести": map[string]string{
+			"pt": "traduzir",
+			"en": "translate",
+			"de": "Übersetzen",
+			"uz": "tarjima qiling",
+			"id": "menerjemahkan",
+			"it": "tradurre",
+			"ar": "يترجم",
+			"ru": "перевести",
+			"es": "traducir",
+			"uk": "перекласти",
+		},
+
 		"Завершить диалог": map[string]string{
 			"ru": "Завершить диалог",
 			"id": "Mengakhiri dialog",
