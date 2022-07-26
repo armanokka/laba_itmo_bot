@@ -392,7 +392,6 @@ func GoogleHTMLTranslate(ctx context.Context, from, to, text string) (GoogleHTML
 					return
 				}
 				h = html.UnescapeString(h)
-				pp.Println(h)
 				out += h
 				//if i % 2 != 0 {
 				//	out += h
@@ -426,7 +425,6 @@ func GoogleHTMLTranslate(ctx context.Context, from, to, text string) (GoogleHTML
 
 func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateGoogleAPIResponse, err error) {
 	chunks := SplitIntoChunksBySentences(text, 400)
-	pp.Println(chunks)
 	var mu sync.Mutex
 	g, ctx := errgroup.WithContext(ctx)
 	for i, chunk := range chunks {
@@ -452,7 +450,6 @@ func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateG
 	if err = g.Wait(); err != nil {
 		return TranslateGoogleAPIResponse{}, err
 	}
-	pp.Println(chunks)
 	out.Text = strings.Join(chunks, "")
 	return out, err
 }
