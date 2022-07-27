@@ -17,8 +17,7 @@ type BotDB interface {
 	// UpdateUserByMap
 	// Errors: gorm.ErrRecordNotFound, unknown
 	UpdateUserByMap(id int64, updates map[string]interface{}) error
-	// UpdateUserMetrics is a union of UpdateUserLastActivity, IncreaseUserUsings and LogUserMessage
-	UpdateUserMetrics(id int64, message string) error
+	UpdateUserActivity(id int64) error
 
 	GetRandomUser() (tables.Users, error)
 

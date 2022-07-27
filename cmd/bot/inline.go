@@ -234,10 +234,10 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 		pp.Println(blocks)
 	}
 
-	app.analytics.User(update.Query, update.From)
-	app.analytics.Bot(update.From.ID, "Inline succeeded", "Inline succeeded")
+	//app.analytics.User(update.Query, update.From)
+	//app.analytics.Bot(update.From.ID, "Inline succeeded", "Inline succeeded")
 	if user.MyLang != "" { // user exists
-		if err = app.db.UpdateUserMetrics(update.From.ID, "inline:"+update.Query); err != nil {
+		if err = app.db.UpdateUserActivity(update.From.ID); err != nil {
 			warn(err)
 		}
 	}

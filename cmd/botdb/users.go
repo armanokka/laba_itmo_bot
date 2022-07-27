@@ -59,7 +59,7 @@ func (db BotDB) GetAllUsers() (users []tables.Users, err error) {
 	return users, err
 }
 
-func (db BotDB) UpdateUserMetrics(id int64, message string) error {
+func (db BotDB) UpdateUserActivity(id int64) error {
 	return db.Model(&tables.Users{}).Exec("UPDATE users SET usings=usings+1, last_activity=? WHERE id=?", time.Now(), id).Error
 }
 

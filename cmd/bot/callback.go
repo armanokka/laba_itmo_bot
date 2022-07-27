@@ -41,8 +41,8 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 	arr := strings.Split(callback.Data, ":")
 
 	defer func() {
-		if err := app.db.UpdateUserMetrics(callback.From.ID, "callback:"+callback.Data); err != nil {
-			app.notifyAdmin(fmt.Errorf("%w", err))
+		if err = app.db.UpdateUserActivity(callback.From.ID); err != nil {
+			app.notifyAdmin(err)
 		}
 	}()
 
@@ -101,7 +101,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		kb, err := buildLangsPagination(user, offset, count, user.MyLang,
 			fmt.Sprintf("set_my_lang:%s:%d", "%s", offset),
 			fmt.Sprintf("set_my_lang_pagination:%d", back),
-			fmt.Sprintf("set_my_lang_pagination:%d", next))
+			fmt.Sprintf("set_my_lang_pagination:%d", next), true)
 		if err != nil {
 			log.Error("", zap.Error(err))
 			warn(err)
@@ -124,7 +124,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 				ReplyMarkup: tgbotapi.NewReplyKeyboard(
 					tgbotapi.NewKeyboardButtonRow(
 						tgbotapi.NewKeyboardButton(langs[callback.From.LanguageCode][user.MyLang]+" "+flags[user.MyLang].Emoji),
-						tgbotapi.NewKeyboardButton("↔️"),
+						tgbotapi.NewKeyboardButton("↔"),
 						tgbotapi.NewKeyboardButton(langs[callback.From.LanguageCode][user.ToLang]+" "+flags[user.ToLang].Emoji))),
 				DisableNotification:      true,
 				AllowSendingWithoutReply: false,
@@ -167,7 +167,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		kb, err := buildLangsPagination(user, offset, count, user.ToLang,
 			fmt.Sprintf("set_to_lang:%s:%d", "%s", offset),
 			fmt.Sprintf("set_to_lang_pagination:%d", back),
-			fmt.Sprintf("set_to_lang_pagination:%d", next))
+			fmt.Sprintf("set_to_lang_pagination:%d", next), false)
 		if err != nil {
 			log.Error("", zap.Error(err))
 			warn(err)
@@ -190,7 +190,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 				ReplyMarkup: tgbotapi.NewReplyKeyboard(
 					tgbotapi.NewKeyboardButtonRow(
 						tgbotapi.NewKeyboardButton(langs[callback.From.LanguageCode][user.MyLang]+" "+flags[user.MyLang].Emoji),
-						tgbotapi.NewKeyboardButton("↔️"),
+						tgbotapi.NewKeyboardButton("↔"),
 						tgbotapi.NewKeyboardButton(langs[callback.From.LanguageCode][user.ToLang]+" "+flags[user.ToLang].Emoji))),
 				DisableNotification:      true,
 				AllowSendingWithoutReply: false,
@@ -229,7 +229,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		kb, err := buildLangsPagination(user, offset, count, "",
 			fmt.Sprintf("set_my_lang:%s:%d", "%s", offset),
 			fmt.Sprintf("set_my_lang_pagination:%d", back),
-			fmt.Sprintf("set_my_lang_pagination:%d", next))
+			fmt.Sprintf("set_my_lang_pagination:%d", next), true)
 		if err != nil {
 			log.Error("", zap.Error(err))
 			warn(err)
@@ -293,7 +293,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		kb, err := buildLangsPagination(user, offset, count, "",
 			fmt.Sprintf("set_to_lang:%s:%d", "%s", offset),
 			fmt.Sprintf("set_to_lang_pagination:%d", back),
-			fmt.Sprintf("set_to_lang_pagination:%d", next))
+			fmt.Sprintf("set_to_lang_pagination:%d", next), false)
 		if err != nil {
 			log.Error("", zap.Error(err))
 			warn(err)

@@ -6,7 +6,6 @@ import (
 	"github.com/armanokka/translobot/pkg/botapi"
 	"github.com/armanokka/translobot/pkg/dashbot"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/k0kubun/pp"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"os"
@@ -99,10 +98,7 @@ func load() (err error) {
 	botID = me.ID
 
 	// Initializing analytics
-	analytics = dashbot.NewAPI(dashBotAPIKey, func(err error) {
-		pp.Println(err)
-		bot.Send(tgbotapi.NewMessage(AdminID, fmt.Sprint(err)))
-	})
+	analytics = dashbot.NewAPI(dashBotAPIKey)
 	return nil
 }
 

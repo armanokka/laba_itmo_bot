@@ -457,7 +457,7 @@ func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateG
 func googleTranslate(ctx context.Context, from, to, text string) (result TranslateGoogleAPIResponse, err error) {
 	buf := new(bytes.Buffer)
 	buf.WriteString("async=translate,sl:" + url.QueryEscape(from) + ",tl:" + url.QueryEscape(to) + ",st:" + url.QueryEscape(text) + ",id:1624032860465,qc:true,ac:true,_id:tw-async-translate,_pms:s,_fmt:pc,format:html")
-	req, err := http.NewRequestWithContext(ctx, "POST", "https://www.google.com/async/translate?vet=12ahUKEwjFh8rkyaHxAhXqs4sKHYvmAqAQqDgwAHoECAIQJg..i&ei=SMbMYMXDKernrgSLzYuACg&yv=3", buf)
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://www.google.com/async/translate?vet=12ahUKEwjFh8rkyaHxAhXqs4sKHYvmAqAQqDgwAHoECAIQJg..i&ei=SMbMYMXDKernrgSLzYuACg&yv=3&cs=0&rlz=1C1GCEA_enUZ1012UZ1012", buf)
 	if err != nil {
 		return TranslateGoogleAPIResponse{}, err
 	}

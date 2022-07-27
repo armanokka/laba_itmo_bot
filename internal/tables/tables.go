@@ -354,6 +354,18 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"es": "traducir",
 			"uk": "перекласти",
 		},
+		"Detect language": map[string]string{
+			"it": "Rileva lingua",
+			"pt": "Detectar idioma",
+			"ru": "Определить язык",
+			"uk": "Визначити мову",
+			"uz": "Tilni aniqlash",
+			"id": "Mendeteksi bahasa",
+			"en": "Detect language",
+			"de": "Sprache erkennen",
+			"es": "Detectar idioma",
+			"ar": "اكتشاف اللغة",
+		},
 
 		"Завершить диалог": map[string]string{
 			"ru": "Завершить диалог",
@@ -366,6 +378,18 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"uz": "Suhbatni yakunlang",
 			"it": "Terminare il dialogo",
 			"ar": "في نهاية الحوار",
+		},
+		"Язык определен": map[string]string{
+			"es": "Idioma definido",
+			"uk": "Мова визначена",
+			"uz": "Til belgilangan",
+			"ar": "تعريف اللغة",
+			"ru": "Язык определен",
+			"de": "Sprache definiert",
+			"id": "Bahasa ditentukan",
+			"it": "Lingua definita",
+			"pt": "Idioma definido",
+			"en": "Language defined",
 		},
 		"Диалог завершен": map[string]string{
 			"it": "Conversazione",
