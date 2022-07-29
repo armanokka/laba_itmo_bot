@@ -61,17 +61,17 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"pt": "Desculpe, ocorreu um erro. Vamos consertar tudo em 24-72 horas.\nLista de outros bots de tradução: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot",
 			"uz": "Kechirasiz, xatolik yuz berdi. 24-72 soat ichida hammasini tuzatamiz.\nBoshqa tarjima botlari ro'yxati: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot",
 		},
-		"Рад видеть вас снова.\nС возвращением.": map[string]string{
-			"pt": "Bom te ver de novo.\nBem vindo de volta.",
-			"id": "Senang bertemu denganmu lagi.\nSelamat datang kembali.",
-			"uk": "Радий бачити вас знову.\nЗ поверненням.",
-			"ar": "سررت برؤيتك مجددا.\nمرحبًا بعودتك.",
-			"it": "È bello vederti di nuovo.\nBen tornato.",
-			"en": "Good to see you again.\nWelcome back.",
-			"de": "Schön dich wieder zu sehen.\nWillkommen zurück.",
-			"ru": "Рад видеть вас снова.\nС возвращением.",
-			"es": "Qué bueno verte de nuevo.\nBienvenido de nuevo.",
-			"uz": "Sizni yana ko'rganimdan xursandman.\nQaytganing bilan.",
+		"С возвращением!": map[string]string{
+			"de": "Willkommen zurück!",
+			"uz": "Qaytganing bilan!",
+			"it": "Ben tornato!",
+			"en": "Welcome back!",
+			"es": "¡Bienvenido de nuevo!",
+			"uk": "З поверненням!",
+			"id": "Selamat datang kembali!",
+			"pt": "Bem vindo de volta!",
+			"ar": "مرحبًا بعودتك!",
+			"ru": "С возвращением!",
 		},
 
 		"Добро пожаловать. Мы рады, что вы снова с нами. ✋": map[string]string{

@@ -138,10 +138,8 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 	if err := g.Wait(); err != nil {
 		switch {
 		case LingvoTr != "":
-			log.Error("translated via lingvo")
 			return LingvoTr, from, err
 		case GoogleFromToTr != "":
-			log.Error("translated via google from-to")
 			return GoogleFromToTr, from, err
 			//case GoogleToFromTr != "":
 			//	log.Error("translated via google to-from")
@@ -156,21 +154,18 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 		return "", from, err
 	}
 	if LingvoTr != "" {
-		log.Info("translated via lingvo")
+		//log.Debug("translated via lingvo")
 		return LingvoTr, from, nil
 	} else if GoogleFromToTr != "" {
-		log.Info("translated via google")
+		//log.Debug("translated via google")
 		return GoogleFromToTr, from, nil
 	}
 	//} else if GoogleToFromTr != "" {
-	//	log.Info("translated via google")
 	//	return GoogleToFromTr, from, nil
 	//} else if YandexTr != "" {
-	//	log.Info("translated via yandex")
 	//	return YandexTr, from, nil
 	//} else if MicrosoftTr != "" {
 	//	MicrosoftTr = strings.ReplaceAll(MicrosoftTr, "<br>", "\n")
-	//	log.Info("translated via microsoft")
 	//	return MicrosoftTr, from, nil
 	//}
 	return GoogleFromToTr, from, nil

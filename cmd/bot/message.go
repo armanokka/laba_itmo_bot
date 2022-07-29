@@ -9,12 +9,10 @@ import (
 	"github.com/armanokka/translobot/pkg/helpers"
 	"github.com/armanokka/translobot/pkg/translate"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/k0kubun/pp"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/text/unicode/norm"
 	"gorm.io/gorm"
-	"html"
 	"os"
 	"runtime/debug"
 	"strconv"
@@ -98,14 +96,14 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				app.notifyAdmin(err)
 				//return
 			}
+			app.bot.Send(tgbotapi.NewMessage(message.From.ID, user.Localize("С возвращением!")))
 			app.bot.Send(tgbotapi.NewSticker(message.From.ID, tgbotapi.FileID("CAACAgIAAxkBAAEP5w5iif1KBEzJZ-6N49pvKBvTcz5BYwACBAEAAladvQreBNF6Zmb3bCQE")))
-			app.bot.Send(tgbotapi.NewMessage(message.From.ID, user.Localize("Рад видеть вас снова.\nС возвращением.")))
 
 			if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"blocked": false}); err != nil {
 				app.notifyAdmin(fmt.Errorf("%w", err))
 			}
 		} else {
-			if _, err = app.bot.Send(tgbotapi.NewSticker(message.From.ID, tgbotapi.FileID("CAACAgIAAxkBAAEQJrlinQ2sIDF1R3cjISx_cEv1pawdSgACQhAAAjPFKUmQDtQRpypKgiQE"))); err != nil {
+			if _, err = app.bot.Send(tgbotapi.NewSticker(message.From.ID, tgbotapi.FileID("CAACAgIAAxkBAAERLnFi4-Sx5GwpqAcaUXUOPoheWYmmLQACAQEAAladvQoivp8OuMLmNCkE"))); err != nil {
 				warn(err)
 			}
 			time.Sleep(time.Second)
@@ -476,23 +474,22 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		}
 	}
 
-	pp.Println(user, from, to)
-
 	tr, from, err := app.translate(ctx, from, to, text) // examples мы сохраняем, чтобы соединить с keyboard.Examples и положить в кэш
 	if err != nil {
 		warn(err)
 		return
 	}
-	if !validHtml(tr) {
-		tr = html.EscapeString(tr)
-	}
+	//if !validHtml(tr) {
+	//	log.Info("invalid html, escaping")
+	//	tr = html.EscapeString(tr)
+	//}
 
 	//app.bot.Send(tgbotapi.NewDeleteMessage(chatID, message.MessageID))
 	chunks := translate.SplitIntoChunksBySentences(tr, 4096)
-	for _, chunk := range chunks {
+	for i, chunk := range chunks {
 		chunk = closeUnclosedTags(chunk)
 		switch {
-		case message.Poll != nil:
+		case message.Poll != nil && i == 0:
 			options := make([]string, 0, len(message.Poll.Options))
 			for _, opt := range message.Poll.Options {
 				options = append(options, opt.Text)
@@ -515,7 +512,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				CloseDate:             message.Poll.CloseDate,
 				IsClosed:              message.Poll.IsClosed,
 			})
-		case message.Audio != nil:
+		case message.Audio != nil && i == 0:
 			thumbnail := ""
 			if message.Audio.Thumbnail != nil {
 				thumbnail = message.Audio.Thumbnail.FileID
@@ -536,20 +533,35 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				Performer: message.Audio.Performer,
 				Title:     message.Audio.Title,
 			})
-		case len(message.Photo) > 0:
-			chunk = helpers.CutStringUTF16(chunk, 1024) // MEDIA_CAPTION_TOO_LONG
-			maxResolutionPhoto := message.Photo[len(message.Photo)-1]
-			_, err = app.bot.Send(tgbotapi.PhotoConfig{
-				BaseFile: tgbotapi.BaseFile{
-					BaseChat: tgbotapi.BaseChat{
-						ChatID:      message.Chat.ID,
-						ReplyMarkup: message.ReplyMarkup,
-					},
-					File: tgbotapi.FileID(maxResolutionPhoto.FileID),
-				},
-				Caption:   chunk,
-				ParseMode: tgbotapi.ModeHTML,
-			})
+		//case len(message.Photo) > 0 && i == 0:
+		//	chunks := translate.SplitIntoChunksBySentences(chunk, 1024) // MEDIA_CAPTION_TOO_LONG
+		//	maxResolutionPhoto := message.Photo[len(message.Photo)-1]
+		//	for i, chunk := range chunks {
+		//		if i == 0 {
+		//			_, err = app.bot.Send(tgbotapi.PhotoConfig{
+		//				BaseFile: tgbotapi.BaseFile{
+		//					BaseChat: tgbotapi.BaseChat{
+		//						ChatID:      message.Chat.ID,
+		//						ReplyMarkup: message.ReplyMarkup,
+		//					},
+		//					File: tgbotapi.FileID(maxResolutionPhoto.FileID),
+		//				},
+		//				Caption:   chunk,
+		//				ParseMode: tgbotapi.ModeHTML,
+		//			})
+		//		} else {
+		//			_, err = app.bot.Send(tgbotapi.MessageConfig{
+		//				BaseChat: tgbotapi.BaseChat{
+		//					ChatID: message.Chat.ID,
+		//				},
+		//				Text:      chunk,
+		//				ParseMode: tgbotapi.ModeHTML,
+		//			})
+		//		}
+		//
+		//		if err != nil {
+		//		}
+		//	}
 		default:
 			var keyboard interface{}
 			if user.MyLang == "auto" {

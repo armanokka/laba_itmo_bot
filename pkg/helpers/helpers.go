@@ -3,6 +3,7 @@ package helpers
 import (
 	"bytes"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/kodova/html-to-markdown/escape"
 	"strconv"
 	"strings"
 	"unicode/utf16"
@@ -14,6 +15,15 @@ func In(array []string, keys ...string) bool {
 			if v == k {
 				return true
 			}
+		}
+	}
+	return false
+}
+
+func inRune(r rune, variants []rune) bool {
+	for _, v := range variants {
+		if r == v {
+			return true
 		}
 	}
 	return false
@@ -92,51 +102,27 @@ func ApplyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
 	pointers := make(map[int]string)
 
 	for _, entity := range entities {
-		var startTag string
+		var before, after string
 		switch entity.Type {
 		case "code", "pre":
-			startTag = `<label class="notranslate"><code>`
-		case "mention", "hashtag", "cashtag", "bot_command", "url", "email", "phone_number":
-			startTag = `<label class="notranslate">` // very important to keep '<label class="notranslate">' strongly correct, without any spaces or another
+			before, after = `<code>`, `</code>`
 		case "bold":
-			startTag = `<b>`
+			before, after = `<b>`, `</b>`
 		case "italic":
-			startTag = `<i>`
+			before, after = `<i>`, `</i>`
 		case "underline":
-			startTag = `<u>`
+			before, after = `<u>`, `</u>`
 		case "strikethrough":
-			startTag = `<s>`
+			before, after = `<s>`, `</s>`
 		case "text_link":
-			startTag = `<a href="` + entity.URL + `">`
+			before, after = `<a href="`+entity.URL+`">`, `</a>`
 		case "text_mention":
-			startTag = `<a href="tg://user?id=` + strconv.FormatInt(entity.User.ID, 10) + `">`
+			before, after = `<a href="tg://user?id=`+strconv.FormatInt(entity.User.ID, 10)+`">`, `</a>`
 		case "spoiler":
-			startTag = "<span class=\"tg-spoiler\">"
+			before, after = "<span class=\"tg-spoiler\">", "</span>"
 		}
-
-		pointers[entity.Offset] += startTag
-
-		//startTag = strings.TrimPrefix(startTag, "<")
-		var endTag string
-		switch entity.Type {
-		case "code", "pre":
-			endTag = "</code></label>" // very important to keep '</label>' strongly correct, without any spaces or another
-		case "mention", "hashtag", "cashtag", "bot_command", "url", "email", "phone_number":
-			endTag = `</label>`
-		case "bold":
-			endTag = `</b>`
-		case "italic":
-			endTag = `</i>`
-		case "underline":
-			endTag = `</u>`
-		case "strikethrough":
-			endTag = `</s>`
-		case "text_link", "text_mention":
-			endTag = `</a>`
-		case "spoiler":
-			endTag = "</span>"
-		}
-		pointers[entity.Offset+entity.Length] = endTag + pointers[entity.Offset+entity.Length]
+		pointers[entity.Offset] += before
+		pointers[entity.Offset+entity.Length] = after + pointers[entity.Offset+entity.Length]
 	}
 
 	var out = make([]uint16, 0, len(encoded))
@@ -146,14 +132,74 @@ func ApplyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
 			out = append(out, utf16.Encode([]rune(m))...)
 		}
 		out = append(out, ch)
+	}
+	if m, ok := pointers[len(encoded)]; ok {
+		out = append(out, utf16.Encode([]rune(m))...)
+	}
+	return strings.NewReplacer("<br>", "\n").Replace(string(utf16.Decode(out)))
+}
 
+func ApplyEntitiesMarkdownV2(text string, entities []tgbotapi.MessageEntity) string {
+	//defer func() {
+	//	if err := recover(); err != nil {
+	//		pp.Println(err, string(debug.Stack()))
+	//	}
+	//}()
+	if len(entities) == 0 {
+		return text
+	}
+	text = escape.Markdown(text)
+	encoded := utf16.Encode([]rune(text))
+	pointers := make(map[int]string)
+
+	for _, entity := range entities {
+		var before, after string
+		switch entity.Type {
+		case "code", "pre":
+			before, after = "```", "```"
+		case "bold":
+			before, after = `*`, `*`
+		case "italic":
+			before, after = `_`, `_`
+		case "underline":
+			before, after = `__`, `__`
+		case "strikethrough":
+			before, after = `~`, `~`
+		case "text_link":
+			before, after = `[`, `](tg://user?id=`+entity.URL+`)`
+		case "text_mention":
+			before, after = `[`, `](tg://user?id=`+strconv.FormatInt(entity.User.ID, 10)+`)`
+		case "spoiler":
+			before, after = "||", "||"
+		}
+		pointers[entity.Offset] += before
+		pointers[entity.Offset+entity.Length] = after + pointers[entity.Offset+entity.Length]
+	}
+
+	var out = make([]uint16, 0, len(encoded))
+
+	for i, ch := range encoded {
+		if m, ok := pointers[i]; ok {
+			m2 := ""
+			for _, ch := range m {
+				if inRune(rune(ch), []rune{'_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'}) {
+					m2 += "\\"
+				}
+				m2 += string(ch)
+			}
+			out = append(out, utf16.Encode([]rune(m2))...)
+		}
+		if inRune(rune(ch), []rune{'_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'}) {
+			out = append(out, '\\')
+		}
+		out = append(out, ch)
 		if i == len(encoded)-1 {
 			if m, ok := pointers[i+1]; ok {
 				out = append(out, utf16.Encode([]rune(m))...)
 			}
 		}
 	}
-	return strings.NewReplacer(`<label class="notranslate">`, "", `</label>`, "", "<br>", "\n").Replace(string(utf16.Decode(out)))
+	return string(utf16.Decode(out))
 }
 
 func index(arr []string, k string) int {
