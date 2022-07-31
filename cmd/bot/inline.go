@@ -18,6 +18,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 )
 
 func removeArticles(user tables.Users, articles []interface{}, codes ...string) []interface{} {
@@ -51,6 +52,14 @@ func removeIndex(obj []interface{}, idx int) []interface{} {
 	return append(obj[:idx], obj[idx+1:]...)
 }
 
+func Ucfirst(str string) string {
+	for _, v := range str {
+		u := string(unicode.ToUpper(v))
+		return u + str[len(u):]
+	}
+	return ""
+}
+
 func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 	start := time.Now()
 	defer app.log.With(zap.String("query", update.Query), zap.String("time_spent", time.Since(start).String())).Debug("")
@@ -73,8 +82,7 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 	}
 
 	if len(update.Query) > 0 {
-		runes := []rune(update.Query)
-		update.Query = strings.ToTitle(string(runes[0])) + string(runes[1:])
+		update.Query = Ucfirst(update.Query)
 	}
 
 	user := tables.Users{Lang: update.From.LanguageCode}
