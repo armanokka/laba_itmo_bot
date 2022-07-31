@@ -177,14 +177,15 @@ func buildLangsPagination(user tables.Users, offset int, count int, tickLang, bu
 	}
 	out := tgbotapi.NewInlineKeyboardMarkup()
 	if includeAutoDetect {
-		if offset > 0 {
-			offset-- // на предыдущей странице мы недопоказали одну кнопку
-			count++
-		}
 		if offset == 0 {
 			count-- // уменьшаем кол-во кнопок, потому что мы пихаем свою
 			out.InlineKeyboard = append(out.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
 				tgbotapi.NewInlineKeyboardButtonData(user.Localize("Detect language"), fmt.Sprintf(buttonSelectLangCallback, "auto"))))
+		} else {
+			offset-- // на первой странице мы недопоказали одну кнопку
+			if offset+count == len(codes[user.Lang])-1 {
+				count++
+			}
 		}
 	}
 
@@ -220,8 +221,9 @@ func buildLangsPagination(user tables.Users, offset int, count int, tickLang, bu
 			out.InlineKeyboard[l] = append(out.InlineKeyboard[l], btn)
 		}
 	}
-	if offset > 0 {
-		offset = len(codes[user.Lang]) / 18 * 18 // для счетчика снизу, а то на 181 строчке мы уменьшили оффсет
+	if includeAutoDetect && offset > 0 {
+		offset++ // для вида
+		//offset = len(codes[user.Lang]) / 18 * 18 // для счетчика снизу, а то на 181 строчке мы уменьшили оффсет
 	}
 	out.InlineKeyboard = append(out.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
 		tgbotapi.NewInlineKeyboardButtonData("⬅️", buttonBackCallback),

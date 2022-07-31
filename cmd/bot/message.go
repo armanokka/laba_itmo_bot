@@ -47,10 +47,11 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 
 	app.bot.Send(tgbotapi.NewChatAction(message.Chat.ID, "typing"))
 
+	if err := app.analytics.User(message); err != nil {
+		app.notifyAdmin(err)
+	}
+
 	defer func() {
-		if err := app.analytics.User(message); err != nil {
-			app.notifyAdmin(err)
-		}
 		if err := app.db.UpdateUserActivity(message.From.ID); err != nil {
 			app.notifyAdmin(err)
 		}
@@ -198,12 +199,8 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 
-	switch message.Text {
+	switch strings.TrimSpace(message.Text) {
 	case "↔":
-		if err = app.db.SwapLangs(message.Chat.ID); err != nil {
-			warn(err)
-			return
-		}
 		if user.MyLang == "auto" {
 			app.bot.Send(tgbotapi.NewDeleteMessage(message.Chat.ID, message.MessageID))
 			if err = app.analytics.Bot(tgbotapi.MessageConfig{
@@ -214,6 +211,10 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			}, "tried_to_swap_autodetect_lang"); err != nil {
 				app.notifyAdmin(err)
 			}
+			return
+		}
+		if err = app.db.SwapLangs(message.Chat.ID); err != nil {
+			warn(err)
 			return
 		}
 		user.MyLang, user.ToLang = user.ToLang, user.MyLang
@@ -392,6 +393,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			warn(err)
 			return
 		}
+		from = strings.ToLower(from)
 		if strings.Contains(from, "-") {
 			parts := strings.Split(from, "-")
 			from = parts[0]

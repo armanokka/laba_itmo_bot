@@ -72,7 +72,7 @@ func (d DashBot) User(message tgbotapi.Message) error {
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err

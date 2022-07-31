@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 func removeArticles(user tables.Users, articles []interface{}, codes ...string) []interface{} {
@@ -51,6 +52,8 @@ func removeIndex(obj []interface{}, idx int) []interface{} {
 }
 
 func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
+	start := time.Now()
+	defer app.log.With(zap.String("query", update.Query), zap.String("time_spent", time.Since(start).String())).Debug("")
 	defer func() {
 		if err := recover(); err != nil {
 			app.log.Error("%w", zap.Any("error", err))
@@ -68,6 +71,7 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 		app.notifyAdmin(err)
 		pp.Println("onInlineQuery: error", err)
 	}
+
 	if len(update.Query) > 0 {
 		runes := []rune(update.Query)
 		update.Query = strings.ToTitle(string(runes[0])) + string(runes[1:])
@@ -97,9 +101,14 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 
 	nextOffset := offset + count
 
+	from, err := translate2.DetectLanguageGoogle(ctx, update.Query)
+	if err != nil {
+		warn(err)
+		return
+	}
+
 	g, _ := errgroup.WithContext(context.Background())
 	var mu sync.Mutex
-	var err error
 
 	g.Go(func() error {
 		user, err = app.db.GetUserByID(update.From.ID)
@@ -114,7 +123,6 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 
 	//needAudio := strings.HasPrefix(update.Query, "!")
 
-	from := ""
 	for i, code := range codes[user.Lang][offset : offset+count] {
 		code := code
 		i := i
@@ -124,12 +132,9 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 			//	title += " 📌"
 			//}
 
-			tr, err := translate2.GoogleTranslate(ctx, "auto", code, update.Query)
+			tr, err := translate2.GoogleTranslate(ctx, from, code, update.Query)
 			if err != nil || tr.Text == "" {
 				return nil
-			}
-			if from == "" {
-				from = tr.FromLang
 			}
 
 			//if needAudio {
@@ -183,24 +188,25 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 
 	blocks = removeArticles(user, blocks, from)
 
-	//if offset == 0 && user.Usings > 0 {
-	//	nextOffset -= 2
-	//	for i, lang := range []string{user.MyLang, user.ToLang} {
-	//		if lang == from {
-	//			continue
-	//		}
-	//		block := getArticle(user, blocks, lang)
-	//		if block == nil {
-	//			continue
-	//		}
-	//		article := block.(tgbotapi.InlineQueryResultArticle)
-	//		blocks = removeArticles(user, blocks, lang)
-	//		article.Title = strings.TrimSuffix(article.Title, " 📌")
-	//		article.Title += " 🙍‍♂️"
-	//		article.ID = strconv.Itoa(-1 - i)
-	//		blocks = append(blocks, article)
-	//	}
-	//}
+	pp.Println(user)
+	if offset == 0 && !in([]string{"", "auto"}, user.MyLang, user.ToLang) {
+		for i, lang := range []string{user.MyLang, user.ToLang} {
+			if lang == from {
+				continue
+			}
+			block := getArticle(user, blocks, lang)
+			if block == nil {
+				continue
+			}
+			article := block.(tgbotapi.InlineQueryResultArticle)
+			//blocks = removeArticles(user, blocks, lang)
+			article.Title = strings.TrimSuffix(article.Title, " 📌") + " 🙍‍♂"
+			article.ID = strconv.Itoa(-1 - i)
+			pp.Println("here")
+			blocks = append(blocks, article)
+			nextOffset--
+		}
+	}
 
 	sort.Slice(blocks, func(i, j int) bool {
 		block1 := blocks[i].(tgbotapi.InlineQueryResultArticle)
