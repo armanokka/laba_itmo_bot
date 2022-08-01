@@ -18,39 +18,20 @@ func NewAPI(APIkey string) DashBot {
 	return DashBot{APIKey: APIkey}
 }
 
-type Message struct {
-	Text         string   `json:"text"`
-	UserId       string   `json:"userId"`
-	Intent       Intent   `json:"intent"`
-	Images       []string `json:"images"`
-	Buttons      []Button `json:"buttons"`
-	Postback     Postback `json:"postback"`
-	PlatformJson string   `json:"platformJson"` // any json
-	//PlatformUserJson map[string]interface{} `json:"platformUserJson"` // there is paid access to this field
-	SessionId string `json:"sessionId"`
-}
-
-type Postback struct {
-	ButtonClick ButtonClick `json:"buttonClick"`
-}
-
-type ButtonClick struct {
-	ButtonId string `json:"buttonId"`
-}
-
-type Intent struct {
-	Name   string `json:"name"`
-	Inputs []struct {
-		Name  string `json:"name"`
-		Value string `json:"value"`
-	} `json:"inputs"`
-	Confidence float64 `json:"confidence"`
-}
-
-type Button struct {
-	Id    string `json:"id"`
-	Label string `json:"label"`
-	Value string `json:"value"`
+func (d DashBot) request(data []byte) error {
+	req, err := http.NewRequest("POST", "https://tracker.dashbot.io/track?platform=universal&v=10.1.1-rest&type=incoming&apiKey="+d.APIKey, bytes.NewBuffer(data))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	if (res.StatusCode < 200 || res.StatusCode > 200) && res.StatusCode < 500 {
+		return errors.New("code non 200:" + strconv.Itoa(res.StatusCode))
+	}
+	return nil
 }
 
 func (d DashBot) User(message tgbotapi.Message) error {
@@ -60,9 +41,9 @@ func (d DashBot) User(message tgbotapi.Message) error {
 	}
 	params := Message{
 		Text:         message.Text,
-		UserId:       strconv.FormatInt(message.Chat.ID, 10),
+		UserId:       message.Chat.ID,
 		PlatformJson: string(raw),
-		SessionId:    strconv.FormatInt(message.Chat.ID, 10),
+		SessionId:    message.Chat.ID,
 	}
 	if message.Caption != "" {
 		params.Text = message.Caption
@@ -151,26 +132,60 @@ func (d DashBot) Bot(message tgbotapi.MessageConfig, intent string) error {
 	}
 	data, err := json.Marshal(Message{
 		Text:    helpers.ApplyEntitiesHtml(message.Text, message.Entities),
-		UserId:  strconv.FormatInt(message.ChatID, 10),
+		UserId:  message.ChatID,
 		Buttons: btns,
 		Intent: Intent{
-			Name:   intent,
-			Inputs: nil,
+			Name:       intent,
+			Inputs:     nil,
+			Confidence: 1,
 		},
-		SessionId: strconv.FormatInt(message.ChatID, 10),
+		SessionId: message.ChatID,
 	},
 	)
-	req, err := http.NewRequest("POST", "https://tracker.dashbot.io/track?platform=universal&v=11.1.0-rest&type=outgoing&apiKey="+d.APIKey, bytes.NewBuffer(data))
 	if err != nil {
 		return err
 	}
-	req.Header["Content-Type"] = []string{"application/json"}
-	res, err := http.DefaultClient.Do(req)
+	return d.request(data)
+}
+
+func (d DashBot) UserStartedBot(user tgbotapi.User) error {
+	userJson, err := json.Marshal(user)
 	if err != nil {
 		return err
 	}
-	if res.StatusCode >= 299 || res.StatusCode < 200 {
-		return errors.New("code non 200:" + strconv.Itoa(res.StatusCode))
+	data, err := json.Marshal(Event{
+		Name:           "bot_start",
+		ConversationId: strconv.FormatInt(user.ID, 10),
+		Type:           PageLaunchEvent,
+		ExtraInfo:      string(userJson),
+	})
+	if err != nil {
+		return err
 	}
-	return nil
+	return d.request(data)
+
+}
+
+// UserButtonClick buttonID can be callback.Data or a title of keyboard button
+func (d DashBot) UserButtonClick(user tgbotapi.User, buttonID string) error {
+	params, err := json.Marshal(Message{
+		Text:   ":button_click",
+		UserId: user.ID,
+		Intent: Intent{
+			Name: "button_click",
+			//Inputs:     nil,
+			Confidence: 1,
+		},
+		//Images:       nil,
+		//Buttons:      nil,
+		Postback: Postback{ButtonClick: ButtonClick{
+			ButtonId: buttonID,
+		}},
+		//PlatformJson: "",
+		SessionId: user.ID,
+	})
+	if err != nil {
+		return err
+	}
+	return d.request(params)
 }

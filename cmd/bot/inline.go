@@ -23,7 +23,7 @@ import (
 
 func removeArticles(user tables.Users, articles []interface{}, codes ...string) []interface{} {
 
-	trash := make([]int, 0, len(codes)+5)
+	trash := make([]int, 0, len(inlineCodes)+5)
 	for i, v := range articles {
 		article := v.(tgbotapi.InlineQueryResultArticle)
 		for _, code := range codes {
@@ -97,14 +97,14 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 		}
 	}
 
-	if offset > len(codes[user.Lang]) {
+	if offset > len(inlineCodes[user.Lang]) {
 		warn(fmt.Errorf("слишком большое смещение: %d", offset))
 		return
 	}
 
 	count := 50
-	if offset+count > len(codes[user.Lang])-1 {
-		count = len(codes[user.Lang]) - offset
+	if offset+count > len(inlineCodes[user.Lang])-1 {
+		count = len(inlineCodes[user.Lang]) - offset
 	}
 
 	nextOffset := offset + count
@@ -114,6 +114,7 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 		warn(err)
 		return
 	}
+	from = strings.ToLower(from)
 
 	g, _ := errgroup.WithContext(context.Background())
 	var mu sync.Mutex
@@ -131,7 +132,7 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 
 	//needAudio := strings.HasPrefix(update.Query, "!")
 
-	for i, code := range codes[user.Lang][offset : offset+count] {
+	for i, code := range inlineCodes[user.Lang][offset : offset+count] {
 		code := code
 		i := i
 		g.Go(func() error {
@@ -153,8 +154,10 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 			//	app.bot.UploadFiles()
 			//	tgbotapi.InlineQueryResultAudio{}
 			//}
+			user := user
+			user.SetLang(code)
 			btn := tgbotapi.InlineKeyboardButton{
-				Text:                         user.Localize("перевести"),
+				Text:                         user.Localize("translate"),
 				URL:                          nil,
 				LoginURL:                     nil,
 				CallbackData:                 nil,
@@ -194,9 +197,6 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 		return
 	}
 
-	blocks = removeArticles(user, blocks, from)
-
-	pp.Println(user)
 	if offset == 0 && !in([]string{"", "auto"}, user.MyLang, user.ToLang) {
 		for i, lang := range []string{user.MyLang, user.ToLang} {
 			if lang == from {
@@ -207,10 +207,8 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 				continue
 			}
 			article := block.(tgbotapi.InlineQueryResultArticle)
-			//blocks = removeArticles(user, blocks, lang)
 			article.Title = strings.TrimSuffix(article.Title, " 📌") + " 🙍‍♂"
 			article.ID = strconv.Itoa(-1 - i)
-			pp.Println("here")
 			blocks = append(blocks, article)
 			nextOffset--
 		}

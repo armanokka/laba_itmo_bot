@@ -88,6 +88,11 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		}
 	}
 	user.SetLang(message.From.LanguageCode)
+	if user.Blocked {
+		if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"blocked": false}); err != nil {
+			app.notifyAdmin(err)
+		}
+	}
 	log = log.With(zap.String("my_lang", user.MyLang), zap.String("to_lang", user.ToLang))
 
 	switch message.Command() {
@@ -107,7 +112,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			if _, err = app.bot.Send(tgbotapi.NewSticker(message.From.ID, tgbotapi.FileID("CAACAgIAAxkBAAERLnFi4-Sx5GwpqAcaUXUOPoheWYmmLQACAQEAAladvQoivp8OuMLmNCkE"))); err != nil {
 				warn(err)
 			}
-			time.Sleep(time.Second)
 		}
 		msg := tgbotapi.MessageConfig{
 			BaseChat: tgbotapi.BaseChat{
@@ -122,7 +126,8 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				DisableNotification:      true,
 				AllowSendingWithoutReply: false,
 			},
-			Text: user.Localize("Send me (+ words, or) posts from foreign channels 📣 and I'll translate them."),
+			Text:      user.Localize("<b>Отправьте текст</b> и бот его переведёт"),
+			ParseMode: tgbotapi.ModeHTML,
 		}
 		if _, err = app.bot.Send(msg); err != nil {
 			warn(err)
@@ -395,8 +400,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		}
 		from = strings.ToLower(from)
 		if strings.Contains(from, "-") {
-			parts := strings.Split(from, "-")
-			from = parts[0]
+			from = strings.Split(from, "-")[0]
 		}
 		if from == "" {
 			from = "auto"

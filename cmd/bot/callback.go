@@ -17,6 +17,10 @@ import (
 func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQuery) {
 	log := app.log.With(zap.Int64("id", callback.From.ID))
 	defer func() {
+		if err := app.analytics.UserButtonClick(*callback.From, callback.Data); err != nil {
+			app.notifyAdmin(err)
+		}
+
 		if err := recover(); err != nil {
 			if e, ok := err.(error); ok {
 				log.Error("", zap.Error(e))
