@@ -109,9 +109,9 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				app.notifyAdmin(fmt.Errorf("%w", err))
 			}
 		} else {
-			if _, err = app.bot.Send(tgbotapi.NewSticker(message.From.ID, tgbotapi.FileID("CAACAgIAAxkBAAERLnFi4-Sx5GwpqAcaUXUOPoheWYmmLQACAQEAAladvQoivp8OuMLmNCkE"))); err != nil {
-				warn(err)
-			}
+			//if _, err = app.bot.Send(tgbotapi.NewSticker(message.From.ID, tgbotapi.FileID("CAACAgIAAxkBAAERLnFi4-Sx5GwpqAcaUXUOPoheWYmmLQACAQEAAladvQoivp8OuMLmNCkE"))); err != nil {
+			//	warn(err)
+			//}
 		}
 		msg := tgbotapi.MessageConfig{
 			BaseChat: tgbotapi.BaseChat{
@@ -126,7 +126,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				DisableNotification:      true,
 				AllowSendingWithoutReply: false,
 			},
-			Text:      user.Localize("<b>Отправьте текст</b> и бот его переведёт"),
+			Text:      user.Localize("<b>Отправьте текст</b>, и бот его переведёт"),
 			ParseMode: tgbotapi.ModeHTML,
 		}
 		if _, err = app.bot.Send(msg); err != nil {
