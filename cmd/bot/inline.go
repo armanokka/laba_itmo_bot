@@ -236,11 +236,13 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 	}
 
 	if _, err := app.bot.AnswerInlineQuery(tgbotapi.InlineConfig{
-		InlineQueryID: update.ID,
-		Results:       blocks,
-		CacheTime:     0,
-		NextOffset:    strconv.Itoa(nextOffset),
-		IsPersonal:    true,
+		InlineQueryID:     update.ID,
+		Results:           blocks,
+		CacheTime:         0,
+		IsPersonal:        true,
+		NextOffset:        strconv.Itoa(nextOffset),
+		SwitchPMText:      user.Localize("tap to see more"),
+		SwitchPMParameter: "from_inline",
 	}); err != nil {
 		warn(errors.Wrap(err))
 		pp.Println(blocks)

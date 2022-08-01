@@ -126,14 +126,14 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				DisableNotification:      true,
 				AllowSendingWithoutReply: false,
 			},
-			Text:      user.Localize("<b>Отправьте текст</b>, и бот его переведёт"),
+			Text:      user.Localize("<b>Send text</b>, and bot will translate it"),
 			ParseMode: tgbotapi.ModeHTML,
 		}
 		if _, err = app.bot.Send(msg); err != nil {
 			warn(err)
 		}
 
-		if err = app.analytics.Bot(msg, "/start"); err != nil {
+		if err = app.analytics.Bot(msg, "/start"+message.CommandArguments()); err != nil {
 			app.notifyAdmin(err)
 		}
 
