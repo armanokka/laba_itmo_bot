@@ -13,6 +13,7 @@ import (
 	"github.com/armanokka/translobot/repos"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
+	"go.uber.org/atomic"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"os"
@@ -20,12 +21,14 @@ import (
 	"runtime/debug"
 	"strconv"
 	"sync"
+	"time"
 )
 
 type App struct {
 	htmlTagsRe          *regexp.Regexp
 	reSpecialCharacters *regexp.Regexp
 	deepl               translate2.Deepl
+	limiter             sync.Map
 	bot                 *botapi.BotAPI
 	log                 *zap.Logger
 	db                  repos.BotDB
@@ -33,7 +36,12 @@ type App struct {
 	bc                  *bitcask.Bitcask
 }
 
-func New(bot *botapi.BotAPI, db repos.BotDB, analytics dashbot.DashBot, log *zap.Logger, bc *bitcask.Bitcask) (App, error) {
+type FloodLimitation struct {
+	usedAt     time.Time
+	waitingNow *atomic.Bool
+}
+
+func New(bot *botapi.BotAPI, db repos.BotDB, analytics dashbot.DashBot, log *zap.Logger, bc *bitcask.Bitcask) (*App, error) {
 	//iconv.Open("utf-8", "")
 	app := App{
 		htmlTagsRe:          regexp.MustCompile("<\\s*[^>]+>(.*?)"),
@@ -43,9 +51,10 @@ func New(bot *botapi.BotAPI, db repos.BotDB, analytics dashbot.DashBot, log *zap
 		log:       log,
 		db:        db,
 		analytics: analytics,
+		limiter:   sync.Map{},
 		bc:        bc,
 	}
-	return app, nil
+	return &app, nil
 }
 
 func (app App) Run(ctx context.Context) error {
@@ -81,7 +90,45 @@ func (app App) Run(ctx context.Context) error {
 						if update.Message.From.LanguageCode == "" || !in(config.BotLocalizedLangs, update.Message.From.LanguageCode) {
 							update.Message.From.LanguageCode = "en"
 						}
+						limit, exists := app.limiter.Load(update.Message.Chat.ID)
+						updateFlood := true
+						if exists {
+							floodLimit := limit.(FloodLimitation)
+							if time.Since(floodLimit.usedAt) >= time.Second {
+								if floodLimit.waitingNow.Load() {
+									floodLimit.waitingNow.Toggle() // false
+									//floodLimit.usedAt = time.Now()
+									app.limiter.Store(update.Message.From.ID, floodLimit)
+									updateFlood = false
+								}
+							} else {
+								user := tables.Users{ID: update.Message.From.ID, Lang: update.Message.From.LanguageCode}
+								app.bot.Send(tgbotapi.MessageConfig{
+									BaseChat: tgbotapi.BaseChat{
+										ChatID:              update.Message.From.ID,
+										DisableNotification: true,
+									},
+									Text:      user.Localize("<b>Пожалуйста, не флудите!</b> Подождите 3 секунды после каждого запроса"),
+									ParseMode: tgbotapi.ModeHTML,
+								})
+
+								if !floodLimit.waitingNow.Load() {
+									floodLimit.waitingNow.Toggle() // true
+									floodLimit.usedAt = time.Now()
+									app.limiter.Store(update.Message.From.ID, floodLimit)
+									return
+								}
+								return
+							}
+						}
 						app.onMessage(ctx, *update.Message)
+						if updateFlood {
+							app.limiter.Store(update.Message.From.ID, FloodLimitation{
+								usedAt:     time.Now(),
+								waitingNow: atomic.NewBool(false),
+							})
+						}
+
 					} else if update.CallbackQuery != nil {
 						if update.CallbackQuery.From.LanguageCode == "" || !in(config.BotLocalizedLangs, update.CallbackQuery.From.LanguageCode) {
 							update.CallbackQuery.From.LanguageCode = "en"

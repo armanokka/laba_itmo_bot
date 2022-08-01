@@ -525,6 +525,18 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"ar": "انقر لرؤية المزيد",
 			"pt": "toque para ver mais",
 		},
+		"<b>Пожалуйста, не флудите!</b> Подождите 3 секунды после каждого запроса": map[string]string{
+			"uz": "<b>Iltimos, suv bosmang!</b> Har bir soʻrovdan keyin 3 soniya kuting",
+			"ar": "<b> من فضلك لا تفيض! </ b> انتظر 3 ثوان بعد كل طلب",
+			"en": "<b>Please don't flood!</b> Wait 3 seconds after each request",
+			"de": "<b>Bitte nicht überfluten!</b> Warten Sie nach jeder Anfrage 3 Sekunden",
+			"es": "<b>¡Por favor, no inunde!</b> Espere 3 segundos después de cada solicitud",
+			"uk": "<b>Будь ласка, не флудіть!</b> Зачекайте 3 секунди після кожного запиту",
+			"id": "<b>Tolong jangan banjir!</b> Tunggu 3 detik setelah setiap permintaan",
+			"it": "<b>Per favore, non inondare!</b> Attendi 3 secondi dopo ogni richiesta",
+			"pt": "<b>Não faça flood!</b> Aguarde 3 segundos após cada solicitação",
+			"ru": "<b>Пожалуйста, не флудите!</b> Подождите 3 секунды после каждого запроса",
+		},
 
 		"format_translation_tip": map[string]string{
 			"es": "💡Sugerencia:\nSólo Translo puede traducir estos textos con formato, como: \"𝑴𝒓 𝒑𝒂𝒖𝒍𝒔𝒐𝒏 𝑷𝒊𝒆𝒕𝒆𝒓\"\nNi google, ni yahoo! ni ningún otro traductor porque no pueden. Pruebe y compruebe en este",
@@ -606,9 +618,9 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 		if v, ok := v[u.Lang]; ok {
 			return fmt.Sprintf(v, placeholders...)
 		}
-		return "LOCALIZATION_KEY_NOT_FOUND"
+		return key + "\nLOCALIZATION_KEY_NOT_FOUND"
 	}
-	return "LOCALIZATION_NOT_FOUND"
+	return key + "\nLOCALIZATION_NOT_FOUND"
 }
 
 type Mailing struct {
