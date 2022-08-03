@@ -4,6 +4,7 @@ import (
 	"bytes"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/kodova/html-to-markdown/escape"
+	"html"
 	"strconv"
 	"strings"
 	"unicode/utf16"
@@ -83,19 +84,15 @@ func ReversoType(reversoType string) string {
 	return ""
 }
 
-func ReversoTypes(types []string) string {
-	for _, t := range types {
-		out := ReversoType(t)
-		if out != "" {
-			return out
-		}
-	}
-	return ""
+var htmlEscape = map[uint16][]uint16{
+	utf16.Encode([]rune(">"))[0]: utf16.Encode([]rune("&gt;")),
+	utf16.Encode([]rune("<"))[0]: utf16.Encode([]rune("&lt;")),
+	utf16.Encode([]rune("&"))[0]: utf16.Encode([]rune("&amp;")),
 }
 
 func ApplyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
 	if len(entities) == 0 {
-		return text
+		return html.EscapeString(text)
 	}
 
 	encoded := utf16.Encode([]rune(text))
@@ -131,7 +128,11 @@ func ApplyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
 		if m, ok := pointers[i]; ok {
 			out = append(out, utf16.Encode([]rune(m))...)
 		}
-		out = append(out, ch)
+		if escaped, ok := htmlEscape[ch]; ok {
+			out = append(out, escaped...)
+		} else {
+			out = append(out, ch)
+		}
 	}
 	if m, ok := pointers[len(encoded)]; ok {
 		out = append(out, utf16.Encode([]rune(m))...)

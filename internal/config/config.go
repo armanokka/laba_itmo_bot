@@ -88,7 +88,7 @@ func load() (err error) {
 		return err
 	}
 	bot = &botapi.BotAPI{api}
-	bot.Debug = false // >:(
+	bot.Debug = false
 	bot.Buffer = 30
 
 	me, err := bot.GetMe()
@@ -97,7 +97,6 @@ func load() (err error) {
 	}
 	botID = me.ID
 
-	// Initializing analytics
 	analytics = dashbot.NewAPI(dashBotAPIKey)
 	return nil
 }
