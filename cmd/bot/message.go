@@ -13,6 +13,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/text/unicode/norm"
 	"gorm.io/gorm"
+	"html"
 	"os"
 	"runtime/debug"
 	"strconv"
@@ -617,7 +618,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			return
 		}
 	}
-	data, err := translate.TTS(to, tr)
+	data, err := translate.TTS(to, html.UnescapeString(tr))
 	if err != nil {
 		//return err
 	}
