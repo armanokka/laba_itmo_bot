@@ -16,6 +16,7 @@ import (
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/time/rate"
 	"os"
 	"regexp"
 	"runtime/debug"
@@ -90,18 +91,11 @@ func (app App) Run(ctx context.Context) error {
 						if update.Message.From.LanguageCode == "" || !in(config.BotLocalizedLangs, update.Message.From.LanguageCode) {
 							update.Message.From.LanguageCode = "en"
 						}
-						limit, exists := app.limiter.Load(update.Message.Chat.ID)
-						updateFlood := true
-						if exists {
-							floodLimit := limit.(FloodLimitation)
-							if time.Since(floodLimit.usedAt) >= time.Second {
-								if floodLimit.waitingNow.Load() {
-									floodLimit.waitingNow.Toggle() // false
-									//floodLimit.usedAt = time.Now()
-									app.limiter.Store(update.Message.From.ID, floodLimit)
-									updateFlood = false
-								}
-							} else {
+						limit, loaded := app.limiter.LoadOrStore(update.Message.Chat.ID, rate.NewLimiter(1, 1))
+						if loaded {
+							floodLimit := limit.(*rate.Limiter)
+							reserve := floodLimit.Reserve()
+							if !reserve.OK() || reserve.Delay() != 0 {
 								user := tables.Users{ID: update.Message.From.ID, Lang: update.Message.From.LanguageCode}
 								app.bot.Send(tgbotapi.MessageConfig{
 									BaseChat: tgbotapi.BaseChat{
@@ -111,24 +105,11 @@ func (app App) Run(ctx context.Context) error {
 									Text:      user.Localize("<b>Пожалуйста, не флудите!</b> Подождите 3 секунды после каждого запроса"),
 									ParseMode: tgbotapi.ModeHTML,
 								})
-
-								if !floodLimit.waitingNow.Load() {
-									floodLimit.waitingNow.Toggle() // true
-									floodLimit.usedAt = time.Now()
-									app.limiter.Store(update.Message.From.ID, floodLimit)
-									return
-								}
 								return
 							}
+							app.limiter.Store(update.Message.From.ID, floodLimit)
 						}
 						app.onMessage(ctx, *update.Message)
-						if updateFlood {
-							app.limiter.Store(update.Message.From.ID, FloodLimitation{
-								usedAt:     time.Now(),
-								waitingNow: atomic.NewBool(false),
-							})
-						}
-
 					} else if update.CallbackQuery != nil {
 						if update.CallbackQuery.From.LanguageCode == "" || !in(config.BotLocalizedLangs, update.CallbackQuery.From.LanguageCode) {
 							update.CallbackQuery.From.LanguageCode = "en"

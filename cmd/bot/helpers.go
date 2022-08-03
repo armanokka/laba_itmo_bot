@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"encoding/xml"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/armanokka/translobot/internal/config"
@@ -15,6 +14,7 @@ import (
 	"github.com/armanokka/translobot/pkg/errors"
 	"github.com/armanokka/translobot/pkg/lingvo"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"golang.org/x/net/html"
 	"io"
 	"io/ioutil"
 	"log"
@@ -89,30 +89,35 @@ func inFuzzy(arr []string, keys ...string) bool {
 var SupportedFormattingTags = []string{"b", "strong", "i", "em", "u", "ins", "s", "strike", "del", "span", "tg-spoiler", "a", "code", "pre"}
 
 func validHtml(s string) bool {
-	d := xml.NewDecoder(strings.NewReader(s))
-	tags := make(map[string]bool, 10)
-	for {
-		token, err := d.Token()
-		if err != nil && err != io.EOF {
-			return false
-		}
-		if token == nil {
-			break
-		}
-		switch t := token.(type) {
-		case xml.StartElement:
-			if !in(SupportedFormattingTags, t.Name.Local) {
-				return false
-			}
-			tags[t.Name.Local] = false
-		case xml.EndElement:
-			if _, ok := tags[t.Name.Local]; !ok || !in(SupportedFormattingTags, t.Name.Local) { // закрытый тег, не имеющий открытого, или неподдерживаемый тег
-				return false
-			}
-			delete(tags, t.Name.Local)
-		}
+	_, err := html.Parse(strings.NewReader(s))
+	if err != nil {
+		return false
 	}
-	return len(tags) == 0
+	return true
+	//d := xml.NewDecoder(strings.NewReader(s))
+	//tags := make(map[string]bool, 10)
+	//for {
+	//	token, err := d.Token()
+	//	if err != nil && err != io.EOF {
+	//		return false
+	//	}
+	//	if token == nil {
+	//		break
+	//	}
+	//	switch t := token.(type) {
+	//	case xml.StartElement:
+	//		if !in(SupportedFormattingTags, t.Name.Local) {
+	//			return false
+	//		}
+	//		tags[t.Name.Local] = false
+	//	case xml.EndElement:
+	//		if _, ok := tags[t.Name.Local]; !ok || !in(SupportedFormattingTags, t.Name.Local) { // закрытый тег, не имеющий открытого, или неподдерживаемый тег
+	//			return false
+	//		}
+	//		delete(tags, t.Name.Local)
+	//	}
+	//}
+	//return len(tags) == 0
 }
 func inMapValues(m map[string]string, values ...string) bool {
 	for _, v := range values {

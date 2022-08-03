@@ -74,6 +74,7 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 			log.Error("google err", zap.Error(err))
 			return err
 		}
+
 		GoogleFromToTr = tr.Text
 		if from == "" {
 			from = tr.FromLang

@@ -26,6 +26,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 )
 
 //func GoogleTranslate(from, to, text string) (TranslateGoogleAPIResponse, error) {
@@ -436,8 +437,10 @@ func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateG
 			if err != nil {
 				return err
 			}
-			tr.Text = strings.ReplaceAll(tr.Text, ` \ n`, `\n`)
-			tr.Text = strings.ReplaceAll(tr.Text, `\ n`, `\n`)
+			tr.Text = strings.NewReplacer(
+				` \ n`, `\n`,
+				`\ n`, `\n`,
+				`<br>`, "\n").Replace(tr.Text)
 			mu.Lock()
 			defer mu.Unlock()
 			if out.FromLang == "" {
@@ -483,23 +486,50 @@ func googleTranslate(ctx context.Context, from, to, text string) (result Transla
 	if err != nil {
 		return TranslateGoogleAPIResponse{}, err
 	}
-	if res.StatusCode != 200 {
+	switch res.StatusCode {
+	case 200:
+		doc, err := goquery.NewDocumentFromReader(res.Body)
+		if err != nil {
+			return TranslateGoogleAPIResponse{}, err
+		}
+		if result.FromLang == "" {
+			result.FromLang = doc.Find("span[id=tw-answ-detected-sl]").Text()
+		}
+
+		result.Text = doc.Find("span[id=tw-answ-target-text]").Text()
+		result.FromLang = doc.Find("span[id=tw-answ-detected-sl]").Text()
+	case 413:
+		parts := SplitIntoChunksBySentences(text, utf8.RuneCountInString(text)/2)
+		g, ctx := errgroup.WithContext(ctx)
+		var mu sync.Mutex
+		from := ""
+		for i, part := range parts {
+			part := part
+			g.Go(func() error {
+				tr, err := googleTranslate(ctx, from, to, part)
+				if err != nil {
+					return err
+				}
+				mu.Lock()
+				defer mu.Unlock()
+				if from == "" {
+					from = tr.FromLang
+				}
+				parts[i] = tr.Text
+				return nil
+			})
+		}
+		if err = g.Wait(); err != nil {
+			return TranslateGoogleAPIResponse{}, err
+		}
+		result.Text = strings.Join(parts, "")
+		result.FromLang = from
+	default:
 		return TranslateGoogleAPIResponse{}, HTTPError{
 			Code:        res.StatusCode,
 			Description: "got non 200 http code",
 		}
 	}
-
-	doc, err := goquery.NewDocumentFromReader(res.Body)
-	if err != nil {
-		return TranslateGoogleAPIResponse{}, err
-	}
-	if result.FromLang == "" {
-		result.FromLang = doc.Find("span[id=tw-answ-detected-sl]").Text()
-	}
-
-	result.Text = doc.Find("span[id=tw-answ-target-text]").Text()
-	result.FromLang = doc.Find("span[id=tw-answ-detected-sl]").Text()
 
 	r, err := regexp.Compile("\\<\\s*[bB][rR]\\s*\\>")
 	if err != nil {

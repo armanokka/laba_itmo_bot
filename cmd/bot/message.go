@@ -485,15 +485,14 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		warn(err)
 		return
 	}
-	//if !validHtml(tr) {
-	//	log.Info("invalid html, escaping")
-	//	tr = html.EscapeString(tr)
-	//}
 
 	//app.bot.Send(tgbotapi.NewDeleteMessage(chatID, message.MessageID))
 	chunks := translate.SplitIntoChunksBySentences(tr, 4096)
 	for i, chunk := range chunks {
-		chunk = closeUnclosedTags(chunk)
+		if !validHtml(chunk) {
+			log.Info("invalid html, escaping")
+			tr = closeUnclosedTags(chunk)
+		}
 		switch {
 		case message.Poll != nil && i == 0:
 			options := make([]string, 0, len(message.Poll.Options))
@@ -597,6 +596,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 
 		}
 		if err != nil {
+			app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, chunk))
 			app.bot.Send(tgbotapi.MessageConfig{
 				BaseChat: tgbotapi.BaseChat{
 					ChatID:                   config.AdminID,
@@ -613,7 +613,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				DisableWebPagePreview: false,
 			})
 			app.log.Error("couldn't send translation to user", zap.String("text", text), zap.String("translation", chunk))
-			warn(err)
+			//warn(err)
 			return
 		}
 	}
