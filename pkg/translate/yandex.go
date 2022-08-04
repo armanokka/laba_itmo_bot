@@ -94,7 +94,9 @@ func yandexTranslate(ctx context.Context, from, to, text string) (string, error)
 	if err := g.Wait(); err != nil {
 		return "", err
 	}
-	return strings.Join(parts, "."), nil
+	out := strings.Join(parts, ".")
+	out = matchHtmlTags(text, out)
+	return out, nil
 }
 func DetectLanguageYandex(ctx context.Context, text string) (lang string, err error) {
 	for i := 0; i < 3; i++ {
