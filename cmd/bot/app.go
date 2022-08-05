@@ -28,13 +28,13 @@ import (
 type App struct {
 	htmlTagsRe          *regexp.Regexp
 	reSpecialCharacters *regexp.Regexp
-	deepl               translate2.Deepl
-	limiter             sync.Map
-	bot                 *botapi.BotAPI
-	log                 *zap.Logger
-	db                  repos.BotDB
-	analytics           dashbot.DashBot
-	bc                  *bitcask.Bitcask
+	//deepl               translate2.Deepl
+	limiter   sync.Map
+	bot       *botapi.BotAPI
+	log       *zap.Logger
+	db        repos.BotDB
+	analytics dashbot.DashBot
+	bc        *bitcask.Bitcask
 }
 
 type FloodLimitation struct {

@@ -536,7 +536,7 @@ func googleTranslate(ctx context.Context, from, to, text string) (result Transla
 		return TranslateGoogleAPIResponse{}, err
 	}
 	result.Text = r.ReplaceAllString(result.Text, "\n")
-	result.Text = matchHtmlTags(text, result.Text)
+	result.Text = CheckHtmlTags(text, result.Text)
 	//result := &TranslateGoogleAPIResponse{
 	//	Text:     doc.Find("span[id=tw-answ-target-text]").Text(),
 	//	FromLang: doc.Find("span[id=tw-answ-detected-sl]").Text(),

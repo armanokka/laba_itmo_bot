@@ -88,6 +88,8 @@ var htmlEscape = map[uint16][]uint16{
 	utf16.Encode([]rune(">"))[0]: utf16.Encode([]rune("&gt;")),
 	utf16.Encode([]rune("<"))[0]: utf16.Encode([]rune("&lt;")),
 	utf16.Encode([]rune("&"))[0]: utf16.Encode([]rune("&amp;")),
+	utf16.Encode([]rune("’"))[0]: utf16.Encode([]rune("&#39;")),
+	utf16.Encode([]rune(`"`))[0]: utf16.Encode([]rune("&quot;")),
 }
 
 func ApplyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {

@@ -119,6 +119,7 @@ func validHtml(s string) bool {
 	//}
 	//return len(tags) == 0
 }
+
 func inMapValues(m map[string]string, values ...string) bool {
 	for _, v := range values {
 		var ok bool

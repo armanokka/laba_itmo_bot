@@ -728,7 +728,7 @@ func SplitIntoChunksBySentences(text string, limit int) []string {
 	return chunks
 }
 
-func matchHtmlTags(in, out string) string {
+func CheckHtmlTags(in, out string) string {
 	r, err := regexp.Compile("<\\s*[^>]+>(.*?)")
 	if err != nil {
 		return "regexp.Compile err"
@@ -736,7 +736,7 @@ func matchHtmlTags(in, out string) string {
 	inTags := r.FindAllString(in, -1)
 	outTags := r.FindAllString(out, -1)
 	if len(inTags) != len(outTags) {
-		return "checkTags: tags number in 'in' and 'out' don't match"
+		return "checkHtmlTags: tags number in 'in' and 'out' don't match"
 	}
 	for i := 0; i < len(inTags); i++ {
 		if inTags[i] != outTags[i] {

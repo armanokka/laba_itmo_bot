@@ -486,6 +486,9 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		warn(err)
 		return
 	}
+	if !validHtml(tr) {
+		tr = translate.CheckHtmlTags(text, tr)
+	}
 
 	//app.bot.Send(tgbotapi.NewDeleteMessage(chatID, message.MessageID))
 	chunks := translate.SplitIntoChunksBySentences(tr, 4096)
@@ -539,35 +542,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				Performer: message.Audio.Performer,
 				Title:     message.Audio.Title,
 			})
-		//case len(message.Photo) > 0 && i == 0:
-		//	chunks := translate.SplitIntoChunksBySentences(chunk, 1024) // MEDIA_CAPTION_TOO_LONG
-		//	maxResolutionPhoto := message.Photo[len(message.Photo)-1]
-		//	for i, chunk := range chunks {
-		//		if i == 0 {
-		//			_, err = app.bot.Send(tgbotapi.PhotoConfig{
-		//				BaseFile: tgbotapi.BaseFile{
-		//					BaseChat: tgbotapi.BaseChat{
-		//						ChatID:      message.Chat.ID,
-		//						ReplyMarkup: message.ReplyMarkup,
-		//					},
-		//					File: tgbotapi.FileID(maxResolutionPhoto.FileID),
-		//				},
-		//				Caption:   chunk,
-		//				ParseMode: tgbotapi.ModeHTML,
-		//			})
-		//		} else {
-		//			_, err = app.bot.Send(tgbotapi.MessageConfig{
-		//				BaseChat: tgbotapi.BaseChat{
-		//					ChatID: message.Chat.ID,
-		//				},
-		//				Text:      chunk,
-		//				ParseMode: tgbotapi.ModeHTML,
-		//			})
-		//		}
-		//
-		//		if err != nil {
-		//		}
-		//	}
 		default:
 			var keyboard interface{}
 			if user.MyLang == "auto" {
@@ -594,7 +568,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			}
 			_, err = app.bot.Send(msg)
 			app.analytics.Bot(msg, "translate")
-
 		}
 		if err != nil {
 			app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, chunk))
