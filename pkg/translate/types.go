@@ -735,10 +735,20 @@ func CheckHtmlTags(in, out string) string {
 	}
 	inTags := r.FindAllString(in, -1)
 	outTags := r.FindAllString(out, -1)
-	if len(inTags) != len(outTags) {
-		return "checkHtmlTags: tags number in 'in' and 'out' don't match"
-	}
+	//pp.Println(inTags, len(inTags), outTags, len(outTags))
+	//if len(inTags) != len(outTags) {
+	//	return "checkHtmlTags: tags number in 'in' and 'out' don't match"
+	//}
+	inTagsLen := len(inTags)
+	outTagsLen := len(outTags)
 	for i := 0; i < len(inTags); i++ {
+		if i > inTagsLen-1 {
+			out += strings.Join(outTags[i:], "")
+			break
+		} else if i > outTagsLen-1 {
+			out += strings.Join(outTags[i:], "")
+			break
+		}
 		if inTags[i] != outTags[i] {
 			out = strings.Replace(out, outTags[i], inTags[i], 1)
 		}

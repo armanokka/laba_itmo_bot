@@ -81,6 +81,14 @@ func load() (err error) {
 	sqlDb.SetMaxIdleConns(20)
 	sqlDb.SetConnMaxLifetime(time.Hour)
 
+	// Automigrate
+	//if err = db.AutoMigrate(
+	//	&tables.Chats{},
+	//	&tables.Users{},
+	//); err != nil {
+	//	return err
+	//}
+
 	var api *tgbotapi.BotAPI
 	api, err = tgbotapi.NewBotAPI(botToken)
 	if err != nil {

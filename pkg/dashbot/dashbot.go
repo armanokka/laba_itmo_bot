@@ -76,14 +76,14 @@ func (d DashBot) Bot(message tgbotapi.MessageConfig, intent string) error {
 			btns = make([]Button, 0, n)
 			for _, row := range markup.InlineKeyboard {
 				for _, btn := range row {
-					val := ""
+					val, id := "", ""
 					switch {
 					case btn.CallbackData != nil:
-						val = *btn.CallbackData
+						val, id = *btn.CallbackData, *btn.CallbackData
 					case btn.Pay:
 						val = ":pay"
 					case btn.URL != nil:
-						val = *btn.URL
+						val, id = *btn.URL, *btn.CallbackData
 					case btn.CallbackGame != nil:
 						val = ":callback_game"
 					case btn.LoginURL != nil:
@@ -96,7 +96,7 @@ func (d DashBot) Bot(message tgbotapi.MessageConfig, intent string) error {
 						val = ":web_app"
 					}
 					btns = append(btns, Button{
-						Id:    *btn.CallbackData,
+						Id:    id,
 						Label: btn.Text,
 						Value: val,
 					})
