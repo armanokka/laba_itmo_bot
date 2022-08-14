@@ -425,7 +425,7 @@ func GoogleHTMLTranslate(ctx context.Context, from, to, text string) (GoogleHTML
 }
 
 func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateGoogleAPIResponse, err error) {
-	chunks := SplitIntoChunksBySentences(text, 2400)
+	chunks := SplitIntoChunksBySentences(text, 1600)
 	var mu sync.Mutex
 	g, ctx := errgroup.WithContext(ctx)
 	for i, chunk := range chunks {

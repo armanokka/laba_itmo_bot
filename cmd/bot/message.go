@@ -10,7 +10,6 @@ import (
 	"github.com/armanokka/translobot/pkg/translate"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
-	"golang.org/x/sync/errgroup"
 	"golang.org/x/text/unicode/norm"
 	"gorm.io/gorm"
 	"html"
@@ -390,46 +389,30 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	}
 
 	// Определяем язык сообщения
+	from, to := "", ""
+	from, err = translate.DetectLanguageGoogle(ctx, text)
+	if err != nil {
+		warn(err)
+		return
+	}
+	from = strings.ToLower(from)
+	if strings.Contains(from, "-") {
+		from = strings.Split(from, "-")[0]
+	}
+	if from == "" {
+		warn(fmt.Errorf("from is auto"))
+	}
 
 	// Подбираем язык перевода, зная язык сообщения
-	from, to := "", ""
-	if user.MyLang == "auto" {
-		from, err = translate.DetectLanguageGoogle(ctx, text)
-		if err != nil {
-			warn(err)
-			return
-		}
-		from = strings.ToLower(from)
-		if strings.Contains(from, "-") {
-			from = strings.Split(from, "-")[0]
-		}
-		if from == "" {
-			from = "auto"
-		}
+	if from == user.ToLang {
+		to = user.MyLang
+	} else if from == user.MyLang {
 		to = user.ToLang
-	} else {
-		if from == user.ToLang {
-			to = user.MyLang
-		} else if from == user.MyLang {
+	} else { // никакой из
+		if user.ToLang == message.From.LanguageCode {
 			to = user.ToLang
-		} else { // никакой из
-			//if user.ToLang == message.From.LanguageCode {
-			//	to = user.ToLang
-			//} else {
+		} else {
 			to = user.MyLang
-			//}
-		}
-
-		if from != user.MyLang {
-			tr, err := translate.GoogleTranslate(ctx, from, to, text)
-			if err != nil {
-				warn(err)
-				return
-			}
-			if diff(text, tr.Text) < 2 {
-				from = user.MyLang
-				to = user.ToLang
-			}
 		}
 	}
 
@@ -439,48 +422,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	}
 	text = helpers.ApplyEntitiesHtml(norm.NFKC.String(text), entities)
 
-	g, ctx := errgroup.WithContext(ctx)
-	if message.ReplyMarkup != nil {
-		for i1, row := range message.ReplyMarkup.InlineKeyboard {
-			i1 := i1
-			row := row
-			for i2, btn := range row {
-				i2 := i2
-				btn := btn
-				g.Go(func() error {
-					tr, err := translate.GoogleTranslate(ctx, from, to, btn.Text)
-					if err != nil {
-						return errors.Wrap(err)
-					}
-					message.ReplyMarkup.InlineKeyboard[i1][i2].Text = tr.Text
-					return nil
-				})
-			}
-		}
-	}
-
-	if message.Poll != nil {
-		g.Go(func() error {
-			tr, err := translate.GoogleTranslate(ctx, from, to, message.Poll.Question)
-			message.Poll.Question = tr.Text
-			return errors.Wrap(err)
-		})
-		g.Go(func() error {
-			tr, err := translate.GoogleTranslate(ctx, from, to, helpers.ApplyEntitiesHtml(message.Poll.Explanation, message.Poll.ExplanationEntities))
-			message.Poll.Explanation = tr.Text
-			return errors.Wrap(err)
-		})
-		for i, q := range message.Poll.Options {
-			i := i
-			q := q
-			g.Go(func() error {
-				tr, err := translate.GoogleTranslate(ctx, from, to, q.Text)
-				message.Poll.Options[i].Text = tr.Text
-				return errors.Wrap(err)
-			})
-		}
-	}
-
 	tr, from, err := app.translate(ctx, from, to, text) // examples мы сохраняем, чтобы соединить с keyboard.Examples и положить в кэш
 	if err != nil {
 		warn(err)
@@ -488,87 +429,43 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	}
 	if !validHtml(tr) {
 		tr = translate.CheckHtmlTags(text, tr)
+		tr = closeUnclosedTags(tr)
 	}
 
 	//app.bot.Send(tgbotapi.NewDeleteMessage(chatID, message.MessageID))
 	chunks := translate.SplitIntoChunksBySentences(tr, 4096)
-	for i, chunk := range chunks {
+	for _, chunk := range chunks {
 		if !validHtml(chunk) {
 			log.Info("invalid html, escaping")
 			tr = closeUnclosedTags(chunk)
 		}
-		switch {
-		case message.Poll != nil && i == 0:
-			options := make([]string, 0, len(message.Poll.Options))
-			for _, opt := range message.Poll.Options {
-				options = append(options, opt.Text)
+
+		var keyboard interface{}
+		if user.MyLang == "auto" {
+			if err = app.db.UpdateUser(message.From.ID, tables.Users{MyLang: from}); err != nil {
+				warn(err)
+				return
 			}
-			_, err = app.bot.Send(tgbotapi.SendPollConfig{
-				BaseChat: tgbotapi.BaseChat{
-					ChatID:      message.Chat.ID,
-					ReplyMarkup: message.ReplyMarkup,
-				},
-				Question:              message.Poll.Question,
-				Options:               options,
-				IsAnonymous:           message.Poll.IsAnonymous,
-				Type:                  message.Poll.Type,
-				AllowsMultipleAnswers: message.Poll.AllowsMultipleAnswers,
-				CorrectOptionID:       int64(message.Poll.CorrectOptionID),
-				Explanation:           message.Poll.Explanation,
-				ExplanationParseMode:  tgbotapi.ModeHTML,
-				ExplanationEntities:   nil,
-				OpenPeriod:            message.Poll.OpenPeriod,
-				CloseDate:             message.Poll.CloseDate,
-				IsClosed:              message.Poll.IsClosed,
-			})
-		case message.Audio != nil && i == 0:
-			thumbnail := ""
-			if message.Audio.Thumbnail != nil {
-				thumbnail = message.Audio.Thumbnail.FileID
-			}
-			_, err = app.bot.Send(tgbotapi.AudioConfig{
-				BaseFile: tgbotapi.BaseFile{
-					BaseChat: tgbotapi.BaseChat{
-						ChatID:           message.Chat.ID,
-						ReplyToMessageID: 0,
-						ReplyMarkup:      message.ReplyMarkup,
-					},
-					File: tgbotapi.FileID(message.Audio.FileID),
-				},
-				Thumb:     tgbotapi.FileID(thumbnail),
-				Caption:   tr,
-				ParseMode: tgbotapi.ModeHTML,
-				Duration:  message.Audio.Duration,
-				Performer: message.Audio.Performer,
-				Title:     message.Audio.Title,
-			})
-		default:
-			var keyboard interface{}
-			if user.MyLang == "auto" {
-				if err = app.db.UpdateUser(message.From.ID, tables.Users{MyLang: from}); err != nil {
-					warn(err)
-					return
-				}
-				user.MyLang = from
-				keyboard = tgbotapi.NewReplyKeyboard(
-					tgbotapi.NewKeyboardButtonRow(
-						tgbotapi.NewKeyboardButton(langs[message.From.LanguageCode][user.MyLang]+" "+flags[user.MyLang].Emoji),
-						tgbotapi.NewKeyboardButton("↔"),
-						tgbotapi.NewKeyboardButton(langs[message.From.LanguageCode][user.ToLang]+" "+flags[user.ToLang].Emoji)))
-			}
-			msg := tgbotapi.MessageConfig{
-				BaseChat: tgbotapi.BaseChat{
-					ChatID:      message.Chat.ID,
-					ReplyMarkup: keyboard,
-				},
-				Text:                  chunk,
-				ParseMode:             tgbotapi.ModeHTML,
-				Entities:              nil,
-				DisableWebPagePreview: false,
-			}
-			_, err = app.bot.Send(msg)
-			app.analytics.Bot(msg, "translate")
+			user.MyLang = from
+			keyboard = tgbotapi.NewReplyKeyboard(
+				tgbotapi.NewKeyboardButtonRow(
+					tgbotapi.NewKeyboardButton(langs[message.From.LanguageCode][user.MyLang]+" "+flags[user.MyLang].Emoji),
+					tgbotapi.NewKeyboardButton("↔"),
+					tgbotapi.NewKeyboardButton(langs[message.From.LanguageCode][user.ToLang]+" "+flags[user.ToLang].Emoji)))
 		}
+		msg := tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:      message.Chat.ID,
+				ReplyMarkup: keyboard,
+			},
+			Text:                  chunk,
+			ParseMode:             tgbotapi.ModeHTML,
+			Entities:              nil,
+			DisableWebPagePreview: false,
+		}
+		_, err = app.bot.Send(msg)
+		app.analytics.Bot(msg, "translate")
+
 		if err != nil {
 			app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, chunk))
 			app.bot.Send(tgbotapi.MessageConfig{

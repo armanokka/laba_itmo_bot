@@ -60,8 +60,10 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 	//g.Go(func() error {
 	//	d, phonetics, err := translate.GoogleDictionary(ctx, from, text)
 	//	if err != nil {
-	//
+	//		return err
 	//	}
+	//	Dict = strings.Join(d, "\n") + " " + phonetics
+	//	return nil
 	//})
 
 	g.Go(func() error {
@@ -157,9 +159,6 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 	if LingvoTr != "" {
 		//log.Debug("translated via lingvo")
 		return LingvoTr, from, nil
-	} else if GoogleFromToTr != "" {
-		//log.Debug("translated via google")
-		return GoogleFromToTr, from, nil
 	}
 	//} else if GoogleToFromTr != "" {
 	//	return GoogleToFromTr, from, nil
