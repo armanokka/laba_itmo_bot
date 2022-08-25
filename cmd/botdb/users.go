@@ -5,7 +5,6 @@ import (
 	"github.com/armanokka/translobot/internal/tables"
 	"github.com/k0kubun/pp"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 	"time"
 )
 
@@ -34,24 +33,15 @@ func (db BotDB) GetUserByID(id int64) (tables.Users, error) {
 }
 
 func (db BotDB) CreateUser(user tables.Users) (err error) {
-	return db.Clauses(clause.Locking{
-		Strength: "SHARE",
-		Table:    clause.Table{Name: clause.CurrentTable},
-	}).Create(&user).Error
+	return db.Create(&user).Error
 }
 
 func (db BotDB) UpdateUser(id int64, updates tables.Users) error {
-	return db.Clauses(clause.Locking{
-		Strength: "SHARE",
-		Table:    clause.Table{Name: clause.CurrentTable},
-	}).Model(&tables.Users{}).Where("id = ?", id).Updates(updates).Error
+	return db.Model(&tables.Users{}).Where("id = ?", id).Updates(updates).Error
 }
 
 func (db BotDB) UpdateUserByMap(id int64, updates map[string]interface{}) error {
-	return db.Clauses(clause.Locking{
-		Strength: "SHARE",
-		Table:    clause.Table{Name: clause.CurrentTable},
-	}).Model(&tables.Users{}).Where("id = ?", id).Updates(updates).Error
+	return db.Model(&tables.Users{}).Where("id = ?", id).Updates(updates).Error
 }
 
 func (db BotDB) GetAllUsers() (users []tables.Users, err error) {
@@ -77,10 +67,7 @@ func (db BotDB) GetUsersSlice(offset, count int64, slice []int64) (err error) {
 var ErrNoRowsAffected = fmt.Errorf("no rows affected")
 
 func (db BotDB) SwapLangs(userID int64) error {
-	query := db.Model(&tables.Users{}).Clauses(clause.Locking{
-		Strength: "SHARE",
-		Table:    clause.Table{Name: clause.CurrentTable},
-	}).Exec("UPDATE users SET my_lang=(@temp:=my_lang), my_lang = to_lang, to_lang = @temp WHERE id = ? LIMIT 1", userID)
+	query := db.Model(&tables.Users{}).Exec("UPDATE users SET my_lang=(@temp:=my_lang), my_lang = to_lang, to_lang = @temp WHERE id = ? LIMIT 1", userID)
 	if query.RowsAffected > 1 {
 		return fmt.Errorf("there are more rows than 1")
 	}
