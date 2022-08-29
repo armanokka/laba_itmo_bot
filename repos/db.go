@@ -10,7 +10,7 @@ type BotDB interface {
 	GetUserByID(id int64) (tables.Users, error)
 	// CreateUser
 	// Errors: unknown
-	CreateUser(user tables.Users) error
+	CreateUser(user *tables.Users) error
 	// UpdateUser updates non-default fields in passed struct
 	// Errors: gorm.ErrRecordNotFound, unknown
 	UpdateUser(id int64, updates tables.Users) error

@@ -8,5 +8,12 @@
       <jdbc-url>jdbc:mysql://beshka1.cns1.com.ua:8031/translobot</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
+    <data-source source="LOCAL" name="translobot@beshka1.cns1.com.ua [2]" uuid="969a68e9-db03-45a1-b2b2-1d94252d355c">
+      <driver-ref>postgresql</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
+      <jdbc-url>jdbc:postgresql://beshka1.cns1.com.ua:8034/translobot</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
   </component>
 </project>

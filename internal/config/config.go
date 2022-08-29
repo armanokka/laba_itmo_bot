@@ -6,7 +6,7 @@ import (
 	"github.com/armanokka/translobot/pkg/botapi"
 	"github.com/armanokka/translobot/pkg/dashbot"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"os"
 	"strings"
@@ -64,9 +64,8 @@ func load() (err error) {
 	mustLoadEnv("TRANSLOBOT_DSN", &dsn)
 
 	// Initializing MySQL DB
-	db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
+	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
 		SkipDefaultTransaction: true,
-		CreateBatchSize:        5000,
 		PrepareStmt:            true,
 	})
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 	"github.com/armanokka/translobot/internal/tables"
 	"github.com/k0kubun/pp"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"time"
 )
 
@@ -32,16 +33,33 @@ func (db BotDB) GetUserByID(id int64) (tables.Users, error) {
 	return user, req.Error
 }
 
-func (db BotDB) CreateUser(user tables.Users) (err error) {
-	return db.Create(&user).Error
+func (db BotDB) CreateUser(user *tables.Users) (err error) {
+	return db.Clauses(clause.Locking{
+		Strength: "SHARE",
+		Options:  "",
+	}).Create(user).Error
 }
 
 func (db BotDB) UpdateUser(id int64, updates tables.Users) error {
-	return db.Model(&tables.Users{}).Where("id = ?", id).Updates(updates).Error
+	query := db.Model(&tables.Users{}).Where("id = ?", id).Updates(updates)
+	if query.Error != nil {
+		return query.Error
+	}
+	if query.RowsAffected != 1 {
+		return ErrNoRowsAffected
+	}
+	return nil
 }
 
 func (db BotDB) UpdateUserByMap(id int64, updates map[string]interface{}) error {
-	return db.Model(&tables.Users{}).Where("id = ?", id).Updates(updates).Error
+	query := db.Model(&tables.Users{}).Where("id = ?", id).Updates(updates)
+	if query.Error != nil {
+		return query.Error
+	}
+	if query.RowsAffected != 1 {
+		return ErrNoRowsAffected
+	}
+	return nil
 }
 
 func (db BotDB) GetAllUsers() (users []tables.Users, err error) {
@@ -50,7 +68,14 @@ func (db BotDB) GetAllUsers() (users []tables.Users, err error) {
 }
 
 func (db BotDB) UpdateUserActivity(id int64) error {
-	return db.Model(&tables.Users{}).Exec("UPDATE users SET usings=usings+1, last_activity=? WHERE id=?", time.Now(), id).Error
+	query := db.Model(&tables.Users{}).Exec("UPDATE users SET usings=usings+1, last_activity=? WHERE id=?", time.Now(), id)
+	if query.Error != nil {
+		return query.Error
+	}
+	if query.RowsAffected != 1 {
+		return ErrNoRowsAffected
+	}
+	return nil
 }
 
 func (db BotDB) GetUsersNumber() (num int64, err error) {
@@ -67,8 +92,11 @@ func (db BotDB) GetUsersSlice(offset, count int64, slice []int64) (err error) {
 var ErrNoRowsAffected = fmt.Errorf("no rows affected")
 
 func (db BotDB) SwapLangs(userID int64) error {
-	query := db.Model(&tables.Users{}).Exec("UPDATE users SET my_lang=(@temp:=my_lang), my_lang = to_lang, to_lang = @temp WHERE id = ? LIMIT 1", userID)
-	if query.RowsAffected > 1 {
+	query := db.Model(&tables.Users{}).Exec("UPDATE users SET my_lang = to_lang, to_lang = my_lang WHERE id = ?", userID)
+	if query.Error != nil {
+		return query.Error
+	}
+	if query.RowsAffected != 1 {
 		return fmt.Errorf("there are more rows than 1")
 	}
 	return query.Error

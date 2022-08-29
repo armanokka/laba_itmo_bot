@@ -425,7 +425,7 @@ func GoogleHTMLTranslate(ctx context.Context, from, to, text string) (GoogleHTML
 }
 
 func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateGoogleAPIResponse, err error) {
-	chunks := SplitIntoChunksBySentences(text, 1600)
+	chunks := SplitIntoChunksBySentences(text, 400)
 	var mu sync.Mutex
 	g, ctx := errgroup.WithContext(ctx)
 	for i, chunk := range chunks {
@@ -530,13 +530,12 @@ func googleTranslate(ctx context.Context, from, to, text string) (result Transla
 			Description: "got non 200 http code",
 		}
 	}
-
 	r, err := regexp.Compile("\\<\\s*[bB][rR]\\s*\\>")
 	if err != nil {
 		return TranslateGoogleAPIResponse{}, err
 	}
 	result.Text = r.ReplaceAllString(result.Text, "\n")
-	result.Text = CheckHtmlTags(text, result.Text)
+
 	//result := &TranslateGoogleAPIResponse{
 	//	Text:     doc.Find("span[id=tw-answ-target-text]").Text(),
 	//	FromLang: doc.Find("span[id=tw-answ-detected-sl]").Text(),
