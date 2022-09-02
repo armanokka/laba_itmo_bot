@@ -384,7 +384,12 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 
-	from, err := translate.DetectLanguageGoogle(ctx, text)
+	var from string
+	//if user.MyLang == "emj" || user.ToLang == "emj" || user.MyLang == "auto" {
+	//	from, err = translate.DetectLanguageYandex(ctx, text)
+	//} else {
+	from, err = translate.DetectLanguageGoogle(ctx, text)
+	//}
 	if err != nil {
 		warn(err)
 		return
@@ -409,7 +414,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	if from == user.ToLang {
 		to = user.MyLang
 	} else if from == user.MyLang {
-		to = user.ToLang
+		to = user.ToLang // TODO: fix inline
 	} else { // никакой из
 		if user.ToLang == message.From.LanguageCode {
 			to = user.ToLang
@@ -428,6 +433,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		warn(err)
 		return
 	}
+	tr = strings.NewReplacer("<notranslate>", "", "</notranslate>", "").Replace(tr)
 	if !validHtml(tr) {
 		tr = translate.CheckHtmlTags(text, tr)
 		tr = closeUnclosedTags(tr)
@@ -438,8 +444,24 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	lastMsgID := 0
 	for _, chunk := range chunks {
 		if !validHtml(chunk) {
-			log.Info("invalid html, escaping")
+			log.Info("invalid html, closing unclosed tags")
 			tr = closeUnclosedTags(chunk)
+			app.bot.Send(tgbotapi.MessageConfig{
+				BaseChat: tgbotapi.BaseChat{
+					ChatID:                   config.AdminID,
+					ChannelUsername:          "",
+					ProtectContent:           false,
+					ReplyToMessageID:         0,
+					ReplyMarkup:              nil,
+					DisableNotification:      false,
+					AllowSendingWithoutReply: false,
+				},
+				Text:                  fmt.Sprintf("unclosed tags in translation (%s->%s)\nOriginal text: %s", from, to, text),
+				ParseMode:             "",
+				Entities:              nil,
+				DisableWebPagePreview: false,
+			})
+			app.log.Error("couldn't send translation to user", zap.String("text", text), zap.String("translation", chunk))
 		}
 		keyboard := tgbotapi.NewReplyKeyboard(
 			tgbotapi.NewKeyboardButtonRow(
@@ -468,6 +490,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			msg, err = app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, chunk))
 			if err != nil {
 				warn(err)
+				app.notifyAdmin(err, fmt.Sprintf("translation (%s->%s)\nOriginal text: %S", from, to, text))
 				return
 			}
 			lastMsgID = msg.MessageID

@@ -11,7 +11,6 @@ import (
 	"golang.org/x/sync/errgroup"
 	"strings"
 	"sync"
-	"time"
 )
 
 var ErrCacheNotFound = fmt.Errorf("seekForCache: cache not found")
@@ -32,7 +31,7 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 	g, ctx := errgroup.WithContext(ctx)
 	var (
 		//MicrosoftTr    string
-		GoogleFromToTr string
+		GoogleFromToTr string // may be yandex translation if from or to is "emj"
 		//GoogleToFromTr string
 		//YandexTr       string
 		LingvoTr string
@@ -66,24 +65,46 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 	//	return nil
 	//})
 
-	g.Go(func() error {
-		start := time.Now()
-		tr, err := translate.GoogleTranslate(ctx, from, to, text)
-		if err != nil {
-			if IsCtxError(err) {
-				return nil
+	if from == "emj" || to == "emj" {
+		g.Go(func() error {
+			tr, err := translate.YandexTranslate(ctx, from, to, text)
+			if err != nil {
+				if IsCtxError(err) {
+					return nil
+				}
+				log.Error("google err", zap.Error(err))
+				return err
 			}
-			log.Error("google err", zap.Error(err))
-			return err
-		}
 
-		GoogleFromToTr = tr.Text
-		if from == "" {
-			from = tr.FromLang
+			GoogleFromToTr = tr
+
+			return nil
+		})
+		if from == "auto" || from == "" {
+			g.Go(func() (err error) {
+				from, err = translate.DetectLanguageGoogle(ctx, text)
+				return err
+			})
 		}
-		log = log.With(zap.String("google from-to", time.Since(start).String()))
-		return nil
-	})
+	} else {
+		g.Go(func() error {
+			tr, err := translate.GoogleTranslate(ctx, from, to, text)
+			if err != nil {
+				if IsCtxError(err) {
+					return nil
+				}
+				log.Error("google err", zap.Error(err))
+				return err
+			}
+
+			GoogleFromToTr = tr.Text
+			if from == "" {
+				from = tr.FromLang
+			}
+			return nil
+		})
+	}
+
 	if from != "" && from != "auto" {
 		//g.Go(func() error {
 		//	start := time.Now()

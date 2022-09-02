@@ -92,6 +92,7 @@ var htmlEscape = map[uint16][]uint16{
 	utf16.Encode([]rune(`"`))[0]: utf16.Encode([]rune("&quot;")),
 }
 
+// ApplyEntitiesHtml adds <notranslate></notranslate> to some types of entities
 func ApplyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
 	if len(entities) == 0 {
 		return html.EscapeString(text)
@@ -104,7 +105,7 @@ func ApplyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
 		var before, after string
 		switch entity.Type {
 		case "code", "pre":
-			before, after = `<code>`, `</code>`
+			before, after = `<notranslate><code>`, `</code></notranslate>`
 		case "bold":
 			before, after = `<b>`, `</b>`
 		case "italic":
@@ -114,11 +115,13 @@ func ApplyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
 		case "strikethrough":
 			before, after = `<s>`, `</s>`
 		case "text_link":
-			before, after = `<a href="`+entity.URL+`">`, `</a>`
+			before, after = `<notranslate><a href="`+entity.URL+`">`, `</a></notranslate>`
 		case "text_mention":
-			before, after = `<a href="tg://user?id=`+strconv.FormatInt(entity.User.ID, 10)+`">`, `</a>`
+			before, after = `<notranslate><a href="tg://user?id=`+strconv.FormatInt(entity.User.ID, 10)+`">`, `</a></notranslate>`
 		case "spoiler":
 			before, after = "<span class=\"tg-spoiler\">", "</span>"
+		case "mention", "hashtag", "cashtag", "bot_command", "url", "email", "phone_number", "custom_emoji":
+			before, after = "<notranslate>", "</notranslate>"
 		}
 		pointers[entity.Offset] += before
 		pointers[entity.Offset+entity.Length] = after + pointers[entity.Offset+entity.Length]

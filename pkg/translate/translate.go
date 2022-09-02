@@ -9,6 +9,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/armanokka/translobot/pkg/errors"
 	"github.com/armanokka/translobot/pkg/helpers"
+	"github.com/dlclark/regexp2"
 	"github.com/go-resty/resty/v2"
 	"github.com/k0kubun/pp"
 	"github.com/tidwall/gjson"
@@ -26,6 +27,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -425,24 +427,59 @@ func GoogleHTMLTranslate(ctx context.Context, from, to, text string) (GoogleHTML
 }
 
 func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateGoogleAPIResponse, err error) {
+	// Реализуем возможность не переводить некоторые части текста:
+	// 1. Заменяем все : в тексте на \:
+	// 2. Заменяем <notranslate></notranslate> на :, сохранив текст между тегами в слайсе
+	// 3. Переводим текст
+	// 4. Заменяем : на слайс из п.2
+	// 5. Заменяем \: на :
+
+	// 1.
+	text = strings.ReplaceAll(text, ":", `\:`) // это надо вернуть, если !hasNoTranslate
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(text))
+	if err != nil {
+		return TranslateGoogleAPIResponse{}, err
+	}
+	noTranslate := doc.Find("notranslate")
+	hasNoTranslate := len(noTranslate.Nodes) > 0
+
+	var data []string
+	if hasNoTranslate {
+		data = make([]string, 0, 3)
+		noTranslate.Each(func(_ int, selection *goquery.Selection) {
+			ret, err := selection.Html()
+			if err != nil {
+				return
+			}
+			data = append(data, ret)
+			selection.ReplaceWithHtml(":") // заменяем все notranslate на :
+		})
+		text, err = doc.Html()
+		if err != nil {
+			return TranslateGoogleAPIResponse{}, err
+		}
+		text = clearGoqueryShit(text)
+	}
+
+	// 3.
 	chunks := SplitIntoChunksBySentences(text, 400)
-	var mu sync.Mutex
 	g, ctx := errgroup.WithContext(ctx)
 	for i, chunk := range chunks {
 		i := i
 		chunk := chunk
+		chunks := chunks
 		g.Go(func() error {
+			// Нужно сохранить пробелы в началах чанков
+			// заменяем пробелы
 			chunk = strings.ReplaceAll(chunk, "\n", "<br>")
+			prefixSpaces := getPrefixSpaces(chunk)
 			tr, err := googleTranslate(ctx, from, to, chunk)
 			if err != nil {
 				return err
 			}
-			tr.Text = strings.NewReplacer(
-				` \ n`, `\n`,
-				`\ n`, `\n`,
-				`<br>`, "\n").Replace(tr.Text)
-			mu.Lock()
-			defer mu.Unlock()
+
+			tr.Text = strings.NewReplacer(` \ n`, "\n", `\ n`, "\n", "<br>", "\n").Replace(tr.Text)
+			tr.Text = prefixSpaces + tr.Text
 			if out.FromLang == "" {
 				out.FromLang = tr.FromLang
 			}
@@ -453,13 +490,44 @@ func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateG
 	if err = g.Wait(); err != nil {
 		return TranslateGoogleAPIResponse{}, err
 	}
-	out.Text = strings.Join(chunks, "")
-	regex, err := regexp.Compile("/\\s+/g")
-	if err != nil {
-		return TranslateGoogleAPIResponse{}, err
+	out.Text = strings.Join(chunks, "") // теперь работаем с out.Text
+	if hasNoTranslate {
+		// 4.
+		r, err := regexp2.Compile(`(?<!\\)[:]`, regexp2.RE2)
+		if err != nil {
+			return TranslateGoogleAPIResponse{}, err
+		}
+		for _, piece := range data {
+			out.Text, err = r.Replace(out.Text, piece, 0, 1) // заменяем двоеточия
+			if err != nil {
+				return TranslateGoogleAPIResponse{}, err
+			}
+		}
 	}
-	out.Text = regex.ReplaceAllString(out.Text, "")
+	out.Text = strings.ReplaceAll(out.Text, `\:`, `:`)
 	return out, err
+}
+
+func getPrefixSpaces(s string) (prefix string) {
+	for _, ch := range s {
+		if unicode.IsSpace(ch) {
+			prefix += string(ch)
+		}
+		break
+	}
+	return
+}
+
+func clearGoqueryShit(s string) string {
+	i1 := strings.Index(s, "<body>") + len("<body>")
+	if i1 == -1 {
+		return ""
+	}
+	i2 := strings.Index(s[i1:], "</body>")
+	if i2 == -1 {
+		return ""
+	}
+	return s[i1 : i1+i2]
 }
 
 func googleTranslate(ctx context.Context, from, to, text string) (result TranslateGoogleAPIResponse, err error) {

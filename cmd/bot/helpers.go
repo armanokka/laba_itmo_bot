@@ -204,7 +204,10 @@ func buildLangsPagination(user tables.Users, offset int, count int, tickLang, bu
 		//	lang += " 📌"
 		//}
 		if code == tickLang {
-			lang += "✅"
+			lang = "✅" + lang
+		}
+		if code == "emj" {
+			lang = "🆕" + lang
 		}
 		if !ok {
 			return tgbotapi.InlineKeyboardMarkup{}, fmt.Errorf("не нашел %s в langs", code)

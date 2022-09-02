@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -43,15 +44,16 @@ func yandexTranslate(ctx context.Context, from, to, text string) (string, error)
 
 	g, ctx := errgroup.WithContext(ctx)
 
-	parts := SplitIntoChunksBySentences(text, 1800)
+	parts := SplitIntoChunksBySentences(text, 400)
+	var mu sync.Mutex
 	for i, part := range parts {
 		i := i
 		part := part
 		g.Go(func() error {
 			params := url.Values{}
-			for _, chunk := range SplitIntoChunksBySentences(part, 400) {
-				params.Add("text", chunk)
-			}
+			//for _, chunk := range SplitIntoChunksBySentences(part, 400) {
+			params.Add("text", part)
+			//}
 			params.Add("translateMode", "balloon")
 			params.Add("context_title", url.PathEscape(cutString(part, 16)))
 			params.Add("id", generateSid()+`-0-0`)
@@ -68,6 +70,11 @@ func yandexTranslate(ctx context.Context, from, to, text string) (string, error)
 			req.Header["User-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.174 YaBrowser/22.1.5.810 Yowser/2.5 Safari/537.36"}
 			req.Header["origin"] = []string{"https://stackoverflow.com"}
 			req.Header["referrer"] = []string{"https://stackoverflow.com/"}
+			req.Header["sec-fetch-site"] = []string{"cross-site"}
+			req.Header["sec-fetch-mode"] = []string{"cors"}
+			req.Header["sec-fetch-dest"] = []string{"empty"}
+			req.Header["sec-ch-ua-mobile"] = []string{"?0"}
+			req.Header["sec-ch-ua"] = []string{`" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"`}
 
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
@@ -81,12 +88,16 @@ func yandexTranslate(ctx context.Context, from, to, text string) (string, error)
 				return err
 			}
 
-			if code := gjson.GetBytes(body, "code").Int(); code != 200 {
-				return fmt.Errorf("YandexTranslate [" + strconv.FormatInt(code, 10) + "]:" + gjson.GetBytes(body, "message").String())
+			if gjson.GetBytes(body, "code").Int() != 200 {
+				return fmt.Errorf("YandexTranslate:" + gjson.GetBytes(body, "message").String())
 			}
-			for _, result := range gjson.GetBytes(body, "text").Array() {
-				parts[i] += result.String()
-			}
+			func() {
+				mu.Lock()
+				defer mu.Unlock()
+				for _, result := range gjson.GetBytes(body, "text").Array() {
+					parts[i] = result.String()
+				}
+			}()
 			return nil
 		})
 	}
@@ -94,10 +105,9 @@ func yandexTranslate(ctx context.Context, from, to, text string) (string, error)
 	if err := g.Wait(); err != nil {
 		return "", err
 	}
-	out := strings.Join(parts, ".")
-	out = CheckHtmlTags(text, out)
-	return out, nil
+	return strings.Join(parts, "."), nil
 }
+
 func DetectLanguageYandex(ctx context.Context, text string) (lang string, err error) {
 	for i := 0; i < 3; i++ {
 		lang, err = detectLanguageYandex(ctx, text)
@@ -133,6 +143,7 @@ func detectLanguageYandex(ctx context.Context, text string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	fmt.Println(string(body))
 	out := struct {
 		Code    int    `json:"code"`
 		Lang    string `json:"lang"`

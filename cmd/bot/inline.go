@@ -17,7 +17,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 	"unicode"
 )
 
@@ -61,8 +60,6 @@ func Ucfirst(str string) string {
 }
 
 func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
-	start := time.Now()
-	defer app.log.With(zap.String("query", update.Query), zap.String("time_spent", time.Since(start).String())).Debug("")
 	defer func() {
 		if err := recover(); err != nil {
 			app.log.Error("%w", zap.Any("error", err))
@@ -109,7 +106,7 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 
 	nextOffset := offset + count
 
-	from, err := translate2.DetectLanguageGoogle(ctx, update.Query)
+	from, err := translate2.DetectLanguageYandex(ctx, update.Query) // TODO: detect lang via yandex if there are all emojis in message except spec. chars
 	if err != nil {
 		warn(err)
 		return
@@ -141,8 +138,23 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 			//	title += " 📌"
 			//}
 
-			tr, err := translate2.GoogleTranslate(ctx, from, code, update.Query)
-			if err != nil || tr.Text == "" {
+			var translation string
+			if code == "emj" || from == "emj" {
+				translation, err = translate2.YandexTranslate(ctx, from, code, update.Query)
+			} else {
+				tr, err := translate2.GoogleTranslate(ctx, from, code, update.Query)
+				if err != nil {
+					app.log.Error("inline", zap.Error(err))
+					return nil
+				}
+				translation = tr.Text
+			}
+			if err != nil {
+				app.log.Error("inline", zap.Error(err))
+				return nil
+			}
+			if translation == "" {
+				app.log.Error("empty translation in inline mode", zap.String("query", update.Query), zap.String("language_code", update.From.LanguageCode))
 				return nil
 			}
 
@@ -156,6 +168,9 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 			//}
 			user := user
 			user.SetLang(code)
+			if code == "emj" {
+				user.SetLang("en")
+			}
 			btn := tgbotapi.InlineKeyboardButton{
 				Text:                         user.Localize("translate"),
 				URL:                          nil,
@@ -163,7 +178,7 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 				CallbackData:                 nil,
 				WebApp:                       nil,
 				SwitchInlineQuery:            nil,
-				SwitchInlineQueryCurrentChat: &tr.Text,
+				SwitchInlineQueryCurrentChat: &translation,
 				CallbackGame:                 nil,
 				Pay:                          false,
 			}
@@ -177,13 +192,13 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 				ID:    strconv.Itoa(i + offset),
 				Title: title,
 				InputMessageContent: map[string]interface{}{
-					"message_text":             tr.Text,
+					"message_text":             translation,
 					"disable_web_page_preview": true,
 				},
 				ReplyMarkup: &keyboard,
 				URL:         "",
 				HideURL:     true,
-				Description: tr.Text,
+				Description: translation,
 				ThumbURL:    "",
 				ThumbWidth:  0,
 				ThumbHeight: 0,

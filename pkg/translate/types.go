@@ -719,7 +719,7 @@ func SplitIntoChunksBySentences(text string, limit int) []string {
 	}
 	chunks := make([]string, 0, len(text)/limit+1)
 	for i := 0; i < len(text); {
-		offset := cutUpToDelim(text[i:], limit, ".!?;\n\t\r<>")
+		offset := cutUpToDelim(text[i:], limit, ".!?;\n\t\r<>*)")
 		ch := string(text[i : i+offset])
 		chunks = append(chunks, ch)
 		i += offset

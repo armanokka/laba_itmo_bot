@@ -1,7 +1,6 @@
 package config
 
 import (
-	"database/sql"
 	"fmt"
 	"github.com/armanokka/translobot/pkg/botapi"
 	"github.com/armanokka/translobot/pkg/dashbot"
@@ -11,7 +10,6 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"time"
 )
 
 const (
@@ -71,16 +69,7 @@ func load() (err error) {
 	if err != nil {
 		return err
 	}
-	var sqlDb *sql.DB
-	sqlDb, err = db.DB()
-	if err != nil {
-		return err
-	}
-	sqlDb.SetMaxOpenConns(20)
-	sqlDb.SetMaxIdleConns(20)
-	sqlDb.SetConnMaxLifetime(time.Hour)
 
-	// Automigrate
 	//if err = db.AutoMigrate(
 	//	&tables.Chats{},
 	//	&tables.Users{},
