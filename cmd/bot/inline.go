@@ -106,7 +106,8 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 
 	nextOffset := offset + count
 
-	from, err := translate2.DetectLanguageYandex(ctx, update.Query) // TODO: detect lang via yandex if there are all emojis in message except spec. chars
+	from, err := translate2.DetectLanguageGoogle(ctx, update.Query)
+	// TODO: detect lang via yandex if there are all emojis in message except spec. chars
 	if err != nil {
 		warn(err)
 		return

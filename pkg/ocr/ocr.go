@@ -19,7 +19,7 @@ func Yandex(filename string) (YandexOcr, error) {
 		return YandexOcr{}, err
 	}
 	defer f.Close()
-	res, err := resty.DefaultClient.R().SetFileReader("file", filename, f).SetHeaders(map[string]string{
+	res, err := resty.New().R().SetFileReader("file", filename, f).SetHeaders(map[string]string{
 		"Content-type":    "multipart/form-data",
 		"Accept":          "*/*",
 		"Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",

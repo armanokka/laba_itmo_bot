@@ -428,14 +428,14 @@ func GoogleHTMLTranslate(ctx context.Context, from, to, text string) (GoogleHTML
 
 func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateGoogleAPIResponse, err error) {
 	// Реализуем возможность не переводить некоторые части текста:
-	// 1. Заменяем все : в тексте на \:
-	// 2. Заменяем <notranslate></notranslate> на :, сохранив текст между тегами в слайсе
+	// 1. Заменяем все - в тексте на \-
+	// 2. Заменяем <notranslate></notranslate> на -, сохранив текст между тегами в слайсе
 	// 3. Переводим текст
-	// 4. Заменяем : на слайс из п.2
-	// 5. Заменяем \: на :
+	// 4. Заменяем - на слайс из п.2
+	// 5. Заменяем \- на -
 
 	// 1.
-	text = strings.ReplaceAll(text, ":", `\:`) // это надо вернуть, если !hasNoTranslate
+	text = strings.ReplaceAll(text, "-", `\-`) // это надо вернуть, если !hasNoTranslate
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(text))
 	if err != nil {
 		return TranslateGoogleAPIResponse{}, err
@@ -452,7 +452,7 @@ func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateG
 				return
 			}
 			data = append(data, ret)
-			selection.ReplaceWithHtml(":") // заменяем все notranslate на :
+			selection.ReplaceWithHtml("-") // заменяем все notranslate на -
 		})
 		text, err = doc.Html()
 		if err != nil {
@@ -493,7 +493,7 @@ func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateG
 	out.Text = strings.Join(chunks, "") // теперь работаем с out.Text
 	if hasNoTranslate {
 		// 4.
-		r, err := regexp2.Compile(`(?<!\\)[:]`, regexp2.RE2)
+		r, err := regexp2.Compile(`(?<!\\)[-]`, regexp2.RE2)
 		if err != nil {
 			return TranslateGoogleAPIResponse{}, err
 		}
@@ -504,7 +504,7 @@ func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateG
 			}
 		}
 	}
-	out.Text = strings.ReplaceAll(out.Text, `\:`, `:`)
+	out.Text = strings.ReplaceAll(out.Text, `\-`, `-`)
 	return out, err
 }
 

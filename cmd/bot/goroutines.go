@@ -75,17 +75,13 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 				log.Error("google err", zap.Error(err))
 				return err
 			}
-
 			GoogleFromToTr = tr
-
 			return nil
 		})
-		if from == "auto" || from == "" {
-			g.Go(func() (err error) {
-				from, err = translate.DetectLanguageGoogle(ctx, text)
-				return err
-			})
-		}
+		g.Go(func() (err error) {
+			from, err = translate.DetectLanguageGoogle(ctx, text)
+			return err
+		})
 	} else {
 		g.Go(func() error {
 			tr, err := translate.GoogleTranslate(ctx, from, to, text)
