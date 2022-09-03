@@ -471,15 +471,20 @@ func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateG
 		g.Go(func() error {
 			// Нужно сохранить пробелы в началах чанков
 			// заменяем пробелы
+			prefixSpaces := ""
+			if to != "ar" && !strings.HasPrefix(to, "zh") && to != "th" && to != "ja" && to != "ko" {
+				prefixSpaces = getPrefixSpaces(chunk)
+			}
 			chunk = strings.ReplaceAll(chunk, "\n", "<br>")
-			prefixSpaces := getPrefixSpaces(chunk)
 			tr, err := googleTranslate(ctx, from, to, chunk)
 			if err != nil {
 				return err
 			}
 
 			tr.Text = strings.NewReplacer(` \ n`, "\n", `\ n`, "\n", "<br>", "\n").Replace(tr.Text)
-			tr.Text = prefixSpaces + tr.Text
+			if prefixSpaces != "" {
+				tr.Text = prefixSpaces + tr.Text
+			}
 			if out.FromLang == "" {
 				out.FromLang = tr.FromLang
 			}
