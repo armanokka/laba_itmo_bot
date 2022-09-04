@@ -480,7 +480,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		}
 		msg, err := app.bot.Send(msgConfig)
 		if err != nil {
-			warn(err)
+			warn(fmt.Errorf("error with %d (%s->%s):\nText:%s", message.From.ID, from, to, text))
 			return
 		}
 		lastMsgID = msg.MessageID
