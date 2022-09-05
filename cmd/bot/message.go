@@ -479,12 +479,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			DisableWebPagePreview: false,
 		}
 		msg, err := app.bot.Send(msgConfig)
-		if err != nil {
-			warn(fmt.Errorf("error with %d (%s->%s):\nText:%s", message.From.ID, from, to, text))
-			return
-		}
 		lastMsgID = msg.MessageID
-		app.analytics.Bot(msgConfig, "translate")
 
 		if err != nil {
 			msg, err = app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, chunk))
@@ -504,7 +499,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 					DisableNotification:      false,
 					AllowSendingWithoutReply: false,
 				},
-				Text:                  fmt.Sprintf("Error: %s\nUser's text:%s\nTranslation:%s", err.Error(), text, tr),
+				Text:                  fmt.Sprintf("%s\nerror with %d (%s->%s):\nText:%s", err, message.From.ID, from, to, text),
 				ParseMode:             "",
 				Entities:              nil,
 				DisableWebPagePreview: false,
@@ -513,6 +508,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			//warn(err)
 			return
 		}
+		app.analytics.Bot(msgConfig, "translate")
 	}
 	data, err := translate.TTS(to, html.UnescapeString(tr))
 	if err != nil {
