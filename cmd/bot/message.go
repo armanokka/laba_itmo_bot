@@ -499,7 +499,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 					DisableNotification:      false,
 					AllowSendingWithoutReply: false,
 				},
-				Text:                  fmt.Sprintf("%s\nerror with %d (%s->%s):\nText:%s", err, message.From.ID, from, to, text),
+				Text:                  fmt.Sprintf("%s\nerror with %d (%s->%s):\nText:%s", err.Error(), message.From.ID, from, to, text),
 				ParseMode:             "",
 				Entities:              nil,
 				DisableWebPagePreview: false,

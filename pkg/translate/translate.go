@@ -435,7 +435,6 @@ func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateG
 	// 5. Заменяем \- на -
 
 	// 1.
-	text = strings.ReplaceAll(text, "-", `\-`) // это надо вернуть, если !hasNoTranslate
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(text))
 	if err != nil {
 		return TranslateGoogleAPIResponse{}, err
@@ -445,6 +444,12 @@ func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateG
 
 	var data []string
 	if hasNoTranslate {
+		text = strings.ReplaceAll(text, "-", `\-`)
+		doc, err = goquery.NewDocumentFromReader(strings.NewReader(text))
+		if err != nil {
+			return TranslateGoogleAPIResponse{}, err
+		}
+
 		data = make([]string, 0, 3)
 		noTranslate.Each(func(_ int, selection *goquery.Selection) {
 			ret, err := selection.Html()
@@ -508,8 +513,8 @@ func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateG
 				return TranslateGoogleAPIResponse{}, err
 			}
 		}
+		out.Text = strings.ReplaceAll(out.Text, `\-`, `-`)
 	}
-	out.Text = strings.ReplaceAll(out.Text, `\-`, `-`)
 	return out, err
 }
 
