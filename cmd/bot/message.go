@@ -433,6 +433,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		warn(err)
 		return
 	}
+
 	tr = strings.NewReplacer("<notranslate>", "", "</notranslate>", "").Replace(tr)
 	if !validHtml(tr) {
 		tr = translate.CheckHtmlTags(text, tr)
@@ -491,18 +492,9 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			lastMsgID = msg.MessageID
 			app.bot.Send(tgbotapi.MessageConfig{
 				BaseChat: tgbotapi.BaseChat{
-					ChatID:                   config.AdminID,
-					ChannelUsername:          "",
-					ProtectContent:           false,
-					ReplyToMessageID:         0,
-					ReplyMarkup:              nil,
-					DisableNotification:      false,
-					AllowSendingWithoutReply: false,
+					ChatID: config.AdminID,
 				},
-				Text:                  fmt.Sprintf("%s\nerror with %d (%s->%s):\nText:%s", err.Error(), message.From.ID, from, to, text),
-				ParseMode:             "",
-				Entities:              nil,
-				DisableWebPagePreview: false,
+				Text: fmt.Sprintf("%s\nerror with %d (%s->%s):\nText:%s", err.Error(), message.From.ID, from, to, text),
 			})
 			app.log.Error("couldn't send translation to user", zap.String("text", text), zap.String("translation", chunk))
 			//warn(err)

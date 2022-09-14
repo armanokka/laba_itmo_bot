@@ -7,6 +7,7 @@ import (
 	"github.com/armanokka/translobot/pkg/lingvo"
 	"github.com/armanokka/translobot/pkg/translate"
 	"github.com/forPelevin/gomoji"
+	"github.com/k0kubun/pp"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"strings"
@@ -120,7 +121,7 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 		//})
 		_, ok1 := lingvo.Lingvo[from]
 		_, ok2 := lingvo.Lingvo[to]
-		if ok1 && ok2 && len(text) < 50 {
+		if ok1 && ok2 && len(text) < 50 && !strings.ContainsAny(text, " \r\n") {
 			g.Go(func() error {
 				l, err := lingvo.GetDictionary(ctx, from, to, strings.ToLower(text))
 				if err != nil {
@@ -130,6 +131,7 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 					log.Error("lingvo err")
 					return err
 				}
+				pp.Println(text, l)
 				LingvoTr = writeLingvo(l)
 				return nil
 			})
