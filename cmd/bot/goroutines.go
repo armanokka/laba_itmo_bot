@@ -7,7 +7,6 @@ import (
 	"github.com/armanokka/translobot/pkg/lingvo"
 	"github.com/armanokka/translobot/pkg/translate"
 	"github.com/forPelevin/gomoji"
-	"github.com/k0kubun/pp"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"strings"
@@ -131,7 +130,6 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 					log.Error("lingvo err")
 					return err
 				}
-				pp.Println(text, l)
 				LingvoTr = writeLingvo(l)
 				return nil
 			})

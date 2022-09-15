@@ -534,11 +534,30 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 						tgbotapi.NewKeyboardButton(langs[user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji))),
 			},
 			File: tgbotapi.FileBytes{
-				Name:  helpers.CutStringUTF16(tr, 50),
+				Name:  html.UnescapeString(helpers.CutStringUTF16(tr, 50)),
 				Bytes: data,
 			},
 		},
 		Title: helpers.CutStringUTF16(tr, 40),
+	})
+
+	data, err = translate.TTS(from, html.UnescapeString(text))
+	app.bot.Send(tgbotapi.AudioConfig{
+		BaseFile: tgbotapi.BaseFile{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID: message.Chat.ID,
+				ReplyMarkup: tgbotapi.NewReplyKeyboard(
+					tgbotapi.NewKeyboardButtonRow(
+						tgbotapi.NewKeyboardButton(langs[user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
+						tgbotapi.NewKeyboardButton("↔"),
+						tgbotapi.NewKeyboardButton(langs[user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji))),
+			},
+			File: tgbotapi.FileBytes{
+				Name:  html.UnescapeString(helpers.CutStringUTF16(text, 50)),
+				Bytes: data,
+			},
+		},
+		Title: helpers.CutStringUTF16(text, 40),
 	})
 
 	app.bot.Send(tgbotapi.MessageConfig{
