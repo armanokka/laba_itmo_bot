@@ -126,7 +126,23 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			ParseMode: tgbotapi.ModeHTML,
 		}
 		if _, err = app.bot.Send(msg); err != nil {
-			warn(err)
+			app.notifyAdmin(err)
+			app.bot.Send(tgbotapi.MessageConfig{
+				BaseChat: tgbotapi.BaseChat{
+					ChatID:           message.From.ID,
+					ChannelUsername:  "",
+					ReplyToMessageID: 0,
+					ReplyMarkup: tgbotapi.NewReplyKeyboard(
+						tgbotapi.NewKeyboardButtonRow(
+							tgbotapi.NewKeyboardButton(langs[message.From.LanguageCode][user.MyLang]+" "+flags[user.MyLang].Emoji),
+							tgbotapi.NewKeyboardButton("↔"),
+							tgbotapi.NewKeyboardButton(langs[message.From.LanguageCode][user.ToLang]+" "+flags[user.ToLang].Emoji))),
+					DisableNotification:      true,
+					AllowSendingWithoutReply: false,
+				},
+				Text:      user.Localize("<b>Send text</b>, and bot will translate it"),
+				ParseMode: "",
+			})
 		}
 
 		if err = app.analytics.Bot(msg, "/start"+message.CommandArguments()); err != nil {
@@ -489,6 +505,8 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				},
 				Text: fmt.Sprintf("%s\nerror with %d (%s->%s):\nText:%s", err.Error(), message.From.ID, from, to, text),
 			})
+			app.log.Error("couldn't send translation to user", zap.String("text", text), zap.String("translation", chunk))
+
 			msg, err = app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, chunk))
 			if err != nil {
 				warn(err)
@@ -496,7 +514,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				return
 			}
 			lastMsgID = msg.MessageID
-			app.log.Error("couldn't send translation to user", zap.String("text", text), zap.String("translation", chunk))
 			//warn(err)
 			return
 		}
