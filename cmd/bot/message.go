@@ -483,6 +483,12 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		lastMsgID = msg.MessageID
 
 		if err != nil {
+			app.bot.Send(tgbotapi.MessageConfig{
+				BaseChat: tgbotapi.BaseChat{
+					ChatID: config.AdminID,
+				},
+				Text: fmt.Sprintf("%s\nerror with %d (%s->%s):\nText:%s", err.Error(), message.From.ID, from, to, text),
+			})
 			msg, err = app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, chunk))
 			if err != nil {
 				warn(err)
@@ -490,12 +496,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				return
 			}
 			lastMsgID = msg.MessageID
-			app.bot.Send(tgbotapi.MessageConfig{
-				BaseChat: tgbotapi.BaseChat{
-					ChatID: config.AdminID,
-				},
-				Text: fmt.Sprintf("%s\nerror with %d (%s->%s):\nText:%s", err.Error(), message.From.ID, from, to, text),
-			})
 			app.log.Error("couldn't send translation to user", zap.String("text", text), zap.String("translation", chunk))
 			//warn(err)
 			return
