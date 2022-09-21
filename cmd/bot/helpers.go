@@ -368,6 +368,18 @@ func writeLingvo(lingvo []lingvo.Dictionary) string {
 	return out.String()
 }
 
+func clearGoqueryShit(s string) string {
+	i1 := strings.Index(s, "<body>") + len("<body>")
+	if i1 == -1 {
+		return ""
+	}
+	i2 := strings.Index(s, "</body>")
+	if i2 == -1 {
+		return ""
+	}
+	return s[i1:i2]
+}
+
 func closeUnclosedTags(s string) string {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(s))
 	if err != nil {
@@ -386,4 +398,12 @@ func closeUnclosedTags(s string) string {
 		return ""
 	}
 	return raw[i1 : i1+i2]
+}
+
+func removeHtml(s string) (string, error) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(s))
+	if err != nil {
+		return "", err
+	}
+	return doc.Text(), nil
 }

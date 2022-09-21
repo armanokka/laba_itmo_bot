@@ -3,6 +3,7 @@ package bot
 import (
 	"context"
 	"fmt"
+	"github.com/PuerkitoBio/goquery"
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
 	"github.com/armanokka/translobot/pkg/errors"
@@ -449,12 +450,23 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		warn(err)
 		return
 	}
-
-	tr = strings.NewReplacer("<notranslate>", "", "</notranslate>", "").Replace(tr)
-	if !validHtml(tr) {
-		tr = translate.CheckHtmlTags(text, tr)
-		tr = closeUnclosedTags(tr)
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(tr))
+	if err != nil {
+		warn(err)
+		return
 	}
+	doc.Find("*:not(html,head,body,b,i,u,s,span.tg-spoiler,a,code,pre)").Each(func(_ int, selection *goquery.Selection) {
+		ret, err := selection.Html()
+		if err != nil {
+			return
+		}
+		selection.ReplaceWithHtml(ret)
+	})
+	tr, err = doc.Html()
+	if err != nil {
+		panic(err)
+	}
+	tr = clearGoqueryShit(html.UnescapeString(tr))
 
 	//app.bot.Send(tgbotapi.NewDeleteMessage(chatID, message.MessageID))
 	chunks := translate.SplitIntoChunksBySentences(tr, 4096)
@@ -519,10 +531,12 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		}
 		app.analytics.Bot(msgConfig, "translate")
 	}
-	data, err := translate.TTS(to, html.UnescapeString(tr))
+	tr, err = removeHtml(tr)
 	if err != nil {
-		//return err
+		warn(err)
+		return
 	}
+	data, _ := translate.TTS(to, tr)
 	app.bot.Send(tgbotapi.AudioConfig{
 		BaseFile: tgbotapi.BaseFile{
 			BaseChat: tgbotapi.BaseChat{
@@ -541,7 +555,12 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		Title: helpers.CutStringUTF16(tr, 40),
 	})
 
-	data, err = translate.TTS(from, html.UnescapeString(text))
+	text, err = removeHtml(text)
+	if err != nil {
+		warn(err)
+		return
+	}
+	data, _ = translate.TTS(from, html.UnescapeString(text))
 	app.bot.Send(tgbotapi.AudioConfig{
 		BaseFile: tgbotapi.BaseFile{
 			BaseChat: tgbotapi.BaseChat{

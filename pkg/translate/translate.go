@@ -31,6 +31,10 @@ import (
 	"unicode/utf8"
 )
 
+var client = http.Client{
+	Timeout: 7 * time.Second,
+}
+
 //func GoogleTranslate(from, to, text string) (TranslateGoogleAPIResponse, error) {
 //	buf := new(bytes.Buffer)
 //	buf.WriteString("async=translate,sl:" + url.QueryEscape(from) + ",tl:" + url.QueryEscape(to) + ",st:" + url.QueryEscape(text) + ",id:1624032860465,qc:true,ac:true,_id:tw-async-translate,_pms:s,_fmt:pc")
@@ -117,7 +121,7 @@ func detectLanguageGoogle(ctx context.Context, text string) (string, error) {
 	req.Header["sec-ch-ua"] = []string{`" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"`}
 	req.Header["user-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.101 Safari/537.36"}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -203,7 +207,7 @@ func ttsRequest(lang, text string) (string, error) {
 	req.Header["sec-ch-ua"] = []string{`" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"`}
 	req.Header["user-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.101 Safari/537.36"}
 
-	res, err := http.DefaultClient.Do(req)
+	res, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -297,7 +301,7 @@ func generateTkk(needNew bool) (string, error) {
 		}
 	}
 
-	res, err := http.DefaultClient.Get("https://translate.googleapis.com/translate_a/element.js")
+	res, err := client.Get("https://translate.googleapis.com/translate_a/element.js")
 	if err != nil {
 		return "", err
 	}
@@ -426,44 +430,135 @@ func GoogleHTMLTranslate(ctx context.Context, from, to, text string) (GoogleHTML
 	}, nil
 }
 
+var englishAlphabet = map[rune]bool{
+	69:  true,
+	84:  true,
+	85:  true,
+	99:  true,
+	103: true,
+	109: true,
+	67:  true,
+	87:  true,
+	105: true,
+	112: true,
+	117: true,
+	81:  true,
+	86:  true,
+	97:  true,
+	68:  true,
+	75:  true,
+	80:  true,
+	66:  true,
+	76:  true,
+	79:  true,
+	82:  true,
+	98:  true,
+	106: true,
+	111: true,
+	122: true,
+	89:  true,
+	118: true,
+	119: true,
+	71:  true,
+	72:  true,
+	102: true,
+	107: true,
+	110: true,
+	115: true,
+	88:  true,
+	100: true,
+	113: true,
+	114: true,
+	77:  true,
+	65:  true,
+	73:  true,
+	74:  true,
+	83:  true,
+	101: true,
+	104: true,
+	108: true,
+	120: true,
+	90:  true,
+	116: true,
+	121: true,
+	70:  true,
+	78:  true,
+}
+
+func validHTMLTagNotNotranslate(tag string) bool {
+	tag = strings.Trim(tag, "<>/ ")
+	spaceIdx := strings.IndexAny(tag, "\r\n\t\f\v ")
+	if spaceIdx != -1 {
+		tag = tag[:spaceIdx]
+	}
+	tag = strings.TrimSpace(tag)
+	if tag == "notranslate" {
+		return false
+	}
+	for _, r := range tag {
+		if _, ok := englishAlphabet[r]; !ok && !unicode.IsDigit(r) && r != '_' && r != '-' && !unicode.IsSpace(r) {
+			return false
+		}
+	}
+	return true
+}
+
 func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateGoogleAPIResponse, err error) {
 	// Реализуем возможность не переводить некоторые части текста:
-	// 1. Заменяем все - в тексте на \-
-	// 2. Заменяем <notranslate></notranslate> на -, сохранив текст между тегами в слайсе
+	// 1. Заменяем все # в тексте на \#, а + на \+
+	// 2. Заменяем <notranslate></notranslate> на #, сохранив текст между тегами в слайсе
+	// 2. Заменяем <notranslate></notranslate> на #, сохранив текст между тегами в слайсе
 	// 3. Переводим текст
-	// 4. Заменяем - на слайс из п.2
-	// 5. Заменяем \- на -
+	// 4. Заменяем # на слайс из п.2
+	// 5. Заменяем \# на #
 
 	// 1.
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(text))
+	r, err := regexp2.Compile("<[^>]*>", regexp2.RE2)
 	if err != nil {
-		return TranslateGoogleAPIResponse{}, err
+		panic(err)
 	}
-	noTranslate := doc.Find("notranslate")
-	hasNoTranslate := len(noTranslate.Nodes) > 0
+	m, _ := r.FindStringMatch(text)
+	tags := make([]string, 0, 2)
+	for m != nil {
+		tags = append(tags, m.String())
+		m, _ = r.FindNextMatch(m)
+	}
+	hasHtml := len(tags) > 0
 
-	var data []string
-	if hasNoTranslate {
-		text = strings.ReplaceAll(text, "-", `\-`)
-		doc, err = goquery.NewDocumentFromReader(strings.NewReader(text))
+	var notranslate []string
+	if hasHtml {
+		text = strings.NewReplacer("#", `\#`, "+", `\+`).Replace(text)
+		var k int
+		for i, tag := range tags { //
+			if validHTMLTagNotNotranslate(tag) {
+				tags[i] = tags[k]
+				tags[k] = tag
+				k++
+			}
+		} // TODO: goquery эскейпит html и закрывает теги, которые не надо закрывать
+		tags = tags[:k]
+
+		for _, tag := range tags {
+			text = strings.Replace(text, tag, "+", 1)
+		}
+		doc, err := goquery.NewDocumentFromReader(strings.NewReader(text))
 		if err != nil {
 			return TranslateGoogleAPIResponse{}, err
 		}
-
-		data = make([]string, 0, 3)
-		noTranslate.Each(func(_ int, selection *goquery.Selection) {
-			ret, err := selection.Html()
+		notranslate = make([]string, 0, 2)
+		doc.Find("notranslate").Each(func(_ int, selection *goquery.Selection) {
+			ret, err := goquery.OuterHtml(selection)
 			if err != nil {
 				return
 			}
-			data = append(data, ret)
-			selection.ReplaceWithHtml("-") // заменяем все notranslate на -
+			notranslate = append(notranslate, ret)
+			selection.ReplaceWithHtml("#") // заменяем все notranslate на #
 		})
 		text, err = doc.Html()
 		if err != nil {
 			return TranslateGoogleAPIResponse{}, err
 		}
-		text = clearGoqueryShit(text)
+		text = clearGoqueryShit(html.UnescapeString(text))
 	}
 
 	// 3.
@@ -501,19 +596,32 @@ func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateG
 		return TranslateGoogleAPIResponse{}, err
 	}
 	out.Text = strings.Join(chunks, "") // теперь работаем с out.Text
-	if hasNoTranslate {
-		// 4.
-		r, err := regexp2.Compile(`(?<!\\)[-]`, regexp2.RE2)
-		if err != nil {
-			return TranslateGoogleAPIResponse{}, err
-		}
-		for _, piece := range data {
-			out.Text, err = r.Replace(out.Text, piece, 0, 1) // заменяем двоеточия
+	if hasHtml {
+		if len(notranslate) > 0 {
+			r, err := regexp2.Compile(`(?<!\\)[#]`, regexp2.RE2)
 			if err != nil {
 				return TranslateGoogleAPIResponse{}, err
 			}
+			for _, piece := range notranslate {
+				out.Text, err = r.Replace(out.Text, piece, 0, 1) // заменяем :
+				if err != nil {
+					return TranslateGoogleAPIResponse{}, err
+				}
+			}
 		}
-		out.Text = strings.ReplaceAll(out.Text, `\-`, `-`)
+		if len(tags) > 0 {
+			r, err := regexp2.Compile(`(?<!\\)[+]`, regexp2.RE2)
+			if err != nil {
+				return TranslateGoogleAPIResponse{}, err
+			}
+			for _, piece := range tags {
+				out.Text, err = r.Replace(out.Text, piece, 0, 1) // заменяем +
+				if err != nil {
+					return TranslateGoogleAPIResponse{}, err
+				}
+			}
+		}
+		out.Text = strings.NewReplacer(`\#`, `#`, `\+`, `+`).Replace(out.Text)
 	}
 	return out, err
 }
@@ -541,6 +649,44 @@ func clearGoqueryShit(s string) string {
 }
 
 func googleTranslate(ctx context.Context, from, to, text string) (result TranslateGoogleAPIResponse, err error) {
+	for i := 0; i < 3; i++ {
+		result, err = googleTranslateRequest(ctx, from, to, text)
+		if err == nil {
+			return
+		}
+	}
+	auto := from == "" || from == "auto"
+	if auto {
+		from, err = DetectLanguageGoogle(ctx, text)
+		if err != nil {
+			return TranslateGoogleAPIResponse{}, err
+		}
+	}
+	_, ok1 := YandexSupportedLanguages[from]
+	_, ok2 := YandexSupportedLanguages[to]
+	if ok1 && ok2 {
+		tr, err := yandexTranslate(ctx, from, to, text)
+		if err == nil {
+			return TranslateGoogleAPIResponse{
+				Text:     tr,
+				FromLang: "",
+			}, nil
+		}
+	}
+	if !helpers.In(MicrosoftUnsupportedLanguages, from) && !helpers.In(MicrosoftUnsupportedLanguages, to) {
+		tr, err := MicrosoftTranslate(ctx, from, to, text)
+		if err == nil {
+			return TranslateGoogleAPIResponse{
+				Text:     tr.TranslatedText,
+				FromLang: tr.From,
+			}, nil
+		}
+	}
+	return TranslateGoogleAPIResponse{}, err
+
+}
+
+func googleTranslateRequest(ctx context.Context, from, to, text string) (result TranslateGoogleAPIResponse, err error) {
 	buf := new(bytes.Buffer)
 	buf.WriteString("async=translate,sl:" + url.QueryEscape(from) + ",tl:" + url.QueryEscape(to) + ",st:" + url.QueryEscape(text) + ",id:1624032860465,qc:true,ac:true,_id:tw-async-translate,_pms:s,_fmt:pc,format:html")
 	req, err := http.NewRequestWithContext(ctx, "POST", "https://www.google.com/async/translate?vet=12ahUKEwjFh8rkyaHxAhXqs4sKHYvmAqAQqDgwAHoECAIQJg..i&ei=SMbMYMXDKernrgSLzYuACg&yv=3&cs=0&rlz=1C1GCEA_enUZ1012UZ1012", buf)
@@ -682,7 +828,7 @@ func ReversoTranslate(ctx context.Context, from, to, text string) (ReversoTransl
 	req.Header.Add("X-Requested-With", "XMLHttpRequest")
 	req.Header.Add("Content-Length", strconv.Itoa(len(text)))
 
-	res, err := http.DefaultClient.Do(req)
+	res, err := client.Do(req)
 	if err != nil {
 		return ReversoTranslation{}, err
 	}
@@ -740,7 +886,7 @@ func ReversoQueryService(sourceText, sourceLang, targetText, targetLang string) 
 			"Accept-Language": []string{"en-US,en;q=0.8"},
 			"User-Agent":      []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36"},
 		}
-		return http.DefaultClient.Do(req)
+		return client.Do(req)
 	}
 
 	res, err := request()
@@ -776,7 +922,7 @@ func googleDictionary(ctx context.Context, lang, text string) (dict []string, ph
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Add("X-Origin", "chrome-extension://mgijmajocgfcbeboacabfgobmjgjcoja")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, "", err
 	}
@@ -845,7 +991,7 @@ func YandexTranscription(from, to, text string) (YandexTranscriptionResponse, er
 
 	var res *http.Response
 	for i := 0; i < 3; i++ {
-		res, err = http.DefaultClient.Do(req)
+		res, err = client.Do(req)
 		if err == nil {
 			break
 		}
@@ -902,7 +1048,7 @@ func ReversoSuggestions(ctx context.Context, from, to, text string) (ReversoSugg
 	req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36")
 	var res *http.Response
 	for i := 0; i < 3; i++ {
-		res, err = http.DefaultClient.Do(req)
+		res, err = client.Do(req)
 		if err == nil {
 			break
 		}
@@ -955,7 +1101,7 @@ func MicrosoftTranslate(ctx context.Context, from, to, text string) (MicrosoftTr
 	req.Header["sec-ch-ua-platform"] = []string{`"Android"`}
 	req.Header["sec-ch-ua"] = []string{`" Not A;Brand";v="99", "Chromium";v="99", "Google Chrome";v="99"`}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return MicrosoftTranslation{}, err
 	}
@@ -1027,7 +1173,7 @@ func reversoParaphrase(ctx context.Context, lang, text string) ([]string, error)
 	req.Header["sec-ch-ua"] = []string{`" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"`}
 	req.Header["x-reverso-origin"] = []string{`translation.web`}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}

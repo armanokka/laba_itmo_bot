@@ -3,7 +3,6 @@ package helpers
 import (
 	"bytes"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/kodova/html-to-markdown/escape"
 	"html"
 	"strconv"
 	"strings"
@@ -143,69 +142,6 @@ func ApplyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
 		out = append(out, utf16.Encode([]rune(m))...)
 	}
 	return strings.NewReplacer("<br>", "\n").Replace(string(utf16.Decode(out)))
-}
-
-func ApplyEntitiesMarkdownV2(text string, entities []tgbotapi.MessageEntity) string {
-	//defer func() {
-	//	if err := recover(); err != nil {
-	//		pp.Println(err, string(debug.Stack()))
-	//	}
-	//}()
-	if len(entities) == 0 {
-		return text
-	}
-	text = escape.Markdown(text)
-	encoded := utf16.Encode([]rune(text))
-	pointers := make(map[int]string)
-
-	for _, entity := range entities {
-		var before, after string
-		switch entity.Type {
-		case "code", "pre":
-			before, after = "```", "```"
-		case "bold":
-			before, after = `*`, `*`
-		case "italic":
-			before, after = `_`, `_`
-		case "underline":
-			before, after = `__`, `__`
-		case "strikethrough":
-			before, after = `~`, `~`
-		case "text_link":
-			before, after = `[`, `](tg://user?id=`+entity.URL+`)`
-		case "text_mention":
-			before, after = `[`, `](tg://user?id=`+strconv.FormatInt(entity.User.ID, 10)+`)`
-		case "spoiler":
-			before, after = "||", "||"
-		}
-		pointers[entity.Offset] += before
-		pointers[entity.Offset+entity.Length] = after + pointers[entity.Offset+entity.Length]
-	}
-
-	var out = make([]uint16, 0, len(encoded))
-
-	for i, ch := range encoded {
-		if m, ok := pointers[i]; ok {
-			m2 := ""
-			for _, ch := range m {
-				if inRune(rune(ch), []rune{'_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'}) {
-					m2 += "\\"
-				}
-				m2 += string(ch)
-			}
-			out = append(out, utf16.Encode([]rune(m2))...)
-		}
-		if inRune(rune(ch), []rune{'_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'}) {
-			out = append(out, '\\')
-		}
-		out = append(out, ch)
-		if i == len(encoded)-1 {
-			if m, ok := pointers[i+1]; ok {
-				out = append(out, utf16.Encode([]rune(m))...)
-			}
-		}
-	}
-	return string(utf16.Decode(out))
 }
 
 func index(arr []string, k string) int {

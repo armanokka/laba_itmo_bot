@@ -76,7 +76,7 @@ func yandexTranslate(ctx context.Context, from, to, text string) (string, error)
 			req.Header["sec-ch-ua-mobile"] = []string{"?0"}
 			req.Header["sec-ch-ua"] = []string{`" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"`}
 
-			resp, err := http.DefaultClient.Do(req)
+			resp, err := client.Do(req)
 			if err != nil {
 				return err
 			}
@@ -134,7 +134,7 @@ func detectLanguageYandex(ctx context.Context, text string) (string, error) {
 	req.Header["sec-ch-ua-mobile"] = []string{"?0"}
 	req.Header["sec-ch-ua"] = []string{`" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"`}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -143,7 +143,6 @@ func detectLanguageYandex(ctx context.Context, text string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Println(string(body))
 	out := struct {
 		Code    int    `json:"code"`
 		Lang    string `json:"lang"`
