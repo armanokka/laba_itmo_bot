@@ -101,7 +101,11 @@ func DetectLanguageGoogle(ctx context.Context, text string) (lang string, err er
 			break
 		}
 	}
-	return lang, err
+	tr, err := googleTranslateRequest(ctx, "en", "ru", text)
+	if err != nil {
+		return "", err
+	}
+	return tr.FromLang, err
 }
 
 func detectLanguageGoogle(ctx context.Context, text string) (string, error) {
