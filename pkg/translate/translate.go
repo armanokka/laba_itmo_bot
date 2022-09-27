@@ -35,64 +35,6 @@ var client = http.Client{
 	Timeout: 7 * time.Second,
 }
 
-//func GoogleTranslate(from, to, text string) (TranslateGoogleAPIResponse, error) {
-//	buf := new(bytes.Buffer)
-//	buf.WriteString("async=translate,sl:" + url.QueryEscape(from) + ",tl:" + url.QueryEscape(to) + ",st:" + url.QueryEscape(text) + ",id:1624032860465,qc:true,ac:true,_id:tw-async-translate,_pms:s,_fmt:pc")
-//	req, err := http.NewRequest("POST", "https://www.google.com/async/translate?vet=12ahUKEwjFh8rkyaHxAhXqs4sKHYvmAqAQqDgwAHoECAIQJg..i&ei=SMbMYMXDKernrgSLzYuACg&yv=3", buf)
-//	if err != nil {
-//		return TranslateGoogleAPIResponse{}, err
-//	}
-//	req.Header["content-type"] = []string{"application/x-www-form-urlencoded;charset=UTF-8"}
-//	// req.Header["accept"] = []string{"*/*"}
-//	// req.Header["accept-encoding"] = []string{"gzip, deflate, br"}
-//	// req.Header["accept-language"] = []string{"ru-RU,ru;q=0.9"}
-//	req.Header["cookie"] = []string{"NID=217=mKKVUv88-BW4Vouxnh-qItLKFt7zm0Gj3yDLC8oDKb_PuLIb-p6fcPVcsXZWeNwkjDSFfypZ8BKqy27dcJH-vFliM4dKaiKdFrm7CherEXVt-u_DPr9Yecyv_tZRSDU7E52n5PWwOkaN2I0-naa85Tb9-uTjaKjO0gmdbShqba5MqKxuTLY; 1P_JAR=2021-06-18-16; DV=A3qPWv6ELckmsH4dFRGdR1fe4Gj-oRcZWqaFSPtAjwAAAAA"}
-//	req.Header["origin"] = []string{"https://www.google.com"}
-//	req.Header["referer"] = []string{"https://www.google.com/"}
-//	req.Header["sec-fetch-site"] = []string{"cross-site"}
-//	req.Header["sec-fetch-mode"] = []string{"cors"}
-//	req.Header["sec-fetch-dest"] = []string{"empty"}
-//	req.Header["sec-ch-ua-mobile"] = []string{"?0"}
-//	req.Header["sec-ch-ua"] = []string{`" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"`}
-//	req.Header["user-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.101 Safari/537.36"}
-//
-//
-//	var client http.Client
-//	res, err := client.Do(req)
-//	if err != nil {
-//		return TranslateGoogleAPIResponse{}, err
-//	}
-//	if res.StatusCode != 200 {
-//		return TranslateGoogleAPIResponse{}, HTTPError{
-//			Code:        res.StatusCode,
-//			Description: "got non 200 http code",
-//		}
-//	}
-//
-//	doc, err := goquery.NewDocumentFromReader(res.Body)
-//	if err != nil {
-//		return TranslateGoogleAPIResponse{}, err
-//	}
-//	result := TranslateGoogleAPIResponse{
-//		Text:     doc.Find("span[id=tw-answ-target-text]").Text(),
-//		FromLang: doc.Find("span[id=tw-answ-detected-sl]").Text(),
-//		FromLangNativeName: doc.Find("span[id=tw-answ-detected-sl-name]").Text(),
-//		SourceRomanization: doc.Find("span[id=tw-answ-source-romanization]").Text(),
-//	}
-//
-//	doc.Find(`div[class~=tw-bilingual-entry]`).Each(func(i int, s *goquery.Selection) {
-//		result.Variants = append(result.Variants, &Variant{
-//			Word:    s.Find("span > span").Text(),
-//			Meaning: s.Find("div").Text(),
-//		})
-//	})
-//	doc.Find("img[data-src]").Each(func(i int, selection *goquery.Selection) {
-//		link, _ := selection.Attr("data-src")
-//		result.Images = append(result.Images, link)
-//	})
-//	return result, err
-//}
-
 func DetectLanguageGoogle(ctx context.Context, text string) (lang string, err error) {
 	text = cutString(text, 100)
 	for i := 0; i < 3; i++ {
@@ -507,6 +449,70 @@ func validHTMLTagNotNotranslate(tag string) bool {
 	return true
 }
 
+type Replacer struct {
+	data    map[string]string   // map[regexp]replacement
+	matches map[string][]string // map[replacement][]matches
+}
+
+func (r *Replacer) Replace(s string) (string, error) {
+	for expr, replacement := range r.data {
+		// r.data[i-1] - regexp
+		// r.data[i] - replacement
+		if r.matches == nil {
+			r.matches = make(map[string][]string, 2)
+		}
+		r.matches[replacement] = make([]string, 0, 2)
+
+		re, err := regexp2.Compile(expr, regexp2.IgnoreCase|regexp2.RE2|regexp2.Multiline)
+		if err != nil {
+			return "", err
+		}
+
+		m, _ := re.FindStringMatch(s)
+		for m != nil {
+			r.matches[replacement] = append(r.matches[replacement], m.String())
+			m, _ = re.FindNextMatch(m)
+		}
+		if len(r.matches[replacement]) == 0 {
+			continue
+		}
+
+		s, err = re.Replace(s, replacement, 0, len(r.matches[replacement]))
+		if err != nil {
+			return "", err
+		}
+	}
+	return s, nil
+}
+
+func (r *Replacer) ReplaceBack(s string) (string, error) {
+	if len(r.matches) == 0 {
+		return s, nil
+	}
+	for _, replacement := range r.data {
+		// r.data[i-1] - regexp
+		// r.data[i] - replacement
+		for _, match := range r.matches[replacement] {
+			s = strings.Replace(s, replacement, match, 1)
+		}
+		delete(r.matches, replacement)
+	}
+	return s, nil
+}
+func NewReplacer(regexAndItsReplace ...string) Replacer {
+	m := make(map[string]string, len(regexAndItsReplace)/2)
+	for i := 0; i < len(regexAndItsReplace); i++ {
+		if i%2 == 0 {
+			continue
+		}
+		m[regexAndItsReplace[i-1]] = regexAndItsReplace[i]
+	}
+	return Replacer{
+		data:    m,
+		matches: nil,
+	}
+}
+
 func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateGoogleAPIResponse, err error) {
 	// Реализуем возможность не переводить некоторые части текста:
 	// 1. Заменяем все # в тексте на \#, а + на \+
@@ -563,6 +569,31 @@ func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateG
 			return TranslateGoogleAPIResponse{}, err
 		}
 		text = clearGoqueryShit(html.UnescapeString(text))
+	}
+
+	//var repl Replacer
+	//if from == "ru" && to == "en" {
+	//	repl = NewReplacer(`kotik\s*dumper(?im)`, "*", `котик\s*дампер(?im)`, "$")
+	//}
+	//
+	//text, err = repl.Replace(text)
+	//if err != nil {
+	//	return TranslateGoogleAPIResponse{}, err
+	//}
+	if from == "ru" && to == "en" || from == "en" && to == "ru" {
+		text = strings.ReplaceAll(text, "@", `\@`)
+		r := `котик\s*дампер(?im)`
+		if from == "en" && to == "ru" {
+			r = `kotik\s*dumper(?im)`
+		}
+		re, err := regexp2.Compile(r, regexp2.IgnoreCase|regexp2.RE2|regexp2.Multiline)
+		if err != nil {
+			return TranslateGoogleAPIResponse{}, err
+		}
+		text, err = re.Replace(text, "@", 0, -1)
+		if err != nil {
+			return TranslateGoogleAPIResponse{}, err
+		}
 	}
 
 	// 3.
@@ -627,6 +658,23 @@ func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateG
 		}
 		out.Text = strings.NewReplacer(`\#`, `#`, `\+`, `+`).Replace(out.Text)
 	}
+	if from == "ru" && to == "en" || from == "en" && to == "ru" {
+		re, err := regexp2.Compile(`(?<!\\)[@]`, regexp2.RE2)
+		if err != nil {
+			return TranslateGoogleAPIResponse{}, err
+		}
+		replacement := "Котик Дампер"
+		if to == "en" {
+			replacement = "Kotik Dumper"
+		}
+
+		out.Text, err = re.Replace(out.Text, replacement, 0, -1)
+		if err != nil {
+			return TranslateGoogleAPIResponse{}, err
+		}
+		out.Text = strings.ReplaceAll(out.Text, `\@`, `@`)
+	}
+	//out.Text, err = repl.ReplaceBack("Привет, kotik dumper! Знали про него?")
 	return out, err
 }
 

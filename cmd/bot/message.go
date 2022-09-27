@@ -401,24 +401,15 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 
-	var from string
-	//if user.MyLang == "emj" || user.ToLang == "emj" || user.MyLang == "auto" {
-	//	from, err = translate.DetectLanguageYandex(ctx, text)
-	//} else {
-	from, err = translate.DetectLanguageGoogle(ctx, text)
-	//}
+	from, err := translate.DetectLanguageGoogle(ctx, text)
 	if err != nil {
 		warn(err)
 		return
 	}
 	from = strings.ToLower(from)
-	if strings.Contains(from, "-") {
-		from = strings.Split(from, "-")[0]
-	}
 	if from == "" {
-		warn(fmt.Errorf("from is auto"))
-	}
-	if user.MyLang == "auto" {
+		log.Error("from is auto")
+	} else if user.MyLang == "auto" {
 		if err = app.db.UpdateUser(message.From.ID, tables.Users{MyLang: from}); err != nil {
 			warn(err)
 			return
