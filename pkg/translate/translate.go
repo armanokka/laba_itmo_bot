@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
-	"github.com/armanokka/translobot/pkg/errors"
-	"github.com/armanokka/translobot/pkg/helpers"
+	"github.com/armanokka/transloapi/pkg/errors"
+	"github.com/armanokka/transloapi/pkg/helpers"
 	"github.com/dlclark/regexp2"
 	"github.com/go-resty/resty/v2"
 	"github.com/k0kubun/pp"
@@ -701,9 +701,20 @@ func clearGoqueryShit(s string) string {
 }
 
 func googleTranslate(ctx context.Context, from, to, text string) (result TranslateGoogleAPIResponse, err error) {
+	if strings.TrimSpace(text) == "" {
+		return TranslateGoogleAPIResponse{
+			Text:     text,
+			FromLang: "en",
+		}, err
+	}
 	for i := 0; i < 3; i++ {
+		rand.Seed(time.Now().UnixNano())
+		time.Sleep(time.Second + time.Duration(rand.Intn(1000))*time.Millisecond)
 		result, err = googleTranslateRequest(ctx, from, to, text)
 		if err == nil {
+			if result.Text == "" || result.FromLang == "" {
+				continue
+			}
 			return
 		}
 	}
