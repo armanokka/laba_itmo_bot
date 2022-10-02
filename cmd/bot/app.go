@@ -61,7 +61,9 @@ func New(bot *botapi.BotAPI, db repos.BotDB, analytics dashbot.DashBot, log *zap
 func (app App) Run(ctx context.Context) error {
 	app.bot.MakeRequest("deleteWebhook", map[string]string{})
 	updates := app.bot.GetUpdatesChan(tgbotapi.UpdateConfig{})
-	app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Bot have started"))
+	if _, err := app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Bot have started")); err != nil {
+		app.log.Error("sending bot started notification to config.AdminID", zap.Error(err))
+	}
 	g, ctx := errgroup.WithContext(ctx)
 	wg := sync.WaitGroup{}
 	g.Go(func() error { // бот

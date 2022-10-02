@@ -25,6 +25,30 @@ func (u *Users) SetLang(lang string) {
 func (u Users) Localize(key string, placeholders ...interface{}) string {
 	key = strings.TrimSpace(key)
 	localization := map[string]map[string]string{
+		"Glad to see you again, %s": map[string]string{
+			"en": "Glad to see you again, %s",
+			"ru": "Рад видеть вас снова, %s",
+			"uk": "Радий бачити вас знову, %s",
+			"id": "Senang bertemu denganmu lagi, %s",
+			"pt": "Fico feliz em vê-lo novamente, %s",
+			"de": "Freut mich, dich wiederzusehen, %s",
+			"es": "Me alegro de verte de nuevo, %s",
+			"uz": "Sizni yana ko'rganimdan xursandman, %s",
+			"it": "Sono felice di rivederti, %s",
+			"ar": "سعيد برؤيتك مرة أخرى ،%s",
+		},
+		"type something amazing..": map[string]string{
+			"it": "digita qualcosa di straordinario..",
+			"pt": "digite algo incrível..",
+			"en": "type something amazing..",
+			"de": "tippe was tolles..",
+			"uk": "введіть щось дивовижне..",
+			"uz": "ajoyib narsa yozing..",
+			"id": "ketik sesuatu yang luar biasa..",
+			"ar": "اكتب شيئا رائعا ..",
+			"ru": "напишите что-нибудь удивительное..",
+			"es": "escribe algo increíble..",
+		},
 		"Попробовать": map[string]string{
 			"de": "Versuchen",
 			"es": "tratar",

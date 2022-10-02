@@ -94,22 +94,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 
 	switch message.Command() {
 	case "start":
-		if user.Blocked { // разбанил
-			if err = app.analytics.User(message); err != nil {
-				app.notifyAdmin(err)
-				//return
-			}
-			app.bot.Send(tgbotapi.NewMessage(message.From.ID, user.Localize("С возвращением!")))
-			app.bot.Send(tgbotapi.NewSticker(message.From.ID, tgbotapi.FileID("CAACAgIAAxkBAAEP5w5iif1KBEzJZ-6N49pvKBvTcz5BYwACBAEAAladvQreBNF6Zmb3bCQE")))
-
-			if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"blocked": false}); err != nil {
-				app.notifyAdmin(fmt.Errorf("%w", err))
-			}
-		} else {
-			//if _, err = app.bot.Send(tgbotapi.NewSticker(message.From.ID, tgbotapi.FileID("CAACAgIAAxkBAAERLnFi4-Sx5GwpqAcaUXUOPoheWYmmLQACAQEAAladvQoivp8OuMLmNCkE"))); err != nil {
-			//	warn(err)
-			//}
-		}
 		msg := tgbotapi.MessageConfig{
 			BaseChat: tgbotapi.BaseChat{
 				ChatID:           message.From.ID,

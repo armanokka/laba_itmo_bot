@@ -8,7 +8,6 @@ import (
 	"github.com/armanokka/translobot/pkg/errors"
 	translate2 "github.com/armanokka/translobot/pkg/translate"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/k0kubun/pp"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/text/unicode/norm"
@@ -60,14 +59,16 @@ func Ucfirst(str string) string {
 }
 
 func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
+	update.Query = Ucfirst(strings.TrimSpace(norm.NFKC.String(update.Query)))
+	log := app.log.With(zap.String("language_code", update.From.LanguageCode), zap.String("query", update.Query))
+
 	defer func() {
 		if err := recover(); err != nil {
-			app.log.Error("%w", zap.Any("error", err))
+			log.Error("%w", zap.Any("error", err))
 			app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Panic:"+fmt.Sprint(err)))
 		}
 	}()
 
-	update.Query = norm.NFKC.String(update.Query)
 	warn := func(err error) {
 		app.bot.AnswerInlineQuery(tgbotapi.InlineConfig{
 			InlineQueryID:     update.ID,
@@ -75,11 +76,18 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 			SwitchPMParameter: "from_inline",
 		})
 		app.notifyAdmin(err)
-		pp.Println("onInlineQuery: error", err)
 	}
 
-	if len(update.Query) > 0 {
-		update.Query = Ucfirst(update.Query)
+	if update.Query == "" {
+		if _, err := app.bot.AnswerInlineQuery(tgbotapi.InlineConfig{
+			InlineQueryID:     update.ID,
+			IsPersonal:        true,
+			SwitchPMText:      tables.Users{Lang: update.From.LanguageCode}.Localize("type something amazing.."),
+			SwitchPMParameter: "from_empty_inline",
+		}); err != nil {
+			log.Error("", zap.Error(err))
+		}
+		return
 	}
 
 	user := tables.Users{Lang: update.From.LanguageCode}
@@ -145,17 +153,17 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 			} else {
 				tr, err := translate2.GoogleTranslate(ctx, from, code, update.Query)
 				if err != nil {
-					app.log.Error("inline", zap.Error(err))
+					log.Error("inline", zap.Error(err))
 					return nil
 				}
 				translation = tr.Text
 			}
 			if err != nil {
-				app.log.Error("inline", zap.Error(err))
+				log.Error("inline", zap.Error(err))
 				return nil
 			}
 			if translation == "" {
-				app.log.Error("empty translation in inline mode", zap.String("query", update.Query), zap.String("language_code", update.From.LanguageCode))
+				log.Error("empty translation in inline mode", zap.String("query", update.Query), zap.String("language_code", update.From.LanguageCode))
 				return nil
 			}
 
@@ -209,7 +217,7 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 	}
 	if err = g.Wait(); err != nil {
 		warn(err)
-		app.log.Error("", zap.Error(err))
+		log.Error("", zap.Error(err))
 		return
 	}
 
@@ -251,21 +259,17 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 		blocks = blocks[:len(blocks)-diff]
 	}
 
-	if _, err := app.bot.AnswerInlineQuery(tgbotapi.InlineConfig{
+	if _, err = app.bot.AnswerInlineQuery(tgbotapi.InlineConfig{
 		InlineQueryID:     update.ID,
 		Results:           blocks,
-		CacheTime:         0,
 		IsPersonal:        true,
 		NextOffset:        strconv.Itoa(nextOffset),
 		SwitchPMText:      user.Localize("tap to see more"),
 		SwitchPMParameter: "from_inline",
 	}); err != nil {
-		warn(errors.Wrap(err))
-		pp.Println(blocks)
+		log.Error("", zap.Error(err))
 	}
 
-	//app.analytics.User(update.Query, update.From)
-	//app.analytics.Bot(update.From.ID, "Inline succeeded", "Inline succeeded")
 	if user.MyLang != "" { // user exists
 		if err = app.db.UpdateUserActivity(update.From.ID); err != nil {
 			warn(err)
