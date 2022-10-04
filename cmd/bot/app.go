@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"git.mills.io/prologic/bitcask"
 	"github.com/armanokka/translobot/internal/config"
+	"github.com/armanokka/translobot/internal/go-translo"
 	"github.com/armanokka/translobot/internal/tables"
 	"github.com/armanokka/translobot/pkg/botapi"
 	"github.com/armanokka/translobot/pkg/dashbot"
@@ -28,6 +29,7 @@ import (
 type App struct {
 	htmlTagsRe          *regexp.Regexp
 	reSpecialCharacters *regexp.Regexp
+	translo             translo.API
 	//deepl               translate2.Deepl
 	limiter   sync.Map
 	bot       *botapi.BotAPI
@@ -49,6 +51,7 @@ func New(bot *botapi.BotAPI, db repos.BotDB, analytics dashbot.DashBot, log *zap
 		reSpecialCharacters: regexp.MustCompile(`[[:punct:]]`),
 		//deepl:      translate2.Deepl{},
 		bot:       bot,
+		translo:   translo.NewAPI("00aa06372bmsh6f0a2efa1a6cac4p1e73b6jsn33e40d59cbc5"),
 		log:       log,
 		db:        db,
 		analytics: analytics,

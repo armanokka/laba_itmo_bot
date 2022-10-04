@@ -64,42 +64,55 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 	//	Dict = strings.Join(d, "\n") + " " + phonetics
 	//	return nil
 	//})
+	ctx, cancel := context.WithCancel(ctx)
 
-	if from == "emj" || to == "emj" {
-		g.Go(func() error {
-			tr, err := translate.YandexTranslate(ctx, from, to, text)
-			if err != nil {
-				if IsCtxError(err) {
-					return nil
-				}
-				log.Error("google err", zap.Error(err))
-				return err
-			}
-			GoogleFromToTr = tr
-			return nil
-		})
-		g.Go(func() (err error) {
-			from, err = translate.DetectLanguageGoogle(ctx, text)
+	g.Go(func() error {
+		tr, err := app.translo.Translate(ctx, from, to, text)
+		if err != nil {
 			return err
-		})
-	} else {
-		g.Go(func() error {
-			tr, err := translate.GoogleTranslate(ctx, from, to, text)
-			if err != nil {
-				if IsCtxError(err) {
-					return nil
-				}
-				log.Error("google err", zap.Error(err))
-				return err
-			}
+		}
+		GoogleFromToTr = tr.TranslatedText
+		if from == "" || from == "auto" {
+			from = tr.TextLang
+		}
+		return nil
+	})
 
-			GoogleFromToTr = tr.Text
-			if from == "" {
-				from = tr.FromLang
-			}
-			return nil
-		})
-	}
+	//if from == "emj" || to == "emj" {
+	//	g.Go(func() error {
+	//		tr, err := translate.YandexTranslate(ctx, from, to, text)
+	//		if err != nil {
+	//			if IsCtxError(err) {
+	//				return nil
+	//			}
+	//			log.Error("google err", zap.Error(err))
+	//			return err
+	//		}
+	//		GoogleFromToTr = tr
+	//		return nil
+	//	})
+	//	g.Go(func() (err error) {
+	//		from, err = translate.DetectLanguageGoogle(ctx, text)
+	//		return err
+	//	})
+	//} else {
+	//	g.Go(func() error {
+	//		tr, err := translate.GoogleTranslate(ctx, from, to, text)
+	//		if err != nil {
+	//			if IsCtxError(err) {
+	//				return nil
+	//			}
+	//			log.Error("google err", zap.Error(err))
+	//			return err
+	//		}
+	//
+	//		GoogleFromToTr = tr.Text
+	//		if from == "" {
+	//			from = tr.FromLang
+	//		}
+	//		return nil
+	//	})
+	//}
 
 	if from != "" && from != "auto" {
 		//g.Go(func() error {
@@ -130,7 +143,10 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 					log.Error("lingvo err")
 					return err
 				}
-				LingvoTr = writeLingvo(l)
+				LingvoTr = strings.TrimSpace(writeLingvo(l))
+				if LingvoTr != "" {
+					cancel()
+				}
 				return nil
 			})
 		}
@@ -155,21 +171,12 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 	//	})
 	//}
 
-	if err := g.Wait(); err != nil {
+	if err := g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
 		switch {
 		case LingvoTr != "":
 			return LingvoTr, from, err
 		case GoogleFromToTr != "":
 			return GoogleFromToTr, from, err
-			//case GoogleToFromTr != "":
-			//	log.Error("translated via google to-from")
-			//	return GoogleToFromTr, from, err
-			//case YandexTr != "":
-			//	log.Error("translated via yandex")
-			//	return YandexTr, from, err
-			//case MicrosoftTr != "":
-			//	log.Error("translated via microsoft")
-			//	return MicrosoftTr, from, err
 		}
 		return "", from, err
 	}

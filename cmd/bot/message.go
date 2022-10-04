@@ -385,7 +385,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 
-	from, err := translate.DetectLanguageGoogle(ctx, text)
+	from, err := app.translo.Detect(ctx, text)
 	if err != nil {
 		warn(err)
 		return
