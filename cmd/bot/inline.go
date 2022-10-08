@@ -148,16 +148,16 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 			//}
 
 			var translation string
-			if code == "emj" || from == "emj" {
-				translation, err = translate2.YandexTranslate(ctx, from, code, update.Query)
-			} else {
-				tr, err := translate2.GoogleTranslate(ctx, from, code, update.Query)
-				if err != nil {
-					log.Error("inline", zap.Error(err))
-					return nil
-				}
-				translation = tr.Text
+			//if code == "emj" || from == "emj" {
+			//	translation, err = translate2.YandexTranslate(ctx, from, code, update.Query)
+			//} else {
+			tr, err := app.translo.Translate(ctx, from, code, update.Query)
+			if err != nil {
+				log.Error("inline", zap.Error(err))
+				return nil
 			}
+			translation = tr.TranslatedText
+			//}
 			if err != nil {
 				log.Error("inline", zap.Error(err))
 				return nil
