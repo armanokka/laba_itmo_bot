@@ -28,7 +28,7 @@ func (app App) onMyChatMember(update tgbotapi.ChatMemberUpdated) {
 		app.bot.Send(tgbotapi.NewSticker(update.From.ID, tgbotapi.FileID(`CAACAgIAAxkBAAESRi1jOb9UZF2V6FqZWt05EJap4JHdMgACKwcAAkb7rAR5-qgf7bN-0CoE`)))
 		app.bot.Send(tgbotapi.NewMessage(update.From.ID, user.Localize("Glad to see you again, %s", update.From.FirstName)))
 	case "kicked":
-		if err := app.analytics.User(tgbotapi.Message{
+		if err = app.analytics.User(tgbotapi.Message{
 			MessageID:  0,
 			From:       &update.From,
 			SenderChat: nil,

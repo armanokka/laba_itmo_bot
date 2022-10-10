@@ -441,8 +441,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	if err != nil {
 		panic(err)
 	}
-	tr = clearGoqueryShit(html.UnescapeString(tr))
-
+	tr = clearGoqueryShit(tr)
 	//app.bot.Send(tgbotapi.NewDeleteMessage(chatID, message.MessageID))
 	chunks := translate.SplitIntoChunksBySentences(tr, 4096)
 	lastMsgID := 0
