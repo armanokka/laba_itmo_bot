@@ -571,31 +571,6 @@ func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateG
 		text = clearGoqueryShit(html.UnescapeString(text))
 	}
 
-	//var repl Replacer
-	//if from == "ru" && to == "en" {
-	//	repl = NewReplacer(`kotik\s*dumper(?im)`, "*", `котик\s*дампер(?im)`, "$")
-	//}
-	//
-	//text, err = repl.Replace(text)
-	//if err != nil {
-	//	return TranslateGoogleAPIResponse{}, err
-	//}
-	if from == "ru" && to == "en" || from == "en" && to == "ru" {
-		text = strings.ReplaceAll(text, "@", `\@`)
-		r := `котик\s*дампер(?im)`
-		if from == "en" && to == "ru" {
-			r = `kotik\s*dumper(?im)`
-		}
-		re, err := regexp2.Compile(r, regexp2.IgnoreCase|regexp2.RE2|regexp2.Multiline)
-		if err != nil {
-			return TranslateGoogleAPIResponse{}, err
-		}
-		text, err = re.Replace(text, "@", 0, -1)
-		if err != nil {
-			return TranslateGoogleAPIResponse{}, err
-		}
-	}
-
 	// 3.
 	chunks := SplitIntoChunksBySentences(text, 400)
 	g, ctx := errgroup.WithContext(ctx)
@@ -658,23 +633,7 @@ func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateG
 		}
 		out.Text = strings.NewReplacer(`\#`, `#`, `\+`, `+`).Replace(out.Text)
 	}
-	if from == "ru" && to == "en" || from == "en" && to == "ru" {
-		re, err := regexp2.Compile(`(?<!\\)[@]`, regexp2.RE2)
-		if err != nil {
-			return TranslateGoogleAPIResponse{}, err
-		}
-		replacement := "Котик Дампер"
-		if to == "en" {
-			replacement = "Kotik Dumper"
-		}
 
-		out.Text, err = re.Replace(out.Text, replacement, 0, -1)
-		if err != nil {
-			return TranslateGoogleAPIResponse{}, err
-		}
-		out.Text = strings.ReplaceAll(out.Text, `\@`, `@`)
-	}
-	//out.Text, err = repl.ReplaceBack("Привет, kotik dumper! Знали про него?")
 	return out, err
 }
 

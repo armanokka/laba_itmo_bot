@@ -3,7 +3,6 @@ package bot
 import (
 	"context"
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
 	"github.com/armanokka/translobot/pkg/errors"
@@ -425,47 +424,12 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		warn(err)
 		return
 	}
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(tr))
-	if err != nil {
-		warn(err)
-		return
-	}
-	doc.Find("*:not(html,head,body,b,i,u,s,span.tg-spoiler,a,code,pre)").Each(func(_ int, selection *goquery.Selection) {
-		ret, err := selection.Html()
-		if err != nil {
-			return
-		}
-		selection.ReplaceWithHtml(ret)
-	})
-	tr, err = doc.Html()
-	if err != nil {
-		panic(err)
-	}
-	tr = clearGoqueryShit(tr)
+	tr = closeUnclosedTagsAndClearUnsupported(tr)
 	//app.bot.Send(tgbotapi.NewDeleteMessage(chatID, message.MessageID))
-	chunks := translate.SplitIntoChunksBySentences(tr, 4096)
+	chunks := translate.SplitIntoChunksBySentences(tr, 4000)
 	lastMsgID := 0
 	for _, chunk := range chunks {
-		if !validHtml(chunk) {
-			log.Info("invalid html, closing unclosed tags")
-			tr = closeUnclosedTags(chunk)
-			app.bot.Send(tgbotapi.MessageConfig{
-				BaseChat: tgbotapi.BaseChat{
-					ChatID:                   config.AdminID,
-					ChannelUsername:          "",
-					ProtectContent:           false,
-					ReplyToMessageID:         0,
-					ReplyMarkup:              nil,
-					DisableNotification:      false,
-					AllowSendingWithoutReply: false,
-				},
-				Text:                  fmt.Sprintf("unclosed tags in translation (%s->%s)\nOriginal text: %s", from, to, text),
-				ParseMode:             "",
-				Entities:              nil,
-				DisableWebPagePreview: false,
-			})
-			app.log.Error("couldn't send translation to user", zap.String("text", text), zap.String("translation", chunk))
-		}
+		chunk = closeUnclosedTagsAndClearUnsupported(chunk) // я не знаю, почему это не работает
 		keyboard := tgbotapi.NewReplyKeyboard(
 			tgbotapi.NewKeyboardButtonRow(
 				tgbotapi.NewKeyboardButton(langs[message.From.LanguageCode][user.MyLang]+" "+flags[user.MyLang].Emoji),
@@ -489,10 +453,10 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				BaseChat: tgbotapi.BaseChat{
 					ChatID: config.AdminID,
 				},
-				Text: fmt.Sprintf("%s\nerror with %d (%s->%s):\nText:%s", err.Error(), message.From.ID, from, to, text),
+				Text: fmt.Sprintf("%s\nerror with %d (%s->%s):\nText:%s", err.Error(), message.From.ID, from, to, chunk),
 			})
 			app.log.Error("couldn't send translation to user", zap.String("text", text), zap.String("translation", chunk))
-
+			//pp.Println("couldn't send translation to user", chunk)
 			msg, err = app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, chunk))
 			if err != nil {
 				warn(err)

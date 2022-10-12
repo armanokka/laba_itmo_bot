@@ -7,14 +7,15 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
 	"github.com/armanokka/translobot/pkg/errors"
 	"github.com/armanokka/translobot/pkg/lingvo"
+	"github.com/dlclark/regexp2"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"golang.org/x/net/html"
 	"io"
 	"io/ioutil"
 	"log"
@@ -23,6 +24,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"unicode"
 	"unicode/utf16"
 )
 
@@ -70,6 +72,15 @@ func in(arr []string, keys ...string) bool {
 	return true
 }
 
+// inI is in but returning index
+func inSlice(arr []string, k string) (int, bool) {
+	for i, v := range arr {
+		if k == v {
+			return i, true
+		}
+	}
+	return 0, false
+}
 func inFuzzy(arr []string, keys ...string) bool {
 	for _, k := range keys {
 		exists := false
@@ -89,35 +100,30 @@ func inFuzzy(arr []string, keys ...string) bool {
 var SupportedFormattingTags = []string{"b", "strong", "i", "em", "u", "ins", "s", "strike", "del", "span", "tg-spoiler", "a", "code", "pre"}
 
 func validHtml(s string) bool {
-	_, err := html.Parse(strings.NewReader(s))
-	if err != nil {
-		return false
+	d := xml.NewDecoder(strings.NewReader(s))
+	tags := make(map[string]bool, 10)
+	for {
+		token, err := d.Token()
+		if err != nil && err != io.EOF {
+			return false
+		}
+		if token == nil {
+			break
+		}
+		switch t := token.(type) {
+		case xml.StartElement:
+			if !in(SupportedFormattingTags, t.Name.Local) {
+				return false
+			}
+			tags[t.Name.Local] = false
+		case xml.EndElement:
+			if _, ok := tags[t.Name.Local]; !ok || !in(SupportedFormattingTags, t.Name.Local) { // закрытый тег, не имеющий открытого, или неподдерживаемый тег
+				return false
+			}
+			delete(tags, t.Name.Local)
+		}
 	}
-	return true
-	//d := xml.NewDecoder(strings.NewReader(s))
-	//tags := make(map[string]bool, 10)
-	//for {
-	//	token, err := d.Token()
-	//	if err != nil && err != io.EOF {
-	//		return false
-	//	}
-	//	if token == nil {
-	//		break
-	//	}
-	//	switch t := token.(type) {
-	//	case xml.StartElement:
-	//		if !in(SupportedFormattingTags, t.Name.Local) {
-	//			return false
-	//		}
-	//		tags[t.Name.Local] = false
-	//	case xml.EndElement:
-	//		if _, ok := tags[t.Name.Local]; !ok || !in(SupportedFormattingTags, t.Name.Local) { // закрытый тег, не имеющий открытого, или неподдерживаемый тег
-	//			return false
-	//		}
-	//		delete(tags, t.Name.Local)
-	//	}
-	//}
-	//return len(tags) == 0
+	return len(tags) == 0
 }
 
 func inMapValues(m map[string]string, values ...string) bool {
@@ -380,26 +386,84 @@ func clearGoqueryShit(s string) string {
 	return s[i1:i2]
 }
 
-func closeUnclosedTags(s string) string {
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(s))
-	if err != nil {
+// closeUnclosedTagsAndClearUnsupported closes all html tags even those that shouldn't be
+func closeUnclosedTagsAndClearUnsupported(s string) string {
+	if validHtml(s) { // html is valid
 		return s
 	}
-	raw, err := doc.Html()
+	r, err := regexp2.Compile("<[^>]*>", regexp2.RE2)
 	if err != nil {
-		return s
+		panic(err)
 	}
-	i1 := strings.Index(raw, "<body>") + len("<body>")
-	if i1 == -1 {
-		return ""
+	tags := make([]string, 0, 4) // b /a code /p, but not b/ or /a
+	m, _ := r.FindStringMatch(s)
+	for m != nil {
+		tag := strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(m.String(), "<"), ">"))
+		var i int
+		for idx, ch := range tag {
+			if unicode.IsLetter(ch) || unicode.IsDigit(ch) {
+				continue
+			}
+			i = idx
+			break
+		}
+		if i == 0 {
+			i = len(tag)
+		}
+		if strings.HasSuffix(tag, "/") && !strings.HasPrefix(tag, "/") {
+			tag = "/" + strings.TrimSuffix(tag, "/")
+		}
+		if !in([]string{"b", "i", "u", "s", "span", "a", "code", "pre"}, strings.TrimPrefix(strings.TrimSuffix(tag, "/"), "/")) {
+			tag = strings.TrimPrefix(strings.TrimSuffix(tag, "/"), "/")
+			s = strings.Replace(s, m.String(), "", 1)
+		} else {
+			tags = append(tags, tag)
+		}
+		m, _ = r.FindNextMatch(m)
 	}
-	i2 := strings.Index(raw[i1:], "</body>")
-	if i2 == -1 {
-		return ""
+	if len(tags) > 0 {
+		usedIndexes := make([]int, 0, len(tags)/2+1)
+		for i := 0; i < len(tags); i++ {
+			tag := tags[i]
+			opening := !strings.HasPrefix(tag, "/") && !strings.HasSuffix(tag, "/")
+			if opening {
+				idx, ok := inSliceNotUsed(tags[i:], usedIndexes, "/"+tag)
+				usedIndexes = append(usedIndexes, i)
+				if !ok { // все заняты
+					s += "</" + tag + ">"
+					continue
+				}
+				usedIndexes = append(usedIndexes, idx)
+				continue
+			}
+			idx, ok := inSliceNotUsed(tags[:i], usedIndexes, tag[1:])
+			usedIndexes = append(usedIndexes, i)
+			if !ok { // все заняты
+				s = "<" + tag[1:] + ">" + s
+				continue
+			}
+			usedIndexes = append(usedIndexes, idx)
+		}
 	}
-	return raw[i1 : i1+i2]
+	return s
 }
 
+func inSliceNotUsed(arr []string, usedIndexes []int, k string) (int, bool) {
+	for i, v := range arr {
+		if k == v {
+			for _, usedIdx := range usedIndexes {
+				if i != usedIdx {
+					return i, true
+				}
+			}
+		}
+	}
+	return 0, false
+}
+
+func remove(slice []string, i int) []string {
+	return append(slice[:i], slice[i+1:]...)
+}
 func removeHtml(s string) (string, error) {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(s))
 	if err != nil {
