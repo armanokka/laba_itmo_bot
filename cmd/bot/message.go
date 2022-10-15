@@ -418,14 +418,13 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	if len(message.CaptionEntities) > 0 {
 		entities = message.CaptionEntities
 	}
-	text = helpers.ApplyEntitiesHtml(norm.NFKC.String(text), entities)
+	text = norm.NFKC.String(helpers.ApplyEntitiesHtml(text, entities))
 	tr, from, err := app.translate(ctx, from, to, text) // examples мы сохраняем, чтобы соединить с keyboard.Examples и положить в кэш
 	if err != nil {
 		warn(err)
 		return
 	}
-	tr = closeUnclosedTagsAndClearUnsupported(tr)
-	//app.bot.Send(tgbotapi.NewDeleteMessage(chatID, message.MessageID))
+
 	chunks := translate.SplitIntoChunksBySentences(tr, 4000)
 	lastMsgID := 0
 	for _, chunk := range chunks {

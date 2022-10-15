@@ -99,9 +99,10 @@ func inFuzzy(arr []string, keys ...string) bool {
 
 var SupportedFormattingTags = []string{"b", "strong", "i", "em", "u", "ins", "s", "strike", "del", "span", "tg-spoiler", "a", "code", "pre"}
 
+// validHtml doesn't deal with order of tags, e.g. "</b>hey<b>" is valid
 func validHtml(s string) bool {
 	d := xml.NewDecoder(strings.NewReader(s))
-	tags := make(map[string]bool, 10)
+	tags := make(map[string]int, 2)
 	for {
 		token, err := d.Token()
 		if err != nil && err != io.EOF {
@@ -112,18 +113,17 @@ func validHtml(s string) bool {
 		}
 		switch t := token.(type) {
 		case xml.StartElement:
-			if !in(SupportedFormattingTags, t.Name.Local) {
-				return false
-			}
-			tags[t.Name.Local] = false
+			tags[t.Name.Local]++
 		case xml.EndElement:
-			if _, ok := tags[t.Name.Local]; !ok || !in(SupportedFormattingTags, t.Name.Local) { // закрытый тег, не имеющий открытого, или неподдерживаемый тег
-				return false
-			}
-			delete(tags, t.Name.Local)
+			tags[t.Name.Local]--
 		}
 	}
-	return len(tags) == 0
+	for _, count := range tags {
+		if count != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func inMapValues(m map[string]string, values ...string) bool {
@@ -388,9 +388,6 @@ func clearGoqueryShit(s string) string {
 
 // closeUnclosedTagsAndClearUnsupported closes all html tags even those that shouldn't be
 func closeUnclosedTagsAndClearUnsupported(s string) string {
-	if validHtml(s) { // html is valid
-		return s
-	}
 	r, err := regexp2.Compile("<[^>]*>", regexp2.RE2)
 	if err != nil {
 		panic(err)
@@ -414,12 +411,14 @@ func closeUnclosedTagsAndClearUnsupported(s string) string {
 			tag = "/" + strings.TrimSuffix(tag, "/")
 		}
 		if !in([]string{"b", "i", "u", "s", "span", "a", "code", "pre"}, strings.TrimPrefix(strings.TrimSuffix(tag, "/"), "/")) {
-			tag = strings.TrimPrefix(strings.TrimSuffix(tag, "/"), "/")
 			s = strings.Replace(s, m.String(), "", 1)
 		} else {
 			tags = append(tags, tag)
 		}
 		m, _ = r.FindNextMatch(m)
+	}
+	if validHtml(s) {
+		return s
 	}
 	if len(tags) > 0 {
 		usedIndexes := make([]int, 0, len(tags)/2+1)
