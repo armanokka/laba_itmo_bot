@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	AdminID = 579515224
+	AdminID      = 579515224
+	BotstatToken = "JAEGWDUSGFJDYT39H3GTAXEFT6NTMD"
 )
 
 var (

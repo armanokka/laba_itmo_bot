@@ -33,7 +33,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		}
 	}()
 
-	user := tables.Users{Lang: message.From.LanguageCode}
+	user := tables.Users{Lang: &message.From.LanguageCode}
 
 	warn := func(err error) {
 		app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, user.Localize("Произошла ошибка")))
@@ -72,6 +72,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				ID:           message.From.ID,
 				MyLang:       message.From.LanguageCode,
 				ToLang:       tolang,
+				Lang:         nil,
 				LastActivity: time.Now(),
 			}
 			if err = app.db.CreateUser(&user); err != nil {
@@ -83,7 +84,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			return
 		}
 	}
-	user.SetLang(message.From.LanguageCode)
 	if user.Blocked {
 		if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"blocked": false}); err != nil {
 			app.notifyAdmin(err)
@@ -93,6 +93,51 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 
 	switch message.Command() {
 	case "start":
+		if user.Lang == nil || *user.Lang == "" {
+			languages := map[string]string{
+				"en": "🇬🇧English",
+				"de": "🇩🇪Deutsch",
+				"es": "🇪🇸Español",
+				"uk": "🇺🇦Українська",
+				"ar": "🇪🇬عربي",
+				"ru": "🇷🇺Русский",
+				"uz": "🇺🇿O'Zbek",
+				"id": "🇮🇩Bahasa Indonesia",
+				"it": "🇮🇹Italiano",
+				"pt": "🇵🇹Português",
+			}
+			keyboard := tgbotapi.NewInlineKeyboardMarkup()
+			i := -1
+			for code, name := range languages {
+				i++
+				btn := tgbotapi.NewInlineKeyboardButtonData(name, "set_lang:"+code)
+				if i%2 == 0 || len(keyboard.InlineKeyboard) == 0 {
+					keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(btn))
+					continue
+				}
+				l := len(keyboard.InlineKeyboard) - 1
+				if l < 0 {
+					l = 0
+				}
+				keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], btn)
+			}
+			msg := tgbotapi.MessageConfig{
+				BaseChat: tgbotapi.BaseChat{
+					ChatID:              message.From.ID,
+					ReplyMarkup:         keyboard,
+					DisableNotification: true,
+				},
+				Text: user.Localize(`Choose language of the bot`),
+			}
+			if _, err = app.bot.Send(msg); err != nil {
+				warn(err)
+				return
+			}
+			if err = app.analytics.Bot(msg, "/start"+message.CommandArguments()); err != nil {
+				app.notifyAdmin(err)
+			}
+			return
+		}
 		msg := tgbotapi.MessageConfig{
 			BaseChat: tgbotapi.BaseChat{
 				ChatID:           message.From.ID,
@@ -100,9 +145,9 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				ReplyToMessageID: 0,
 				ReplyMarkup: tgbotapi.NewReplyKeyboard(
 					tgbotapi.NewKeyboardButtonRow(
-						tgbotapi.NewKeyboardButton(langs[message.From.LanguageCode][user.MyLang]+" "+flags[user.MyLang].Emoji),
+						tgbotapi.NewKeyboardButton(langs[*user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
 						tgbotapi.NewKeyboardButton("↔"),
-						tgbotapi.NewKeyboardButton(langs[message.From.LanguageCode][user.ToLang]+" "+flags[user.ToLang].Emoji))),
+						tgbotapi.NewKeyboardButton(langs[*user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji))),
 				DisableNotification:      true,
 				AllowSendingWithoutReply: false,
 			},
@@ -110,29 +155,9 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			ParseMode: tgbotapi.ModeHTML,
 		}
 		if _, err = app.bot.Send(msg); err != nil {
-			app.notifyAdmin(err)
-			app.bot.Send(tgbotapi.MessageConfig{
-				BaseChat: tgbotapi.BaseChat{
-					ChatID:           message.From.ID,
-					ChannelUsername:  "",
-					ReplyToMessageID: 0,
-					ReplyMarkup: tgbotapi.NewReplyKeyboard(
-						tgbotapi.NewKeyboardButtonRow(
-							tgbotapi.NewKeyboardButton(langs[message.From.LanguageCode][user.MyLang]+" "+flags[user.MyLang].Emoji),
-							tgbotapi.NewKeyboardButton("↔"),
-							tgbotapi.NewKeyboardButton(langs[message.From.LanguageCode][user.ToLang]+" "+flags[user.ToLang].Emoji))),
-					DisableNotification:      true,
-					AllowSendingWithoutReply: false,
-				},
-				Text:      user.Localize("<b>Send text</b>, and bot will translate it"),
-				ParseMode: "",
-			})
+			warn(err)
+			return
 		}
-
-		if err = app.analytics.Bot(msg, "/start"+message.CommandArguments()); err != nil {
-			app.notifyAdmin(err)
-		}
-
 		if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": ""}); err != nil {
 			warn(err)
 		}
@@ -164,6 +189,50 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		doc := tgbotapi.NewInputMediaDocument(tgbotapi.FilePath(f.Name()))
 		group := tgbotapi.NewMediaGroup(message.From.ID, []interface{}{doc})
 		app.bot.Send(group)
+		return
+	case "set_bot_lang":
+		languages := map[string]string{
+			"en": "🇬🇧English",
+			"de": "🇩🇪Deutsch",
+			"es": "🇪🇸Español",
+			"uk": "🇺🇦Українська",
+			"ar": "🇪🇬عربي",
+			"ru": "🇷🇺Русский",
+			"uz": "🇺🇿O'Zbek",
+			"id": "🇮🇩Bahasa Indonesia",
+			"it": "🇮🇹Italiano",
+			"pt": "🇵🇹Português",
+		}
+		keyboard := tgbotapi.NewInlineKeyboardMarkup()
+		i := -1
+		for code, name := range languages {
+			i++
+			btn := tgbotapi.NewInlineKeyboardButtonData(name, "set_lang:"+code)
+			if i%2 == 0 || len(keyboard.InlineKeyboard) == 0 {
+				keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(btn))
+				continue
+			}
+			l := len(keyboard.InlineKeyboard) - 1
+			if l < 0 {
+				l = 0
+			}
+			keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], btn)
+		}
+		msg := tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:              message.From.ID,
+				ReplyMarkup:         keyboard,
+				DisableNotification: true,
+			},
+			Text: user.Localize(`Choose language of the bot`),
+		}
+		if _, err = app.bot.Send(msg); err != nil {
+			warn(err)
+			return
+		}
+		if err = app.analytics.Bot(msg, "/start"+message.CommandArguments()); err != nil {
+			app.notifyAdmin(err)
+		}
 		return
 	case "id":
 		log.Info("/id")
@@ -236,10 +305,10 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			app.notifyAdmin(err)
 		}
 		return
-	case concatNonEmpty(" ", langs[message.From.LanguageCode][user.MyLang], flags[user.MyLang].Emoji):
+	case concatNonEmpty(" ", langs[*user.Lang][user.MyLang], flags[user.MyLang].Emoji):
 		kb, err := buildLangsPagination(user, 0, 18, "",
 			fmt.Sprintf("set_my_lang:%s:%d", "%s", 0),
-			fmt.Sprintf("set_my_lang_pagination:%d", len(codes[user.Lang])/18*18),
+			fmt.Sprintf("set_my_lang_pagination:%d", len(codes[*user.Lang])/18*18),
 			fmt.Sprintf("set_my_lang_pagination:%d", 18), true)
 		if err != nil {
 			warn(err)
@@ -256,10 +325,13 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			app.notifyAdmin(err)
 		}
 		return
-	case concatNonEmpty(" ", langs[message.From.LanguageCode][user.ToLang], flags[user.ToLang].Emoji):
+	case concatNonEmpty(" ", langs[*user.Lang][user.ToLang], flags[user.ToLang].Emoji):
+		if user.Lang == nil {
+			user.Lang = &message.From.LanguageCode
+		}
 		kb, err := buildLangsPagination(user, 0, 18, "",
 			fmt.Sprintf("set_to_lang:%s:%d", "%s", 0),
-			fmt.Sprintf("set_to_lang_pagination:%d", len(codes[user.Lang])/18*18),
+			fmt.Sprintf("set_to_lang_pagination:%d", len(codes[*user.Lang])/18*18),
 			fmt.Sprintf("set_to_lang_pagination:%d", 18), false)
 		if err != nil {
 			warn(err)
@@ -428,16 +500,18 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	chunks := translate.SplitIntoChunksBySentences(tr, 4000)
 	lastMsgID := 0
 	for _, chunk := range chunks {
-		chunk = closeUnclosedTagsAndClearUnsupported(chunk) // я не знаю, почему это не работает
+		chunk = closeUnclosedTagsAndClearUnsupported(chunk) /* + "\n❤️ @TransloBot" */ // я не знаю, почему это не работает
 		keyboard := tgbotapi.NewReplyKeyboard(
 			tgbotapi.NewKeyboardButtonRow(
 				tgbotapi.NewKeyboardButton(langs[message.From.LanguageCode][user.MyLang]+" "+flags[user.MyLang].Emoji),
 				tgbotapi.NewKeyboardButton("↔"),
 				tgbotapi.NewKeyboardButton(langs[message.From.LanguageCode][user.ToLang]+" "+flags[user.ToLang].Emoji)))
+		//keyboard.InputFieldPlaceholder = user.Localize("Text to translate...")
 		msgConfig := tgbotapi.MessageConfig{
 			BaseChat: tgbotapi.BaseChat{
-				ChatID:      message.Chat.ID,
-				ReplyMarkup: keyboard,
+				ChatID:           message.Chat.ID,
+				ReplyMarkup:      keyboard,
+				ReplyToMessageID: message.MessageID,
 			},
 			Text:                  chunk,
 			ParseMode:             tgbotapi.ModeHTML,
@@ -474,15 +548,19 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 	data, _ := translate.TTS(to, tr)
+	if user.Lang == nil {
+		lang := message.From.LanguageCode
+		user.Lang = &lang
+	}
 	app.bot.Send(tgbotapi.AudioConfig{
 		BaseFile: tgbotapi.BaseFile{
 			BaseChat: tgbotapi.BaseChat{
 				ChatID: message.Chat.ID,
 				ReplyMarkup: tgbotapi.NewReplyKeyboard(
 					tgbotapi.NewKeyboardButtonRow(
-						tgbotapi.NewKeyboardButton(langs[user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
+						tgbotapi.NewKeyboardButton(langs[*user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
 						tgbotapi.NewKeyboardButton("↔"),
-						tgbotapi.NewKeyboardButton(langs[user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji))),
+						tgbotapi.NewKeyboardButton(langs[*user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji))),
 			},
 			File: tgbotapi.FileBytes{
 				Name:  html.UnescapeString(helpers.CutStringUTF16(tr, 50)),
@@ -498,15 +576,18 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 	data, _ = translate.TTS(from, html.UnescapeString(text))
+	if user.Lang == nil {
+		user.Lang = &message.From.LanguageCode
+	}
 	app.bot.Send(tgbotapi.AudioConfig{
 		BaseFile: tgbotapi.BaseFile{
 			BaseChat: tgbotapi.BaseChat{
 				ChatID: message.Chat.ID,
 				ReplyMarkup: tgbotapi.NewReplyKeyboard(
 					tgbotapi.NewKeyboardButtonRow(
-						tgbotapi.NewKeyboardButton(langs[user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
+						tgbotapi.NewKeyboardButton(langs[*user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
 						tgbotapi.NewKeyboardButton("↔"),
-						tgbotapi.NewKeyboardButton(langs[user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji))),
+						tgbotapi.NewKeyboardButton(langs[*user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji))),
 			},
 			File: tgbotapi.FileBytes{
 				Name:  html.UnescapeString(helpers.CutStringUTF16(text, 50)),

@@ -59,7 +59,7 @@ require (
 	github.com/stretchr/testify v1.8.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
-	github.com/transloapi/go-translo v0.0.0-20220917082328-76a1c0b621b8 // indirect
+	github.com/transloapi/go-translo v0.0.0-20221030153133-07f770f03d63 // indirect
 	github.com/ugorji/go/codec v1.2.7 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
 	golang.org/x/crypto v0.0.0-20220826181053-bd7e27e6170d // indirect

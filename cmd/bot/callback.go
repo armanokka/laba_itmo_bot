@@ -38,6 +38,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 	warn := func(err error) {
 		app.bot.Send(tgbotapi.NewCallback(callback.ID, "Error, sorry"))
 		app.notifyAdmin(err)
+		log.Error("", zap.Error(err))
 	}
 
 	var err error
@@ -45,11 +46,41 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 	if err != nil {
 		warn(err)
 	}
-	user.SetLang(callback.From.LanguageCode)
+	if user.Lang == nil {
+		user.Lang = &callback.From.LanguageCode
+	}
 
 	arr := strings.Split(callback.Data, ":")
 
 	switch arr[0] {
+	case "set_lang":
+		if err = app.db.UpdateUser(callback.From.ID, tables.Users{Lang: &arr[1]}); err != nil {
+			app.notifyAdmin(err)
+		}
+		user.Lang = &arr[1]
+		app.bot.Send(tgbotapi.NewDeleteMessage(callback.From.ID, callback.Message.MessageID))
+		app.bot.Send(tgbotapi.NewSticker(callback.From.ID, tgbotapi.FileID(`CAACAgIAAxkBAAESzGBjaqr-iDc1XPlF0LQVKxeApeGbVwACQhAAAjPFKUmQDtQRpypKgisE`)))
+		msg := tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:           callback.From.ID,
+				ChannelUsername:  "",
+				ReplyToMessageID: 0,
+				ReplyMarkup: tgbotapi.NewReplyKeyboard(
+					tgbotapi.NewKeyboardButtonRow(
+						tgbotapi.NewKeyboardButton(langs[*user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
+						tgbotapi.NewKeyboardButton("↔"),
+						tgbotapi.NewKeyboardButton(langs[*user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji))),
+				DisableNotification:      true,
+				AllowSendingWithoutReply: false,
+			},
+			Text:      user.Localize("<b>Send text</b>, and bot will translate it"),
+			ParseMode: tgbotapi.ModeHTML,
+		}
+		if _, err = app.bot.Send(msg); err != nil {
+			warn(err)
+			return
+		}
+		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
 	case "correct_translation":
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
 		app.bot.Send(tgbotapi.EditMessageTextConfig{
@@ -251,22 +282,22 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			warn(err)
 			return
 		}
-		if offset < 0 || offset > len(codes[user.Lang])-1 {
-			warn(fmt.Errorf("offset is too big, len(codes[user.Lang]) is %d, offset ois %d", len(codes[user.Lang]), offset))
+		if offset < 0 || offset > len(codes[*user.Lang])-1 {
+			warn(fmt.Errorf("offset is too big, len(codes[user.Lang]) is %d, offset ois %d", len(codes[*user.Lang]), offset))
 			return
 		}
 		count := 18
-		if offset+count > len(codes[user.Lang])-1 {
-			count = len(codes[user.Lang]) - 1 - offset
+		if offset+count > len(codes[*user.Lang])-1 {
+			count = len(codes[*user.Lang]) - 1 - offset
 		}
 
 		back := offset - 18
 		if back < 0 {
-			back = len(codes[user.Lang]) / count * count // from end
+			back = len(codes[*user.Lang]) / count * count // from end
 		}
 
 		next := offset + 18
-		if next >= len(codes[user.Lang])-1 {
+		if next >= len(codes[*user.Lang])-1 {
 			next = 0 // from start
 		}
 		kb, err := buildLangsPagination(user, offset, count, user.MyLang,
@@ -317,22 +348,22 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			warn(err)
 			return
 		}
-		if offset < 0 || offset > len(codes[user.Lang])-1 {
-			warn(fmt.Errorf("offset is too big, len(codes[user.Lang]) is %d, offset ois %d", len(codes[user.Lang]), offset))
+		if offset < 0 || offset > len(codes[*user.Lang])-1 {
+			warn(fmt.Errorf("offset is too big, len(codes[*user.Lang]) is %d, offset ois %d", len(codes[*user.Lang]), offset))
 			return
 		}
 		count := 18
-		if offset+count > len(codes[user.Lang])-1 {
-			count = len(codes[user.Lang]) - 1 - offset
+		if offset+count > len(codes[*user.Lang])-1 {
+			count = len(codes[*user.Lang]) - 1 - offset
 		}
 
 		back := offset - 18
 		if back < 0 {
-			back = len(codes[user.Lang]) / count * count // from end
+			back = len(codes[*user.Lang]) / count * count // from end
 		}
 
 		next := offset + 18
-		if next >= len(codes[user.Lang])-1 {
+		if next >= len(codes[*user.Lang])-1 {
 			next = 0 // from start
 		}
 		kb, err := buildLangsPagination(user, offset, count, user.ToLang,
@@ -377,23 +408,23 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			warn(err)
 			return
 		}
-		if offset < 0 || offset > len(codes[user.Lang])-1 {
-			warn(fmt.Errorf("offset is too big, len(codes[user.Lang]) is %d, offset ois %d", len(codes[user.Lang]), offset))
+		if offset < 0 || offset > len(codes[*user.Lang])-1 {
+			warn(fmt.Errorf("offset is too big, len(codes[*user.Lang]) is %d, offset ois %d", len(codes[*user.Lang]), offset))
 			return
 		}
 
 		count := 18
-		if offset+count > len(codes[user.Lang])-1 {
-			count = len(codes[user.Lang]) - offset
+		if offset+count > len(codes[*user.Lang])-1 {
+			count = len(codes[*user.Lang]) - offset
 		}
 
 		back := offset - 18
 		if back < 0 {
-			back = len(codes[user.Lang]) / count * count // end
+			back = len(codes[*user.Lang]) / count * count // end
 		}
 
 		next := offset + 18
-		if next >= len(codes[user.Lang])-1 {
+		if next >= len(codes[*user.Lang])-1 {
 			next = 0 // start
 		}
 
@@ -441,23 +472,23 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			warn(err)
 			return
 		}
-		if offset < 0 || offset > len(codes[user.Lang])-1 {
-			warn(fmt.Errorf("offset is too big, len(codes[user.Lang]) is %d, offset ois %d", len(codes[user.Lang]), offset))
+		if offset < 0 || offset > len(codes[*user.Lang])-1 {
+			warn(fmt.Errorf("offset is too big, len(codes[*user.Lang]) is %d, offset ois %d", len(codes[*user.Lang]), offset))
 			return
 		}
 
 		count := 18
-		if offset+count > len(codes[user.Lang])-1 {
-			count = len(codes[user.Lang]) - offset
+		if offset+count > len(codes[*user.Lang])-1 {
+			count = len(codes[*user.Lang]) - offset
 		}
 
 		back := offset - 18
 		if back < 0 {
-			back = len(codes[user.Lang]) / count * count // end
+			back = len(codes[*user.Lang]) / count * count // end
 		}
 
 		next := offset + 18
-		if next >= len(codes[user.Lang])-1 {
+		if next >= len(codes[*user.Lang])-1 {
 			next = 0 // start
 		}
 

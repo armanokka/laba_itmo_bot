@@ -148,9 +148,8 @@ github.com/tidwall/match
 # github.com/tidwall/pretty v1.2.0
 ## explicit; go 1.16
 github.com/tidwall/pretty
-# github.com/transloapi/go-translo v0.0.0-20220917082328-76a1c0b621b8
+# github.com/transloapi/go-translo v0.0.0-20221030153133-07f770f03d63
 ## explicit; go 1.18
-github.com/transloapi/go-translo
 # github.com/ugorji/go/codec v1.2.7
 ## explicit; go 1.11
 github.com/ugorji/go/codec

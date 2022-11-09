@@ -184,7 +184,7 @@ func WitAiSpeech(wav io.Reader, lang string, bits int) (string, error) {
 // buildLangsPagination создает пагинацию как говорил F d
 // в callback передайте что-то типа set_my_lang:%s, где %s станет код выбранного языка
 func buildLangsPagination(user tables.Users, offset int, count int, tickLang, buttonSelectLangCallback, buttonBackCallback, buttonNextCallback string, includeAutoDetect bool) (tgbotapi.InlineKeyboardMarkup, error) {
-	if offset < 0 || offset > len(codes[user.Lang])-1 {
+	if offset < 0 || offset > len(codes[*user.Lang])-1 {
 		return tgbotapi.InlineKeyboardMarkup{}, nil
 	}
 	out := tgbotapi.NewInlineKeyboardMarkup()
@@ -195,17 +195,17 @@ func buildLangsPagination(user tables.Users, offset int, count int, tickLang, bu
 				tgbotapi.NewInlineKeyboardButtonData(user.Localize("Detect language"), fmt.Sprintf(buttonSelectLangCallback, "auto"))))
 		} else {
 			offset-- // на первой странице мы недопоказали одну кнопку
-			if offset+count == len(codes[user.Lang])-1 {
+			if offset+count == len(codes[*user.Lang])-1 {
 				count++
 			}
 		}
 	}
 
-	for i, code := range codes[user.Lang][offset : offset+count] {
+	for i, code := range codes[*user.Lang][offset : offset+count] {
 		if offset == 0 && includeAutoDetect {
 			i++
 		}
-		lang, ok := langs[user.Lang][code]
+		lang, ok := langs[*user.Lang][code]
 		//if offset+count <= 18 {
 		//	lang += " 📌"
 		//}
@@ -238,12 +238,18 @@ func buildLangsPagination(user tables.Users, offset int, count int, tickLang, bu
 	}
 	if includeAutoDetect && offset > 0 {
 		offset++ // для вида
-		//offset = len(codes[user.Lang]) / 18 * 18 // для счетчика снизу, а то на 181 строчке мы уменьшили оффсет
+		//offset = len(codes[*user.Lang]) / 18 * 18 // для счетчика снизу, а то на 181 строчке мы уменьшили оффсет
 	}
+	query := "hey"
 	out.InlineKeyboard = append(out.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
 		tgbotapi.NewInlineKeyboardButtonData("⬅️", buttonBackCallback),
-		tgbotapi.NewInlineKeyboardButtonData(strconv.Itoa(offset)+"/"+strconv.Itoa(len(codes[user.Lang])/18*18), "none"),
-		tgbotapi.NewInlineKeyboardButtonData("➡️", buttonNextCallback)))
+		tgbotapi.NewInlineKeyboardButtonData(strconv.Itoa(offset)+"/"+strconv.Itoa(len(codes[*user.Lang])/18*18), "none"),
+		tgbotapi.NewInlineKeyboardButtonData("➡️", buttonNextCallback)),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.InlineKeyboardButton{
+				Text:              user.Localize("inline mode"),
+				SwitchInlineQuery: &query,
+			}))
 	return out, nil
 }
 

@@ -20,12 +20,15 @@ import (
 )
 
 func removeArticles(user tables.Users, articles []interface{}, codes ...string) []interface{} {
-
+	if user.Lang == nil {
+		en := "en"
+		user.Lang = &en
+	}
 	trash := make([]int, 0, len(inlineCodes)+5)
 	for i, v := range articles {
 		article := v.(tgbotapi.InlineQueryResultArticle)
 		for _, code := range codes {
-			if strings.HasPrefix(article.Title, langs[user.Lang][code]) {
+			if strings.HasPrefix(article.Title, langs[*user.Lang][code]) {
 				trash = append(trash, i)
 			}
 		}
@@ -39,7 +42,7 @@ func removeArticles(user tables.Users, articles []interface{}, codes ...string) 
 func getArticle(user tables.Users, articles []interface{}, code string) interface{} {
 	for _, v := range articles {
 		article := v.(tgbotapi.InlineQueryResultArticle)
-		if strings.HasPrefix(article.Title, langs[user.Lang][code]) {
+		if strings.HasPrefix(article.Title, langs[*user.Lang][code]) {
 			return v
 		}
 	}
@@ -82,7 +85,7 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 		if _, err := app.bot.AnswerInlineQuery(tgbotapi.InlineConfig{
 			InlineQueryID:     update.ID,
 			IsPersonal:        true,
-			SwitchPMText:      tables.Users{Lang: update.From.LanguageCode}.Localize("type something amazing.."),
+			SwitchPMText:      tables.Users{Lang: &update.From.LanguageCode}.Localize("начните вводить текст"),
 			SwitchPMParameter: "from_empty_inline",
 		}); err != nil {
 			log.Error("", zap.Error(err))
@@ -90,7 +93,7 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 		return
 	}
 
-	user := tables.Users{Lang: update.From.LanguageCode}
+	user := tables.Users{Lang: &update.From.LanguageCode}
 
 	var offset int // смещение для пагинации
 	if update.Offset != "" {
@@ -102,14 +105,14 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 		}
 	}
 
-	if offset > len(inlineCodes[user.Lang]) {
+	if offset > len(inlineCodes[*user.Lang]) {
 		warn(fmt.Errorf("слишком большое смещение: %d", offset))
 		return
 	}
 
 	count := 50
-	if offset+count > len(inlineCodes[user.Lang])-1 {
-		count = len(inlineCodes[user.Lang]) - offset
+	if offset+count > len(inlineCodes[*user.Lang])-1 {
+		count = len(inlineCodes[*user.Lang]) - offset
 	}
 
 	nextOffset := offset + count
@@ -130,7 +133,9 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
-		user.SetLang(update.From.LanguageCode)
+		if user.Lang == nil {
+			user.Lang = &update.From.LanguageCode
+		}
 		return nil
 	})
 
@@ -138,16 +143,11 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 
 	//needAudio := strings.HasPrefix(update.Query, "!")
 
-	for i, code := range inlineCodes[user.Lang][offset : offset+count] {
+	for i, code := range inlineCodes[*user.Lang][offset : offset+count] {
 		code := code
 		i := i
 		g.Go(func() error {
-			title := langs[user.Lang][code]
-			//if offset == 0 && i < 19 {
-			//	title += " 📌"
-			//}
-
-			var translation string
+			title := langs[*user.Lang][code]
 			//if code == "emj" || from == "emj" {
 			//	translation, err = translate2.YandexTranslate(ctx, from, code, update.Query)
 			//} else {
@@ -156,38 +156,24 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 				log.Error("inline", zap.Error(err))
 				return nil
 			}
-			translation = tr.TranslatedText
 			//}
 			if err != nil {
 				log.Error("inline", zap.Error(err))
 				return nil
 			}
-			if translation == "" {
+			if tr.TranslatedText == "" {
 				log.Error("empty translation in inline mode", zap.String("query", update.Query), zap.String("language_code", update.From.LanguageCode))
 				return nil
 			}
 
-			//if needAudio {
-			//	audio, err := translate2.TTS(code, tr.Text)
-			//	if err != nil {
-			//		return err
-			//	}
-			//	app.bot.UploadFiles()
-			//	tgbotapi.InlineQueryResultAudio{}
-			//}
-			user := user
-			user.SetLang(code)
-			if code == "emj" {
-				user.SetLang("en")
-			}
 			btn := tgbotapi.InlineKeyboardButton{
-				Text:                         user.Localize("translate"),
+				Text:                         tables.Users{Lang: &code}.Localize("translate"),
 				URL:                          nil,
 				LoginURL:                     nil,
 				CallbackData:                 nil,
 				WebApp:                       nil,
 				SwitchInlineQuery:            nil,
-				SwitchInlineQueryCurrentChat: &translation,
+				SwitchInlineQueryCurrentChat: &tr.TranslatedText,
 				CallbackGame:                 nil,
 				Pay:                          false,
 			}
@@ -201,13 +187,13 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 				ID:    strconv.Itoa(i + offset),
 				Title: title,
 				InputMessageContent: map[string]interface{}{
-					"message_text":             translation,
+					"message_text":             tr.TranslatedText,
 					"disable_web_page_preview": true,
 				},
 				ReplyMarkup: &keyboard,
 				URL:         "",
 				HideURL:     true,
-				Description: translation,
+				Description: tr.TranslatedText,
 				ThumbURL:    "",
 				ThumbWidth:  0,
 				ThumbHeight: 0,

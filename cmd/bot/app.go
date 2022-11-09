@@ -5,19 +5,21 @@ import (
 	"fmt"
 	"git.mills.io/prologic/bitcask"
 	"github.com/armanokka/translobot/internal/config"
-	"github.com/armanokka/translobot/internal/go-translo"
 	"github.com/armanokka/translobot/internal/tables"
 	"github.com/armanokka/translobot/pkg/botapi"
 	"github.com/armanokka/translobot/pkg/dashbot"
 	"github.com/armanokka/translobot/pkg/errors"
+	"github.com/armanokka/translobot/pkg/go-translo"
 	translate2 "github.com/armanokka/translobot/pkg/translate"
 	"github.com/armanokka/translobot/repos"
+	"github.com/go-resty/resty/v2"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/k0kubun/pp"
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
+	"net/http"
 	"os"
 	"regexp"
 	"runtime/debug"
@@ -51,7 +53,7 @@ func New(bot *botapi.BotAPI, db repos.BotDB, analytics dashbot.DashBot, log *zap
 		reSpecialCharacters: regexp.MustCompile(`[[:punct:]]`),
 		//deepl:      translate2.Deepl{},
 		bot:       bot,
-		translo:   translo.NewAPI("00aa06372bmsh6f0a2efa1a6cac4p1e73b6jsn33e40d59cbc5"),
+		translo:   translo.NewAPIWithClient("00aa06372bmsh6f0a2efa1a6cac4p1e73b6jsn33e40d59cbc5", &http.Client{Timeout: 30 * time.Second}),
 		log:       log,
 		db:        db,
 		analytics: analytics,
@@ -70,6 +72,35 @@ func (app App) Run(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 	wg := sync.WaitGroup{}
 	g.Go(func() error { // бот
+		for _, code := range config.BotLocalizedLangs {
+			user := tables.Users{Lang: &code}
+			resp, err := app.bot.Request(tgbotapi.SetMyCommandsConfig{
+				Commands: []tgbotapi.BotCommand{
+					{
+						Command:     "start",
+						Description: user.Localize("show keyboard"),
+					},
+					{
+						Command:     "set_bot_lang",
+						Description: user.Localize("set language of the bot"),
+					},
+				},
+				Scope: &tgbotapi.BotCommandScope{
+					Type: "all_private_chats",
+				},
+				LanguageCode: code,
+			})
+			if err != nil {
+				app.log.Error("", zap.Error(err))
+			}
+			if !resp.Ok {
+				out := make([]byte, 0, 256)
+				if err = resp.Result.UnmarshalJSON(out); err != nil {
+					app.log.Error("", zap.Error(err))
+				}
+				app.log.Error("couldn't set commands for the bot", zap.String("response", string(out)), zap.Int("status_code", resp.ErrorCode))
+			}
+		}
 		for {
 			select {
 			case <-ctx.Done():
@@ -96,12 +127,12 @@ func (app App) Run(ctx context.Context) error {
 						if update.Message.From.LanguageCode == "" || !in(config.BotLocalizedLangs, update.Message.From.LanguageCode) {
 							update.Message.From.LanguageCode = "en"
 						}
-						limit, loaded := app.limiter.LoadOrStore(update.Message.Chat.ID, rate.NewLimiter(0.5, 3))
+						limit, loaded := app.limiter.LoadOrStore(update.Message.Chat.ID, rate.NewLimiter(0.5, 5))
 						if loaded {
 							floodLimit := limit.(*rate.Limiter)
 							reserve := floodLimit.Reserve()
 							if !reserve.OK() || reserve.Delay() != 0 {
-								user := tables.Users{ID: update.Message.From.ID, Lang: update.Message.From.LanguageCode}
+								user := tables.Users{ID: update.Message.From.ID, Lang: &update.Message.From.LanguageCode}
 								app.bot.Send(tgbotapi.MessageConfig{
 									BaseChat: tgbotapi.BaseChat{
 										ChatID:              update.Message.From.ID,
@@ -237,6 +268,49 @@ func (app App) Run(ctx context.Context) error {
 
 		return nil
 	})
+	g.Go(func() error {
+		ticker := time.NewTicker(time.Hour * 6)
+		for {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-ticker.C:
+				return func() error {
+					f, err := os.CreateTemp("", "")
+					if err != nil {
+						app.log.Error("", zap.Error(err))
+						return nil
+					}
+					defer f.Close()
+					defer os.Remove(f.Name())
+
+					users, err := app.db.GetAllUsers()
+					if err != nil {
+						app.log.Error("", zap.Error(err))
+						return nil
+					}
+					for _, user := range users {
+						if _, err = f.WriteString(strconv.FormatInt(user.ID, 10) + "\r\n"); err != nil {
+							app.log.Error("", zap.Error(err))
+							return nil
+						}
+					}
+
+					resp, err := resty.New().R().SetFile("file", f.Name()).Post(fmt.Sprintf("https://api.botstat.io/create/%s/%s", app.bot.Token, config.BotstatToken))
+					if err != nil {
+						app.log.Error("", zap.Error(err))
+						return nil
+					}
+					if resp.StatusCode() != 200 && resp.StatusCode() != 409 {
+						app.log.Error("couldn't send the file of users", zap.Int("http_code", resp.StatusCode()), zap.String("response", resp.String()))
+						return nil
+					}
+					app.log.Debug("sent data to botstat", zap.String("response", resp.String()), zap.Int("http_code", resp.StatusCode()))
+					return nil
+				}()
+			}
+		}
+	})
 	return g.Wait()
 }
 
@@ -267,10 +341,14 @@ func (app App) notifyAdmin(args ...interface{}) {
 }
 
 func (app App) sendSpeech(user tables.Users, lang, text string, callbackID string) error {
+	if user.Lang == nil {
+		en := "en"
+		user.Lang = &en
+	}
 	sdec, err := translate2.TTS(lang, text)
 	if err != nil {
 		if err == translate2.ErrTTSLanguageNotSupported {
-			app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callbackID, user.Localize("%s не поддерживается", langs[user.Lang][lang])))
+			app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callbackID, user.Localize("%s не поддерживается", langs[*user.Lang][lang])))
 			return nil
 		}
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callbackID, "Internal error"))

@@ -15,11 +15,7 @@ type Users struct {
 	Usings       int  `gorm:"default:0"`
 	Blocked      bool `gorm:"default:false"`
 	LastActivity time.Time
-	Lang         string `gorm:"-"` // internal
-}
-
-func (u *Users) SetLang(lang string) {
-	u.Lang = lang
+	Lang         *string
 }
 
 func (u Users) Localize(key string, placeholders ...interface{}) string {
@@ -37,17 +33,79 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"it": "Sono felice di rivederti, %s",
 			"ar": "سعيد برؤيتك مرة أخرى ،%s",
 		},
-		"type something amazing..": map[string]string{
-			"it": "digita qualcosa di straordinario..",
-			"pt": "digite algo incrível..",
-			"en": "type something amazing..",
-			"de": "tippe was tolles..",
-			"uk": "введіть щось дивовижне..",
-			"uz": "ajoyib narsa yozing..",
-			"id": "ketik sesuatu yang luar biasa..",
-			"ar": "اكتب شيئا رائعا ..",
-			"ru": "напишите что-нибудь удивительное..",
-			"es": "escribe algo increíble..",
+		"начните вводить текст": map[string]string{
+			"uk": "почніть вводити текст",
+			"uz": "yozishni boshlang",
+			"id": "mulai mengetik",
+			"ar": "ابدأ الطباعة",
+			"ru": "начните вводить текст",
+			"de": "beginne zu tippen",
+			"es": "empezar a escribir",
+			"en": "start typing",
+			"it": "iniziare a digitare",
+			"pt": "começe a digitar",
+		},
+
+		"inline mode": map[string]string{
+			"en": "🔎 inline mode",
+			"ru": "🔎 инлайн режим",
+			"es": "🔎 modo inline",
+			"it": "🔎 modalità in linea",
+			"ar": "🔎 الوضع المضمن",
+			"de": "🔎 inline-modus",
+			"uk": "🔎 инлайн режим",
+			"uz": "🔎 Inline rejimi",
+			"id": "🔎 inline mode",
+			"pt": "🔎 inline modo",
+		},
+		"Choose language of the bot": map[string]string{
+			"ar": "اختر لغة الروبوت",
+			"en": "Choose language of the bot",
+			"es": "Elige el idioma del bot",
+			"uk": "Виберіть мову бота",
+			"id": "Pilih bahasa bot",
+			"it": "Scegli la lingua del bot",
+			"ru": "Выберите язык бота",
+			"de": "Wählen Sie die Sprache des Bots",
+			"uz": "Bot tilini tanlang",
+			"pt": "Escolha o idioma do bot",
+		},
+		"set language of the bot": map[string]string{
+			"it": "impostare la lingua del bot",
+			"ar": "ضبط لغة الروبوت",
+			"en": "set language of the bot",
+			"ru": "установить язык бота",
+			"es": "establecer el idioma del bot",
+			"uz": "bot tilini o'rnating",
+			"de": "Sprache des Bots einstellen",
+			"uk": "встановити мову бота",
+			"id": "atur bahasa bot",
+			"pt": "definir idioma do bot",
+		},
+		"show keyboard": map[string]string{
+			"id": "tampilkan papan ketik",
+			"it": "mostra la tastiera",
+			"ar": "تظهر لوحة المفاتيح",
+			"es": "Mostrar teclado",
+			"uk": "показати клавіатуру",
+			"uz": "klaviaturani ko'rsatish",
+			"pt": "mostrar teclado",
+			"en": "show keyboard",
+			"ru": "показать клавиатуру",
+			"de": "Tastatur zeigen",
+		},
+
+		"the text you want to translate": map[string]string{
+			"es": "el texto que quieres traducir",
+			"uz": "siz tarjima qilmoqchi bo'lgan matn",
+			"id": "teks yang ingin Anda terjemahkan",
+			"pt": "o texto que você quer traduzir",
+			"ar": "النص الذي تريد ترجمته",
+			"en": "the text you want to translate",
+			"de": "den Text, den Sie übersetzen möchten",
+			"it": "il testo che vuoi tradurre",
+			"ru": "текст, который ты хочешь перевести",
+			"uk": "текст, який ти хочеш перекласти",
 		},
 		"Попробовать": map[string]string{
 			"de": "Versuchen",
@@ -648,31 +706,6 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"it": "Tradotto da %s",
 			"uz": "%s dan tarjima qilingan",
 		},
-
-		"Перешли сообщение из канала 📣 или воспользуйся инлайном!": map[string]string{
-			"pt": "Encaminhei uma mensagem do canal 📣 ou use inline!",
-			"uz": "Kanaldan xabar yo'naltirildi 📣 yoki inline-dan foydalaning!",
-			"it": "Inoltrato un messaggio dal canale 📣 oppure usa inline!",
-			"de": "Eine Nachricht vom Kanal weitergeleitet 📣 oder Inline verwenden!",
-			"ar": "إعادة توجيه رسالة من القناة 📣 أو استخدام مضمنة!",
-			"uk": "Перейшли повідомлення з каналу 📣 або скористайтесь інлайном!",
-			"es": "¡Reenvió un mensaje del canal 📣 o use en línea!",
-			"id": "Meneruskan pesan dari saluran atau gunakan sebaris!",
-			"en": "Forwarded a message from the channel 📣 or use inline!",
-			"ru": "Перешли сообщение из канала 📣 или воспользуйся инлайном!",
-		},
-		"inline🔎": map[string]string{
-			"de": "inline🔎",
-			"id": "sebaris",
-			"it": "inlinea🔎",
-			"ru": "инлайн🔎",
-			"uk": "инлайн🔎",
-			"pt": "emlinha🔎",
-			"en": "inline🔎",
-			"ar": "مضمنة🔎",
-			"es": "en línea🔎",
-			"uz": "inline🔎",
-		},
 		"text": map[string]string{
 			"ru": "текст",
 			"es": "texto",
@@ -685,10 +718,26 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"id": "teks",
 			"en": "text",
 		},
+		"Text to translate...": map[string]string{
+			"uz": "Tarjima uchun matn...",
+			"it": "Testo da tradurre...",
+			"pt": "Texto para traduzir...",
+			"ar": "نص للترجمة ...",
+			"en": "Text to translate...",
+			"ru": "Текст для перевода...",
+			"de": "Zu übersetzender Text...",
+			"es": "Texto a traducir...",
+			"uk": "Текст для перекладу...",
+			"id": "Teks untuk diterjemahkan...",
+		},
+	}
+	if u.Lang == nil {
+		en := "en"
+		u.Lang = &en
 	}
 
 	if v, ok := localization[key]; ok {
-		if v, ok := v[u.Lang]; ok {
+		if v, ok := v[*u.Lang]; ok {
 			return fmt.Sprintf(v, placeholders...)
 		}
 		return key + "\nLOCALIZATION_KEY_NOT_FOUND"

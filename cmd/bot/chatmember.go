@@ -10,22 +10,23 @@ import (
 func (app App) onMyChatMember(update tgbotapi.ChatMemberUpdated) {
 
 	user, err := app.db.GetUserByID(update.From.ID)
-	isNew := false
+	//isNew := false
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			app.log.Error("", zap.Error(err))
 			return
 		}
-		isNew = true
+		//isNew = true
 	}
-	user.SetLang(update.From.LanguageCode)
+	if user.Lang == nil {
+		user.Lang = &update.From.LanguageCode
+	}
 	switch update.NewChatMember.Status {
 	case "member":
-		if isNew {
-			app.bot.Send(tgbotapi.NewSticker(update.From.ID, tgbotapi.FileID(`CAACAgIAAxkBAAESRh1jObyhH-hcOotE2u08d_mARIZYqwACJQADspiaDg82d3yOk8EtKgQ`)))
-			return
-		}
-		app.bot.Send(tgbotapi.NewSticker(update.From.ID, tgbotapi.FileID(`CAACAgIAAxkBAAESRi1jOb9UZF2V6FqZWt05EJap4JHdMgACKwcAAkb7rAR5-qgf7bN-0CoE`)))
+		//if isNew {
+		//	app.bot.Send(tgbotapi.NewSticker(update.From.ID, tgbotapi.FileID(`CAACAgIAAxkBAAESzGBjaqr-iDc1XPlF0LQVKxeApeGbVwACQhAAAjPFKUmQDtQRpypKgisE`)))
+		//	return
+		//}
 		app.bot.Send(tgbotapi.NewMessage(update.From.ID, user.Localize("Glad to see you again, %s", update.From.FirstName)))
 	case "kicked":
 		if err = app.analytics.User(tgbotapi.Message{
