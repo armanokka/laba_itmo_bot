@@ -268,7 +268,9 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		})
 		return
 	}
-
+	if user.Lang == nil {
+		user.Lang = &message.From.LanguageCode
+	}
 	switch strings.TrimSpace(message.Text) {
 	case "↔":
 		if user.MyLang == "auto" {
@@ -503,9 +505,9 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		chunk = closeUnclosedTagsAndClearUnsupported(chunk) /* + "\n❤️ @TransloBot" */ // я не знаю, почему это не работает
 		keyboard := tgbotapi.NewReplyKeyboard(
 			tgbotapi.NewKeyboardButtonRow(
-				tgbotapi.NewKeyboardButton(langs[message.From.LanguageCode][user.MyLang]+" "+flags[user.MyLang].Emoji),
+				tgbotapi.NewKeyboardButton(langs[*user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
 				tgbotapi.NewKeyboardButton("↔"),
-				tgbotapi.NewKeyboardButton(langs[message.From.LanguageCode][user.ToLang]+" "+flags[user.ToLang].Emoji)))
+				tgbotapi.NewKeyboardButton(langs[*user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji)))
 		//keyboard.InputFieldPlaceholder = user.Localize("Text to translate...")
 		msgConfig := tgbotapi.MessageConfig{
 			BaseChat: tgbotapi.BaseChat{
