@@ -53,7 +53,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 	arr := strings.Split(callback.Data, ":")
 
 	switch arr[0] {
-	case "set_lang":
+	case "set_bot_lang":
 		if err = app.db.UpdateUser(callback.From.ID, tables.Users{Lang: &arr[1]}); err != nil {
 			app.notifyAdmin(err)
 		}
@@ -271,7 +271,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		})
 		return
 	case "set_my_lang": // arr[1] - lang, arr[2] - keyboard offset
-		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, "Translo"))
+		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
 		if err = app.db.UpdateUser(callback.From.ID, tables.Users{MyLang: arr[1]}); err != nil {
 			warn(err)
 			return
@@ -325,9 +325,9 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 				ReplyToMessageID: 0,
 				ReplyMarkup: tgbotapi.NewReplyKeyboard(
 					tgbotapi.NewKeyboardButtonRow(
-						tgbotapi.NewKeyboardButton(langs[callback.From.LanguageCode][user.MyLang]+" "+flags[user.MyLang].Emoji),
+						tgbotapi.NewKeyboardButton(langs[*user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
 						tgbotapi.NewKeyboardButton("↔"),
-						tgbotapi.NewKeyboardButton(langs[callback.From.LanguageCode][user.ToLang]+" "+flags[user.ToLang].Emoji))),
+						tgbotapi.NewKeyboardButton(langs[*user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji))),
 				DisableNotification:      true,
 				AllowSendingWithoutReply: false,
 			},
@@ -391,9 +391,9 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 				ReplyToMessageID: 0,
 				ReplyMarkup: tgbotapi.NewReplyKeyboard(
 					tgbotapi.NewKeyboardButtonRow(
-						tgbotapi.NewKeyboardButton(langs[callback.From.LanguageCode][user.MyLang]+" "+flags[user.MyLang].Emoji),
+						tgbotapi.NewKeyboardButton(langs[*user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
 						tgbotapi.NewKeyboardButton("↔"),
-						tgbotapi.NewKeyboardButton(langs[callback.From.LanguageCode][user.ToLang]+" "+flags[user.ToLang].Emoji))),
+						tgbotapi.NewKeyboardButton(langs[*user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji))),
 				DisableNotification:      true,
 				AllowSendingWithoutReply: false,
 			},
@@ -530,8 +530,6 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			})
 		}
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
-	case "show_from": //arr[1] - lang
-		app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, user.Localize("Переведено с %s", langs[callback.From.LanguageCode][arr[1]]+" "+flags[arr[1]].Emoji)))
 	case "start_mailing":
 		mailingMessageId, err := app.bc.Get([]byte("mailing_message_id"))
 		if err != nil {

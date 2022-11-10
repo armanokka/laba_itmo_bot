@@ -70,6 +70,19 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"uz": "Bot tilini tanlang",
 			"pt": "Escolha o idioma do bot",
 		},
+		"You translate from one language to the same language": map[string]string{
+			"en": "You translate from one language to the same language",
+			"de": "Sie übersetzen von einer Sprache in die gleiche Sprache",
+			"pt": "Você traduz de um idioma para o mesmo idioma",
+			"ru": "Вы переводите с одного языка на тот же язык",
+			"es": "Traduces de un idioma al mismo idioma",
+			"uk": "Ви перекладаєте з однієї мови на ту саму мову",
+			"uz": "Siz bir tildan bir tilga tarjima qilasiz",
+			"id": "Anda menerjemahkan dari satu bahasa ke bahasa yang sama",
+			"it": "Traduci da una lingua alla stessa lingua",
+			"ar": "أنت تترجم من لغة إلى نفس اللغة",
+		},
+
 		"set language of the bot": map[string]string{
 			"it": "impostare la lingua del bot",
 			"ar": "ضبط لغة الروبوت",

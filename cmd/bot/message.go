@@ -110,7 +110,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			i := -1
 			for code, name := range languages {
 				i++
-				btn := tgbotapi.NewInlineKeyboardButtonData(name, "set_lang:"+code)
+				btn := tgbotapi.NewInlineKeyboardButtonData(name, "set_bot_lang:"+code)
 				if i%2 == 0 || len(keyboard.InlineKeyboard) == 0 {
 					keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(btn))
 					continue
@@ -207,7 +207,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		i := -1
 		for code, name := range languages {
 			i++
-			btn := tgbotapi.NewInlineKeyboardButtonData(name, "set_lang:"+code)
+			btn := tgbotapi.NewInlineKeyboardButtonData(name, "set_bot_lang:"+code)
 			if i%2 == 0 || len(keyboard.InlineKeyboard) == 0 {
 				keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(btn))
 				continue
@@ -292,9 +292,9 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				ChatID: message.From.ID,
 				ReplyMarkup: tgbotapi.NewReplyKeyboard(
 					tgbotapi.NewKeyboardButtonRow(
-						tgbotapi.NewKeyboardButton(langs[message.From.LanguageCode][user.MyLang]+" "+flags[user.MyLang].Emoji),
+						tgbotapi.NewKeyboardButton(langs[*user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
 						tgbotapi.NewKeyboardButton("↔"),
-						tgbotapi.NewKeyboardButton(langs[message.From.LanguageCode][user.ToLang]+" "+flags[user.ToLang].Emoji))),
+						tgbotapi.NewKeyboardButton(langs[*user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji))),
 			},
 			Text: user.Localize("Клавиатура обновлена"),
 		}
@@ -328,6 +328,9 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		}
 		return
 	case concatNonEmpty(" ", langs[*user.Lang][user.ToLang], flags[user.ToLang].Emoji):
+		if strings.HasSuffix(message.Text, "") {
+			app.bot.Send(tgbotapi.NewMessage(message.From.ID, user.Localize(`You are translating from %s to %s`, Ucfirst(langs[*user.Lang][user.MyLang])+" "+flags[user.MyLang].Emoji, Ucfirst(langs[*user.Lang][user.ToLang])+" "+flags[user.ToLang].Emoji)))
+		}
 		if user.Lang == nil {
 			user.Lang = &message.From.LanguageCode
 		}
@@ -481,7 +484,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	} else if from == user.MyLang {
 		to = user.ToLang // TODO: fix inline
 	} else { // никакой из
-		if user.ToLang == message.From.LanguageCode {
+		if user.ToLang == *user.Lang {
 			to = user.ToLang
 		} else {
 			to = user.MyLang
@@ -497,6 +500,9 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	if err != nil {
 		warn(err)
 		return
+	}
+	if from == to && user.MyLang == user.ToLang && tr == text {
+		app.bot.Send(tgbotapi.NewMessage(message.From.ID, user.Localize(`You translate from one language to the same language`)))
 	}
 
 	chunks := translate.SplitIntoChunksBySentences(tr, 4000)
@@ -550,10 +556,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 	data, _ := translate.TTS(to, tr)
-	if user.Lang == nil {
-		lang := message.From.LanguageCode
-		user.Lang = &lang
-	}
 	app.bot.Send(tgbotapi.AudioConfig{
 		BaseFile: tgbotapi.BaseFile{
 			BaseChat: tgbotapi.BaseChat{
@@ -578,9 +580,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 	data, _ = translate.TTS(from, html.UnescapeString(text))
-	if user.Lang == nil {
-		user.Lang = &message.From.LanguageCode
-	}
 	app.bot.Send(tgbotapi.AudioConfig{
 		BaseFile: tgbotapi.BaseFile{
 			BaseChat: tgbotapi.BaseChat{
