@@ -247,8 +247,8 @@ func buildLangsPagination(user tables.Users, offset int, count int, tickLang, bu
 		tgbotapi.NewInlineKeyboardButtonData("➡️", buttonNextCallback)),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.InlineKeyboardButton{
-				Text:              user.Localize("inline mode"),
-				SwitchInlineQuery: &query,
+				Text:                         user.Localize("inline mode"),
+				SwitchInlineQueryCurrentChat: &query,
 			}))
 	return out, nil
 }

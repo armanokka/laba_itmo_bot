@@ -81,6 +81,14 @@ func (app App) Run(ctx context.Context) error {
 						Description: user.Localize("show keyboard"),
 					},
 					{
+						Command:     "tts_off",
+						Description: user.Localize("turn text-to-speech off"),
+					},
+					{
+						Command:     "tts_on",
+						Description: user.Localize("turn text-to-speech on"),
+					},
+					{
 						Command:     "set_bot_lang",
 						Description: user.Localize("set language of the bot"),
 					},

@@ -36,7 +36,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	user := tables.Users{Lang: &message.From.LanguageCode}
 
 	warn := func(err error) {
-		app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, user.Localize("Произошла ошибка")))
+		app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, user.Localize("Excuses")))
 		app.notifyAdmin(err)
 	}
 
@@ -74,6 +74,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				ToLang:       tolang,
 				Lang:         nil,
 				LastActivity: time.Now(),
+				TTS:          true,
 			}
 			if err = app.db.CreateUser(&user); err != nil {
 				warn(err)
@@ -267,6 +268,18 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			DisableWebPagePreview: false,
 		})
 		return
+	case "tts_on":
+		app.bot.Send(tgbotapi.NewMessage(message.From.ID, user.Localize(`Бот будет озвучивать переводы`)))
+		if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"tts": true}); err != nil {
+			warn(err)
+		}
+		return
+	case "tts_off":
+		app.bot.Send(tgbotapi.NewMessage(message.From.ID, user.Localize(`Бот больше не будет озвучивать переводы`)))
+		if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"tts": false}); err != nil {
+			warn(err)
+		}
+		return
 	}
 	if user.Lang == nil {
 		user.Lang = &message.From.LanguageCode
@@ -328,9 +341,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		}
 		return
 	case concatNonEmpty(" ", langs[*user.Lang][user.ToLang], flags[user.ToLang].Emoji):
-		if strings.HasSuffix(message.Text, "") {
-			app.bot.Send(tgbotapi.NewMessage(message.From.ID, user.Localize(`You are translating from %s to %s`, Ucfirst(langs[*user.Lang][user.MyLang])+" "+flags[user.MyLang].Emoji, Ucfirst(langs[*user.Lang][user.ToLang])+" "+flags[user.ToLang].Emoji)))
-		}
 		if user.Lang == nil {
 			user.Lang = &message.From.LanguageCode
 		}
@@ -505,6 +515,8 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		app.bot.Send(tgbotapi.NewMessage(message.From.ID, user.Localize(`You translate from one language to the same language`)))
 	}
 
+	//app.bc.PutWithTTL() УПОМЯНУТЬ ОБ АПИ
+
 	chunks := translate.SplitIntoChunksBySentences(tr, 4000)
 	lastMsgID := 0
 	for _, chunk := range chunks {
@@ -536,7 +548,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				},
 				Text: fmt.Sprintf("%s\nerror with %d (%s->%s):\nText:%s", err.Error(), message.From.ID, from, to, chunk),
 			})
-			app.log.Error("couldn't send translation to user", zap.String("text", text), zap.String("translation", chunk))
+			app.log.Error("couldn't send translation to user", zap.String("text", text), zap.String("translation", chunk), zap.Error(err))
 			//pp.Println("couldn't send translation to user", chunk)
 			msg, err = app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, chunk))
 			if err != nil {
@@ -550,53 +562,55 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		}
 		app.analytics.Bot(msgConfig, "translate")
 	}
-	tr, err = removeHtml(tr)
-	if err != nil {
-		warn(err)
-		return
-	}
-	data, _ := translate.TTS(to, tr)
-	app.bot.Send(tgbotapi.AudioConfig{
-		BaseFile: tgbotapi.BaseFile{
-			BaseChat: tgbotapi.BaseChat{
-				ChatID: message.Chat.ID,
-				ReplyMarkup: tgbotapi.NewReplyKeyboard(
-					tgbotapi.NewKeyboardButtonRow(
-						tgbotapi.NewKeyboardButton(langs[*user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
-						tgbotapi.NewKeyboardButton("↔"),
-						tgbotapi.NewKeyboardButton(langs[*user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji))),
+	if user.TTS {
+		tr, err = removeHtml(tr)
+		if err != nil {
+			warn(err)
+			return
+		}
+		data, _ := translate.TTS(to, tr)
+		app.bot.Send(tgbotapi.AudioConfig{
+			BaseFile: tgbotapi.BaseFile{
+				BaseChat: tgbotapi.BaseChat{
+					ChatID: message.Chat.ID,
+					ReplyMarkup: tgbotapi.NewReplyKeyboard(
+						tgbotapi.NewKeyboardButtonRow(
+							tgbotapi.NewKeyboardButton(langs[*user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
+							tgbotapi.NewKeyboardButton("↔"),
+							tgbotapi.NewKeyboardButton(langs[*user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji))),
+				},
+				File: tgbotapi.FileBytes{
+					Name:  html.UnescapeString(helpers.CutStringUTF16(tr, 50)),
+					Bytes: data,
+				},
 			},
-			File: tgbotapi.FileBytes{
-				Name:  html.UnescapeString(helpers.CutStringUTF16(tr, 50)),
-				Bytes: data,
-			},
-		},
-		Title: helpers.CutStringUTF16(tr, 40),
-	})
+			Title: helpers.CutStringUTF16(tr, 40),
+		})
 
-	text, err = removeHtml(text)
-	if err != nil {
-		warn(err)
-		return
+		text, err = removeHtml(text)
+		if err != nil {
+			warn(err)
+			return
+		}
+		data, _ = translate.TTS(from, html.UnescapeString(text))
+		app.bot.Send(tgbotapi.AudioConfig{
+			BaseFile: tgbotapi.BaseFile{
+				BaseChat: tgbotapi.BaseChat{
+					ChatID: message.Chat.ID,
+					ReplyMarkup: tgbotapi.NewReplyKeyboard(
+						tgbotapi.NewKeyboardButtonRow(
+							tgbotapi.NewKeyboardButton(langs[*user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
+							tgbotapi.NewKeyboardButton("↔"),
+							tgbotapi.NewKeyboardButton(langs[*user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji))),
+				},
+				File: tgbotapi.FileBytes{
+					Name:  html.UnescapeString(helpers.CutStringUTF16(text, 50)),
+					Bytes: data,
+				},
+			},
+			Title: helpers.CutStringUTF16(text, 40),
+		})
 	}
-	data, _ = translate.TTS(from, html.UnescapeString(text))
-	app.bot.Send(tgbotapi.AudioConfig{
-		BaseFile: tgbotapi.BaseFile{
-			BaseChat: tgbotapi.BaseChat{
-				ChatID: message.Chat.ID,
-				ReplyMarkup: tgbotapi.NewReplyKeyboard(
-					tgbotapi.NewKeyboardButtonRow(
-						tgbotapi.NewKeyboardButton(langs[*user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
-						tgbotapi.NewKeyboardButton("↔"),
-						tgbotapi.NewKeyboardButton(langs[*user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji))),
-			},
-			File: tgbotapi.FileBytes{
-				Name:  html.UnescapeString(helpers.CutStringUTF16(text, 50)),
-				Bytes: data,
-			},
-		},
-		Title: helpers.CutStringUTF16(text, 40),
-	})
 
 	app.bot.Send(tgbotapi.MessageConfig{
 		BaseChat: tgbotapi.BaseChat{

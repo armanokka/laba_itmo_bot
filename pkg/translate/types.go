@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"unicode/utf16"
 )
 
 type HTTPError struct {
@@ -718,14 +719,41 @@ func SplitIntoChunksBySentences(text string, limit int) []string {
 		return []string{text}
 	}
 	chunks := make([]string, 0, len(text)/limit+1)
-	for i := 0; i < len(text); {
-		offset := cutUpToDelim(text[i:], limit, ".!?;\n\t\r*)") // remove <> since it splits html tags
-		ch := string(text[i : i+offset])
+	points := utf16.Encode([]rune(text))
+	for i := 0; i < len(points); {
+		offset := indexDelim(points[i:], limit, ".!?;\r\n\t\f\v*)")
+		ch := string(utf16.Decode(points[i : i+offset]))
 		chunks = append(chunks, ch)
 		i += offset
 	}
-
 	return chunks
+}
+
+func indexDelim(text []uint16, limit int, delims string) (offset int) {
+	if len(text) < limit {
+		return len(text)
+	} else if len(text) > limit {
+		text = text[:limit]
+	}
+	offset = len(text)
+	delimeters := utf16.Encode([]rune(delims))
+	for i := len(text) - 1; i >= 0; i-- {
+		if in(delimeters, text[i]) {
+			return i + 1
+		}
+	}
+	return offset
+}
+
+func in(arr []uint16, keys ...uint16) bool {
+	for _, v := range arr {
+		for _, k := range keys {
+			if k == v {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func CheckHtmlTags(in, out string) string {

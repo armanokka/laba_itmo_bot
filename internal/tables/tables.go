@@ -8,14 +8,15 @@ import (
 
 // Users is table in DB
 type Users struct {
-	ID           int64  `gorm:"primaryKey;index;not null"`
-	MyLang       string `gorm:"default:en"`
-	ToLang       string `gorm:"default:fr"`
-	Act          string
-	Usings       int  `gorm:"default:0"`
-	Blocked      bool `gorm:"default:false"`
-	LastActivity time.Time
-	Lang         *string
+	ID           int64     `gorm:"primaryKey;index;not null"`
+	MyLang       string    `gorm:"default:es"`
+	ToLang       string    `gorm:"default:zh"`
+	Act          string    `gorm:"default:null"`
+	Usings       int       `gorm:"default:0"`
+	Blocked      bool      `gorm:"default:false"`
+	LastActivity time.Time `gorm:"default:current_timestamp"`
+	Lang         *string   `gorm:"default:null"`
+	TTS          bool      `gorm:"default:true"`
 }
 
 func (u Users) Localize(key string, placeholders ...interface{}) string {
@@ -168,18 +169,6 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"de": "Ich werde versuchen, es zu beheben ...",
 			"en": "I'll try to fix...",
 		},
-		"Сожалеем, что нам не удалось перевести ваш текст. \nЧтобы вы не теряли время, вот вам список других ботов-переводчиков, пока мы исправляем наш: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nС уважением, команда Трансло": map[string]string{
-			"it": "Siamo spiacenti di non essere riusciti a tradurre il tuo testo.\nPer farti risparmiare tempo, ecco un elenco di altri robot di traduzione mentre ripariamo il nostro: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitrans_bot\n\nCordiali saluti, Translo Team",
-			"uk": "Жаль, що нам не вдалося перекласти ваш текст.\nЩоб ви не марнували час, ось вам список інших ботів-перекладачів, поки ми виправляємо наш: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nЗ повагою, команда Трансло",
-			"uz": "Matningizni tarjima qila olmaganimizdan afsusdamiz.\nVaqtingizni tejash uchun biz o'zimiznikini tuzatganimizda boshqa tarjima botlarining ro'yxatini keltiramiz: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nHurmat bilan, Translo jamoasi",
-			"ar": "نأسف لعدم تمكننا من ترجمة النص الخاص بك.\nلتوفير الوقت ، إليك قائمة ببرامج روبوت الترجمة الأخرى أثناء قيامنا بإصلاح برامجنا: 👇\n\nتضمين التغريدة\nتضمين التغريدة\nتضمين التغريدة\n\nمع أطيب التحيات ، فريق Translo",
-			"es": "Lamentamos no haber podido traducir su texto.\nPara ahorrarle tiempo, aquí hay una lista de otros robots de traducción mientras arreglamos el nuestro: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nSaludos, Equipo Translo",
-			"de": "Es tut uns leid, dass wir Ihren Text nicht übersetzen konnten.\nUm Ihnen Zeit zu sparen, finden Sie hier eine Liste anderer Übersetzungs-Bots, während wir unsere reparieren: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nBeste Grüße, Translo-Team",
-			"pt": "Lamentamos não poder traduzir seu texto.\nPara economizar seu tempo, aqui está uma lista de outros bots de tradução enquanto consertamos o nosso: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nAtenciosamente, Equipe Translo",
-			"en": "We are sorry that we were unable to translate your text.\nTo save your time, here is a list of other translation bots while we fix ours: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nBest regards, Translo Team",
-			"ru": "Сожалеем, что нам не удалось перевести ваш текст. \nЧтобы вы не теряли время, вот вам список других ботов-переводчиков, пока мы исправляем наш: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nС уважением, команда Трансло",
-			"id": "Kami mohon maaf karena kami tidak dapat menerjemahkan teks Anda.\nUntuk menghemat waktu Anda, berikut adalah daftar bot terjemahan lain sementara kami memperbaikinya:\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nSalam Hormat, Tim Translo",
-		},
 
 		"Привет": map[string]string{
 			"it": "Ciao",
@@ -193,17 +182,17 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"pt": "Oi",
 			"es": "Hola",
 		},
-		"Произошла ошибка": map[string]string{
-			"id": "Terjadi kesalahan yang tidak dapat kami beri tahukan kepada Anda. Kami akan memperbaiki semuanya dalam 24-72 jam.\nUntuk menghemat waktu Anda, berikut adalah daftar bot terjemahan lain sementara kami memperbaikinya:\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nSalam Hormat, Tim Translo",
-			"de": "Es ist ein Fehler aufgetreten, den wir Ihnen nicht mitteilen können. Wir werden alles in 24-72 Stunden reparieren.\nUm Ihnen Zeit zu sparen, finden Sie hier eine Liste anderer Übersetzungs-Bots, während wir unsere reparieren: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nBeste Grüße, Translo-Team",
-			"pt": "Ocorreu um erro sobre o qual não podemos informar. Vamos consertar tudo em 24-72 horas.\nPara economizar seu tempo, aqui está uma lista de outros bots de tradução enquanto consertamos o nosso: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nAtenciosamente, Equipe Translo",
-			"uz": "Xatolik yuz berdi, bu haqda sizga aytib boʻlmaydi. 24-72 soat ichida hamma narsani tuzatamiz.\nVaqtingizni tejash uchun biz o'zimiznikini tuzatganimizda boshqa tarjima botlarining ro'yxatini keltiramiz: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nHurmat bilan, Translo jamoasi",
-			"ar": "حدث خطأ لا يمكننا إخبارك به. سنصلح كل شيء خلال 24-72 ساعة.\nلتوفير الوقت ، إليك قائمة ببرامج روبوت الترجمة الأخرى أثناء قيامنا بإصلاح برامجنا: 👇\n\nتضمين التغريدة\nتضمين التغريدة\nتضمين التغريدة\n\nمع أطيب التحيات ، فريق Translo",
-			"ru": "Случилась ошибка, о которой мы сказать вам не можем. Все исправим через 24-72ч.\nЧтобы вы не теряли время, вот вам список других ботов-переводчиков, пока мы исправляем наш: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nС уважением, команда Трансло",
-			"uk": "Сталася помилка, про яку ми вам сказати не можемо. Усі виправимо через 24-72ч.\nЩоб ви не марнували час, ось вам список інших ботів-перекладачів, поки ми виправляємо наш: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nЗ повагою, команда Трансло",
-			"es": "Se ha producido un error del que no podemos informarte. Arreglaremos todo en 24-72 horas.\nPara ahorrarle tiempo, aquí hay una lista de otros robots de traducción mientras arreglamos el nuestro: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nSaludos, Equipo Translo",
-			"it": "Si è verificato un errore di cui non possiamo parlarti. Ripareremo tutto in 24-72 ore.\nPer farti risparmiare tempo, ecco un elenco di altri robot di traduzione mentre ripariamo il nostro: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitrans_bot\n\nCordiali saluti, Translo Team",
-			"en": "An error has occurred that we cannot tell you about. We will fix everything in 24-72 hours.\nTo save you time, here is a list of other translation bots while we fix ours: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nBest regards, Translo Team",
+		"Excuses": map[string]string{
+			"en": "We are sorry that we were unable to translate your text. \nHere is a list of other translators while we fix ours: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nWhen we fix the bug, we will write to you. It will be in 24-72h\n Best regards, Translo team",
+			"uk": "Жаль, що нам не вдалося перекласти ваш текст. \nОсь вам список інших перекладачів, поки ми виправляємо наш: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nКоли ми виправимо помилку, ми вам напишемо. Це буде через 24-72ч\nЗ повагою, команда Трансло",
+			"uz": "Matningizni tarjima qila olmaganimizdan afsusdamiz. \nMana oʻzimiznikini tuzatayotgan boshqa tarjimonlar roʻyxati: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nXatoni tuzatganimizda, biz quyidagi manzilga xat yozamiz. siz. 24-72 soat ichida bo'ladi\n Hurmat bilan, Translo jamoasi",
+			"id": "Kami mohon maaf karena kami tidak dapat menerjemahkan teks Anda. \nBerikut adalah daftar penerjemah lain yang sedang kami perbaiki: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nSaat kami memperbaiki bug, kami akan menulis ke Anda. Ini akan terjadi dalam 24-72 jam\n Salam, tim Translo",
+			"it": "Siamo spiacenti di non essere riusciti a tradurre il tuo testo. \nEcco un elenco di altri traduttori mentre risolviamo il nostro: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nQuando risolviamo il bug, scriveremo a voi. Sarà tra 24-72 ore\n Cordiali saluti, team Translo",
+			"ru": "Сожалеем, что нам не удалось перевести ваш текст. \nВот вам список других переводчиков, пока мы исправляем наш: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nКогда мы исправим ошибку, мы вам напишем. Это будет через 24-72ч\nС уважением, команда Трансло",
+			"de": "Es tut uns leid, dass wir Ihren Text nicht übersetzen konnten. \nHier ist eine Liste mit anderen Übersetzern, während wir unsere reparieren: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nWenn wir den Fehler behoben haben, schreiben wir an Sie. Es wird in 24-72 Stunden sein\n Mit freundlichen Grüßen, Translo-Team",
+			"es": "Lamentamos no haber podido traducir su texto. \nAquí hay una lista de otros traductores mientras solucionamos el nuestro: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nCuando solucionemos el error, escribiremos a tú. Será en 24-72h\n Saludos cordiales, Equipo Translo",
+			"pt": "Lamentamos não poder traduzir seu texto. \nAqui está uma lista de outros tradutores enquanto corrigimos o nosso: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nQuando corrigirmos o bug, escreveremos para vocês. Será em 24-72h\n Atenciosamente, equipe Translo",
+			"ar": "نأسف لعدم تمكننا من ترجمة النص الخاص بك. \n فيما يلي قائمة بالمترجمين الآخرين أثناء قيامنا بإصلاح الخطأ لدينا: 👇 \n \nYTranslateBot \nlingvo_ebot \nmultitran_bot \n \n عندما نصلح الخطأ ، سنكتب إلى أنت. سيكون في 24-72h \n مع أطيب التحيات ، فريق Translo",
 		},
 		"С возвращением!": map[string]string{
 			"de": "Willkommen zurück!",
@@ -368,7 +357,7 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"uz": "Klaviatura yangilandi",
 			"ar": "تم تحديث لوحة المفاتيح",
 			"it": "Tastiera aggiornata",
-			"id": "Papan ketik diПроизошла ошибкаperbarui",
+			"id": "Papan ketik diperbarui",
 			"en": "Keyboard updated",
 			"de": "Tastatur aktualisiert",
 			"pt": "Teclado atualizado",
@@ -657,17 +646,67 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"uk": "Час очікування скарги на переклад минув. Перекажіть повідомлення ще раз",
 			"es": "El tiempo de espera de la queja en la traducción agotado. Ponga de nuevo el mensaje",
 		},
-		"tap to see more": map[string]string{
-			"en": "tap to see more",
-			"ru": "нажмите, чтобы увидеть больше",
-			"de": "tippen, um mehr zu sehen",
-			"es": "toca para ver más",
-			"uk": "торкніться, щоб побачити більше",
-			"uz": "koʻproq koʻrish uchun bosing",
-			"id": "ketuk untuk melihat lebih banyak",
-			"it": "tocca per vedere di più",
-			"ar": "انقر لرؤية المزيد",
-			"pt": "toque para ver mais",
+		"turn text-to-speech off": map[string]string{
+			"it": "disattivare la sintesi vocale",
+			"pt": "desative a conversão de texto em fala",
+			"ar": "إيقاف تحويل النص إلى كلام",
+			"ru": "отключить преобразование текста в речь",
+			"uk": "вимкнути перетворення тексту в мовлення",
+			"uz": "matndan nutqqa oʻchirish",
+			"id": "matikan text-to-speech",
+			"en": "turn text-to-speech off",
+			"de": "schalten Sie Text-zu-Sprache aus",
+			"es": "desactivar texto a voz",
+		},
+		"Бот будет озвучивать переводы": map[string]string{
+			"en": "The bot will voice translations 🔈✅",
+			"de": "Der Bot spricht Übersetzungen 🔈✅",
+			"it": "Il bot eseguirà le traduzioni vocali 🔈✅",
+			"pt": "O bot fará traduções de voz 🔈✅",
+			"id": "Bot akan menyuarakan terjemahan",
+			"ar": "سيقوم الروبوت بصوت الترجمات 🔈✅",
+			"ru": "Бот будет озвучивать переводы 🔈✅",
+			"es": "El bot expresará las traducciones 🔈✅",
+			"uk": "Бот озвучуватиме переклади 🔈✅",
+			"uz": "Bot ovozli tarjimalarni amalga oshiradi 🔈✅",
+		},
+
+		"Бот больше не будет озвучивать переводы": map[string]string{
+			"it": "Il bot non eseguirà più traduzioni vocali 🔇❌",
+			"pt": "O bot não fará mais traduções de voz 🔇❌",
+			"en": "The bot will no longer voice translations 🔇❌",
+			"ru": "Бот больше не будет озвучивать переводы 🔇❌",
+			"uz": "Bot boshqa ovozli tarjimalarni amalga oshirmaydi 🔇❌",
+			"id": "Bot tidak akan lagi menyuarakan terjemahan",
+			"ar": "لن يصدر الروبوت صوتًا بعد الآن للترجمات 🔇❌",
+			"de": "Der Bot spricht keine Übersetzungen mehr 🔇❌",
+			"es": "El bot ya no expresará las traducciones 🔇❌",
+			"uk": "Бот більше не озвучуватиме переклади 🔇❌",
+		},
+		"turn text-to-speech on": map[string]string{
+			"en": "turn text-to-speech on",
+			"de": "Text-zu-Sprache einschalten",
+			"es": "activar texto a voz",
+			"id": "aktifkan text-to-speech",
+			"ru": "включить преобразование текста в речь",
+			"uk": "увімкніть перетворення тексту в мовлення",
+			"uz": "matndan nutqqa funksiyasini yoqing",
+			"it": "attiva la sintesi vocale",
+			"pt": "ativar conversão de texto em fala",
+			"ar": "تشغيل تحويل النص إلى كلام",
+		},
+
+		"tap on translation to send it": map[string]string{
+			"en": "tap on translation to send it",
+			"es": "toca la traducción para enviarla",
+			"uk": "торкніться перекладу, щоб надіслати його",
+			"uz": "yuborish uchun tarjima ustiga bosing",
+			"ru": "нажмите на перевод, чтобы отправить его",
+			"de": "Tippen Sie auf Übersetzung, um sie zu senden",
+			"id": "ketuk terjemahan untuk mengirimnya",
+			"it": "tocca la traduzione per inviarla",
+			"pt": "toque na tradução para enviá-la",
+			"ar": "اضغط على الترجمة لإرسالها",
 		},
 		"<b>Пожалуйста, не флудите!</b> Подождите 3 секунды после каждого запроса": map[string]string{
 			"uz": "<b>Iltimos, suv bosmang!</b> Har bir soʻrovdan keyin 3 soniya kuting",

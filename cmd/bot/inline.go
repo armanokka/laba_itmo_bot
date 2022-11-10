@@ -250,7 +250,7 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 		Results:           blocks,
 		IsPersonal:        true,
 		NextOffset:        strconv.Itoa(nextOffset),
-		SwitchPMText:      user.Localize("tap to see more"),
+		SwitchPMText:      user.Localize("tap on translation to send it"),
 		SwitchPMParameter: "from_inline",
 	}); err != nil {
 		log.Error("", zap.Error(err))

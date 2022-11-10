@@ -242,12 +242,12 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
 	case "wrong_translation_eventually":
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
-		app.bot.Send(tgbotapi.NewEditMessageText(callback.From.ID, callback.Message.MessageID, user.Localize("Сожалеем, что нам не удалось перевести ваш текст. \nЧтобы вы не теряли время, вот вам список других ботов-переводчиков, пока мы исправляем наш: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nС уважением, команда Трансло")))
+		app.bot.Send(tgbotapi.NewEditMessageText(callback.From.ID, callback.Message.MessageID, user.Localize("Excuses")))
 		app.analytics.Bot(tgbotapi.MessageConfig{
 			BaseChat: tgbotapi.BaseChat{
 				ChatID: callback.From.ID,
 			},
-			Text: user.Localize("Сожалеем, что нам не удалось перевести ваш текст. \nЧтобы вы не теряли время, вот вам список других ботов-переводчиков, пока мы исправляем наш: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nС уважением, команда Трансло"),
+			Text: user.Localize("Excuses"),
 		}, "wrong_translation")
 	case "cancel_mailing_act":
 		if err := app.db.UpdateUserByMap(callback.From.ID, map[string]interface{}{"act": ""}); err != nil {
