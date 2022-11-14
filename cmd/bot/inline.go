@@ -152,8 +152,9 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 
 	//needAudio := strings.HasPrefix(update.Query, "!")
 	cacheKey := []byte(fmt.Sprintf("%s;%s;%d-%d", *user.Lang, update.Query, offset, offset+count))
+
 	log.Debug("inline bitcask cache key", zap.String("cache_key", string(cacheKey)))
-	if app.bc.Has(cacheKey) {
+	if len(cacheKey) < 64 && app.bc.Has(cacheKey) {
 		cacheData, err := app.bc.Get(cacheKey)
 		if err != nil {
 			warn(err)

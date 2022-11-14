@@ -138,10 +138,15 @@ func (app App) Run(ctx context.Context) error {
 						if update.Message.From.LanguageCode == "" || !in(config.BotLocalizedLangs, update.Message.From.LanguageCode) {
 							update.Message.From.LanguageCode = "en"
 						}
-						limit, loaded := app.limiter.LoadOrStore(update.Message.Chat.ID, rate.NewLimiter(0.5, 5))
+						limit, loaded := app.limiter.LoadOrStore(update.Message.Chat.ID, rate.NewLimiter(0.5, 2))
 						if loaded {
 							floodLimit := limit.(*rate.Limiter)
 							reserve := floodLimit.Reserve()
+							//if reserve.Delay() > time.Second*3 {
+							//	reserve.Cancel()
+							//	reserve.CancelAt(time.Now().Add(time.Second * 5))
+							//}
+
 							if !reserve.OK() || reserve.Delay() != 0 {
 								user := tables.Users{ID: update.Message.From.ID, Lang: &update.Message.From.LanguageCode}
 								app.bot.Send(tgbotapi.MessageConfig{
