@@ -138,7 +138,7 @@ func (app App) Run(ctx context.Context) error {
 						if update.Message.From.LanguageCode == "" || !in(config.BotLocalizedLangs, update.Message.From.LanguageCode) {
 							update.Message.From.LanguageCode = "en"
 						}
-						limit, loaded := app.limiter.LoadOrStore(update.Message.Chat.ID, rate.NewLimiter(0.5, 2))
+						limit, loaded := app.limiter.LoadOrStore(update.Message.Chat.ID, rate.NewLimiter(0.5, 3))
 						if loaded {
 							floodLimit := limit.(*rate.Limiter)
 							reserve := floodLimit.Reserve()
