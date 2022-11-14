@@ -2,7 +2,6 @@ package bot
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
@@ -151,94 +150,94 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 	blocks := make([]interface{}, 0, 50)
 
 	//needAudio := strings.HasPrefix(update.Query, "!")
-	cacheKey := []byte(fmt.Sprintf("%s;%s;%d-%d", *user.Lang, update.Query, offset, offset+count))
 
-	log.Debug("inline bitcask cache key", zap.String("cache_key", string(cacheKey)))
-	if len(cacheKey) < 64 && app.bc.Has(cacheKey) {
-		cacheData, err := app.bc.Get(cacheKey)
-		if err != nil {
-			warn(err)
-			return
-		}
-		if err = json.Unmarshal(cacheData, &blocks); err != nil {
-			warn(err)
-			return
-		}
-		log.Debug("took blocks from cache")
-	} else {
-		for i, code := range inlineCodes[*user.Lang][offset : offset+count] {
-			code := code
-			i := i
-			g.Go(func() error {
-				title := langs[*user.Lang][code]
-				//if code == "emj" || from == "emj" {
-				//	translation, err = translate2.YandexTranslate(ctx, from, code, update.Query)
-				//} else {
-				tr, err := app.translo.Translate(ctx, from, code, update.Query)
-				if err != nil {
-					log.Error("inline", zap.Error(err))
-					return nil
-				}
-				//}
-				if err != nil {
-					log.Error("inline", zap.Error(err))
-					return nil
-				}
-				if tr.TranslatedText == "" {
-					log.Error("empty translation in inline mode", zap.String("query", update.Query), zap.String("language_code", update.From.LanguageCode))
-					return nil
-				}
-
-				btn := tgbotapi.InlineKeyboardButton{
-					Text:                         tables.Users{Lang: &code}.Localize("translate"),
-					URL:                          nil,
-					LoginURL:                     nil,
-					CallbackData:                 nil,
-					WebApp:                       nil,
-					SwitchInlineQuery:            nil,
-					SwitchInlineQueryCurrentChat: &tr.TranslatedText,
-					CallbackGame:                 nil,
-					Pay:                          false,
-				}
-				keyboard := tgbotapi.NewInlineKeyboardMarkup(
-					tgbotapi.NewInlineKeyboardRow(btn))
-
-				mu.Lock()
-				defer mu.Unlock()
-				blocks = append(blocks, tgbotapi.InlineQueryResultArticle{
-					Type:  "article",
-					ID:    strconv.Itoa(i + offset),
-					Title: title,
-					InputMessageContent: map[string]interface{}{
-						"message_text":             tr.TranslatedText,
-						"disable_web_page_preview": true,
-					},
-					ReplyMarkup: &keyboard,
-					URL:         "",
-					HideURL:     true,
-					Description: tr.TranslatedText,
-					ThumbURL:    "",
-					ThumbWidth:  0,
-					ThumbHeight: 0,
-				})
-				return nil
-			})
-		}
-		if err = g.Wait(); err != nil {
-			warn(err)
-			log.Error("", zap.Error(err))
-			return
-		}
-		go func() {
-			cacheData, err := json.Marshal(blocks)
+	//cacheKey := []byte(fmt.Sprintf("%s;%s;%d-%d", *user.Lang, update.Query, offset, offset+count))
+	//log.Debug("inline bitcask cache key", zap.String("cache_key", string(cacheKey)))
+	//if len(cacheKey) < 64 && app.bc.Has(cacheKey) {
+	//	cacheData, err := app.bc.Get(cacheKey)
+	//	if err != nil {
+	//		warn(err)
+	//		return
+	//	}
+	//	if err = json.Unmarshal(cacheData, &blocks); err != nil {
+	//		warn(err)
+	//		return
+	//	}
+	//	log.Debug("took blocks from cache")
+	//} else {
+	for i, code := range inlineCodes[*user.Lang][offset : offset+count] {
+		code := code
+		i := i
+		g.Go(func() error {
+			title := langs[*user.Lang][code]
+			//if code == "emj" || from == "emj" {
+			//	translation, err = translate2.YandexTranslate(ctx, from, code, update.Query)
+			//} else {
+			tr, err := app.translo.Translate(ctx, from, code, update.Query)
 			if err != nil {
-				app.notifyAdmin(err)
+				log.Error("inline", zap.Error(err))
+				return nil
 			}
-			if err = app.bc.Put(cacheKey, cacheData); err != nil {
-				app.notifyAdmin(err)
+			//}
+			if err != nil {
+				log.Error("inline", zap.Error(err))
+				return nil
 			}
-		}()
+			if tr.TranslatedText == "" {
+				log.Error("empty translation in inline mode", zap.String("query", update.Query), zap.String("language_code", update.From.LanguageCode))
+				return nil
+			}
+
+			btn := tgbotapi.InlineKeyboardButton{
+				Text:                         tables.Users{Lang: &code}.Localize("translate"),
+				URL:                          nil,
+				LoginURL:                     nil,
+				CallbackData:                 nil,
+				WebApp:                       nil,
+				SwitchInlineQuery:            nil,
+				SwitchInlineQueryCurrentChat: &tr.TranslatedText,
+				CallbackGame:                 nil,
+				Pay:                          false,
+			}
+			keyboard := tgbotapi.NewInlineKeyboardMarkup(
+				tgbotapi.NewInlineKeyboardRow(btn))
+
+			mu.Lock()
+			defer mu.Unlock()
+			blocks = append(blocks, tgbotapi.InlineQueryResultArticle{
+				Type:  "article",
+				ID:    strconv.Itoa(i + offset),
+				Title: title,
+				InputMessageContent: map[string]interface{}{
+					"message_text":             tr.TranslatedText,
+					"disable_web_page_preview": true,
+				},
+				ReplyMarkup: &keyboard,
+				URL:         "",
+				HideURL:     true,
+				Description: tr.TranslatedText,
+				ThumbURL:    "",
+				ThumbWidth:  0,
+				ThumbHeight: 0,
+			})
+			return nil
+		})
 	}
+	if err = g.Wait(); err != nil {
+		warn(err)
+		log.Error("", zap.Error(err))
+		return
+	}
+	//	go func() {
+	//		cacheData, err := json.Marshal(blocks)
+	//		if err != nil {
+	//			app.notifyAdmin(err)
+	//		}
+	//		if err = app.bc.Put(cacheKey, cacheData); err != nil {
+	//			app.notifyAdmin(err)
+	//		}
+	//	}()
+	//}
 
 	if offset == 0 && !in([]string{"", "auto"}, user.MyLang, user.ToLang) {
 		for i, lang := range []string{user.MyLang, user.ToLang} {
