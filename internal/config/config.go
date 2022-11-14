@@ -77,6 +77,7 @@ func load() (err error) {
 	//); err != nil {
 	//	return err
 	//}
+	analytics = dashbot.NewAPI(dashBotAPIKey)
 
 	var api *tgbotapi.BotAPI
 	api, err = tgbotapi.NewBotAPI(botToken)
@@ -88,13 +89,21 @@ func load() (err error) {
 	bot.Debug = false
 	bot.Buffer = 30
 
-	me, err := bot.GetMe()
-	if err != nil {
+	localAPIPort := os.Getenv("TRANSLOBOT_LOCAL_API_PORT")
+	if localAPIPort == "" {
+		localAPIPort = "8081"
+	}
+	// Setting local bot api endpoint if it exists
+	bot.SetAPIEndpoint("http://localhost:" + localAPIPort + "/bot%s/%s")
+	if _, err = bot.GetMe(); err == nil {
+		fmt.Println("Detected Local Bot API. Sending requests there")
+		return nil
+	}
+	bot.SetAPIEndpoint(tgbotapi.APIEndpoint)
+	if _, err = bot.GetMe(); err != nil {
 		return err
 	}
-	botID = me.ID
-
-	analytics = dashbot.NewAPI(dashBotAPIKey)
+	fmt.Println("Local Bot API not detected. Using api.telegram.org")
 	return nil
 }
 
@@ -108,8 +117,4 @@ func BotAPI() *botapi.BotAPI {
 
 func Analytics() dashbot.DashBot {
 	return analytics
-}
-
-func BotID() int64 {
-	return botID
 }

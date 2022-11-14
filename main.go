@@ -14,12 +14,18 @@ import (
 	"golang.org/x/sync/errgroup"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 )
 
 // TODO: Error: Bad Request: can't parse entities: Unsupported start tag "!--" at byte offset 472
 func main() {
-	conf := zap.NewDevelopmentConfig()
+	conf := zap.NewProductionConfig()
+	debug, err := strconv.ParseBool(os.Getenv("TRANSLOBOT_DEBUG"))
+	if err == nil && debug {
+		conf = zap.NewDevelopmentConfig()
+		fmt.Println("Running in DEBUG mode")
+	}
 	conf.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	conf.DisableStacktrace = true
 	log, _ := conf.Build()

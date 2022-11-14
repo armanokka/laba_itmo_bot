@@ -1,7 +1,7 @@
 module github.com/armanokka/translobot
 
-// +heroku goVersion go1.18
-go 1.18
+// +heroku goVersion go1.19
+go 1.19
 
 require (
 	git.mills.io/prologic/bitcask v1.0.2

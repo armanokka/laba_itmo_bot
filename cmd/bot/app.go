@@ -71,7 +71,7 @@ func (app App) Run(ctx context.Context) error {
 	}
 	g, ctx := errgroup.WithContext(ctx)
 	wg := sync.WaitGroup{}
-	g.Go(func() error { // бот
+	g.Go(func() error { // устанавливаем команды боту
 		for _, code := range config.BotLocalizedLangs {
 			user := tables.Users{Lang: &code}
 			resp, err := app.bot.Request(tgbotapi.SetMyCommandsConfig{
@@ -109,6 +109,9 @@ func (app App) Run(ctx context.Context) error {
 				app.log.Error("couldn't set commands for the bot", zap.String("response", string(out)), zap.Int("status_code", resp.ErrorCode))
 			}
 		}
+		return nil
+	})
+	g.Go(func() error { // бот
 		for {
 			select {
 			case <-ctx.Done():
@@ -164,6 +167,11 @@ func (app App) Run(ctx context.Context) error {
 							update.InlineQuery.From.LanguageCode = "en"
 						}
 						app.onInlineQuery(ctx, *update.InlineQuery)
+					} else if update.ChosenInlineResult != nil {
+						if update.ChosenInlineResult.From.LanguageCode == "" || !in(config.BotLocalizedLangs, update.ChosenInlineResult.From.LanguageCode) {
+							update.ChosenInlineResult.From.LanguageCode = "en"
+						}
+						app.onChosenInlineResult(*update.ChosenInlineResult)
 					}
 				}()
 
@@ -277,7 +285,7 @@ func (app App) Run(ctx context.Context) error {
 		return nil
 	})
 	g.Go(func() error {
-		ticker := time.NewTicker(time.Hour * 6)
+		ticker := time.NewTicker(time.Hour)
 		for {
 			select {
 			case <-ctx.Done():

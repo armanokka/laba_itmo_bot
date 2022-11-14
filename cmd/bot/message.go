@@ -511,6 +511,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		warn(err)
 		return
 	}
+	// TODO каждые 24ч капча
 	if from == to && user.MyLang == user.ToLang && tr == text {
 		app.bot.Send(tgbotapi.NewMessage(message.From.ID, user.Localize(`You translate from one language to the same language`)))
 	}

@@ -148,6 +148,110 @@ func (d DashBot) Bot(message tgbotapi.MessageConfig, intent string) error {
 	return d.request(data)
 }
 
+func (d DashBot) InlineUser(update tgbotapi.InlineQuery) error {
+	data, err := json.Marshal(Message{
+		Text:   update.Query,
+		UserId: update.From.ID,
+		Intent: Intent{
+			Name: "inline_query",
+			Inputs: []Input{{
+				Name:  "language_code",
+				Value: update.From.LanguageCode,
+			}, {
+				Name:  "offset",
+				Value: update.Offset,
+			}, {
+				Name:  "chat_type",
+				Value: update.ChatType,
+			}},
+			Confidence: 1,
+		},
+		SessionId: update.From.ID,
+	})
+	if err != nil {
+		return err
+	}
+	return d.request(data)
+}
+
+func (d DashBot) InlineBot(user tgbotapi.User, config tgbotapi.InlineConfig) error {
+	var btns []Button
+	if len(config.Results) > 0 {
+		btns = make([]Button, 0, len(config.Results))
+		for _, result := range config.Results {
+			switch r := result.(type) {
+			case tgbotapi.InlineQueryResultArticle:
+				btns = append(btns, Button{
+					Id:    r.ID,
+					Label: r.Title + "\n" + r.Description,
+					Value: r.URL,
+				})
+			case tgbotapi.InlineQueryResultPhoto:
+				btns = append(btns, Button{
+					Id:    r.ID,
+					Label: r.Title + "\n" + r.Description + "\n" + r.Caption,
+					Value: r.URL,
+				})
+			case tgbotapi.InlineQueryResultCachedPhoto:
+				btns = append(btns, Button{
+					Id:    r.ID,
+					Label: r.Title + "\n" + r.Description + "\n" + r.Caption,
+					Value: r.PhotoID,
+				})
+				//case tgbotapi.InlineQueryResultAudio:
+				//	btns = append(btns, Button{
+				//		Id:    r.ID,
+				//		Label: r.Title + "\n" + r.Description + "\n" + r.Caption,
+				//		Value: r.PhotoID,
+				//	})
+				//case tgbotapi.InlineQueryResultCachedAudio:
+				//case tgbotapi.InlineQueryResultVideo:
+			}
+		}
+	}
+	data, err := json.Marshal(Message{
+		Text:   config.SwitchPMText,
+		UserId: user.ID,
+		Intent: Intent{
+			Name: "answer_inline_query",
+			Inputs: []Input{{
+				Name:  "next_offset",
+				Value: config.NextOffset,
+			}, {
+				Name:  "switch_pm_text",
+				Value: config.SwitchPMText,
+			}, {
+				Name:  "switch_pm_parameter",
+				Value: config.SwitchPMParameter,
+			}, {
+				Name:  "is_personal",
+				Value: strconv.FormatBool(config.IsPersonal),
+			}},
+			Confidence: 1,
+		},
+		SessionId: user.ID,
+	})
+	if err != nil {
+		return err
+	}
+	return d.request(data)
+}
+
+func (d DashBot) InlineChosenInlineResult(update tgbotapi.ChosenInlineResult) error {
+	data, err := json.Marshal(Message{
+		Text:   update.Query,
+		UserId: update.From.ID,
+		Postback: Postback{
+			ButtonClick: ButtonClick{update.ResultID},
+		},
+		SessionId: update.From.ID,
+	})
+	if err != nil {
+		return err
+	}
+	return d.request(data)
+}
+
 func (d DashBot) UserStartedBot(user tgbotapi.User) error {
 	userJson, err := json.Marshal(user)
 	if err != nil {

@@ -182,6 +182,18 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"pt": "Oi",
 			"es": "Hola",
 		},
+		"Too many requests. Try again in 10 seconds": map[string]string{
+			"de": "Zu viele Anfragen. Versuchen Sie es in 10 Sekunden erneut",
+			"es": "Demasiadas solicitudes. Vuelve a intentarlo en 10 segundos",
+			"uz": "Juda koʻp soʻrovlar. 10 soniyadan keyin qayta urinib ko'ring",
+			"it": "Troppe richieste. Riprova tra 10 secondi",
+			"pt": "Muitos pedidos. Tente novamente em 10 segundos",
+			"ar": "طلبات كثيرة جدا. حاول مرة أخرى في 10 ثوان",
+			"en": "Too many requests. Try again in 10 seconds",
+			"uk": "Забагато запитів. Повторіть спробу через 10 секунд",
+			"id": "Terlalu banyak permintaan. Coba lagi dalam 10 detik",
+			"ru": "Слишком много запросов. Повторите попытку через 10 секунд.",
+		},
 		"Excuses": map[string]string{
 			"en": "We are sorry that we were unable to translate your text. \nHere is a list of other translators while we fix ours: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nWhen we fix the bug, we will write to you. It will be in 24-72h\n Best regards, Translo team",
 			"uk": "Жаль, що нам не вдалося перекласти ваш текст. \nОсь вам список інших перекладачів, поки ми виправляємо наш: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nКоли ми виправимо помилку, ми вам напишемо. Це буде через 24-72ч\nЗ повагою, команда Трансло",

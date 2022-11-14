@@ -21,12 +21,14 @@ type ButtonClick struct {
 }
 
 type Intent struct {
-	Name   string `json:"name"`
-	Inputs []struct {
-		Name  string `json:"name"`
-		Value string `json:"value"`
-	} `json:"inputs,omitempty"`
+	Name       string  `json:"name"`
+	Inputs     []Input `json:"inputs,omitempty"`
 	Confidence float64 `json:"confidence,omitempty"`
+}
+
+type Input struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }
 
 type Button struct {

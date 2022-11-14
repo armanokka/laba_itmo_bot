@@ -50,6 +50,13 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		user.Lang = &callback.From.LanguageCode
 	}
 
+	// Uncomment this in test #2
+	//rand.Seed(time.Now().UnixNano())
+	//if rand.Intn(2) == 0 {
+	//	app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, user.Localize("Too many requests. Try again in 10 seconds")))
+	//	return
+	//}
+
 	arr := strings.Split(callback.Data, ":")
 
 	switch arr[0] {

@@ -2,6 +2,7 @@ package bot
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
@@ -63,12 +64,17 @@ func Ucfirst(str string) string {
 
 func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 	update.Query = Ucfirst(strings.TrimSpace(norm.NFKC.String(update.Query)))
-	log := app.log.With(zap.String("language_code", update.From.LanguageCode), zap.String("query", update.Query))
+	log := app.log.With(zap.String("query", update.Query))
 
 	defer func() {
 		if err := recover(); err != nil {
 			log.Error("%w", zap.Any("error", err))
 			app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Panic:"+fmt.Sprint(err)))
+		}
+	}()
+	go func() {
+		if err := app.analytics.InlineUser(update); err != nil {
+			app.notifyAdmin(err)
 		}
 	}()
 
@@ -79,6 +85,7 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 			SwitchPMParameter: "from_inline",
 		})
 		app.notifyAdmin(err)
+		log.Error("", zap.Error(err))
 	}
 
 	if update.Query == "" {
@@ -94,7 +101,7 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 	}
 
 	user := tables.Users{Lang: &update.From.LanguageCode}
-
+	log = log.With(zap.String("language_code", *user.Lang))
 	var offset int // смещение для пагинации
 	if update.Offset != "" {
 		var err error
@@ -133,8 +140,10 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
-		if user.Lang == nil {
+		if user.Lang == nil || *user.Lang == "" {
 			user.Lang = &update.From.LanguageCode
+		} else {
+			log = log.With(zap.String("user_lang", *user.Lang))
 		}
 		return nil
 	})
@@ -142,69 +151,92 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 	blocks := make([]interface{}, 0, 50)
 
 	//needAudio := strings.HasPrefix(update.Query, "!")
+	cacheKey := []byte(fmt.Sprintf("%s;%s;%d-%d", *user.Lang, update.Query, offset, offset+count))
+	log.Debug("inline bitcask cache key", zap.String("cache_key", string(cacheKey)))
+	if app.bc.Has(cacheKey) {
+		cacheData, err := app.bc.Get(cacheKey)
+		if err != nil {
+			warn(err)
+			return
+		}
+		if err = json.Unmarshal(cacheData, &blocks); err != nil {
+			warn(err)
+			return
+		}
+		log.Debug("took blocks from cache")
+	} else {
+		for i, code := range inlineCodes[*user.Lang][offset : offset+count] {
+			code := code
+			i := i
+			g.Go(func() error {
+				title := langs[*user.Lang][code]
+				//if code == "emj" || from == "emj" {
+				//	translation, err = translate2.YandexTranslate(ctx, from, code, update.Query)
+				//} else {
+				tr, err := app.translo.Translate(ctx, from, code, update.Query)
+				if err != nil {
+					log.Error("inline", zap.Error(err))
+					return nil
+				}
+				//}
+				if err != nil {
+					log.Error("inline", zap.Error(err))
+					return nil
+				}
+				if tr.TranslatedText == "" {
+					log.Error("empty translation in inline mode", zap.String("query", update.Query), zap.String("language_code", update.From.LanguageCode))
+					return nil
+				}
 
-	for i, code := range inlineCodes[*user.Lang][offset : offset+count] {
-		code := code
-		i := i
-		g.Go(func() error {
-			title := langs[*user.Lang][code]
-			//if code == "emj" || from == "emj" {
-			//	translation, err = translate2.YandexTranslate(ctx, from, code, update.Query)
-			//} else {
-			tr, err := app.translo.Translate(ctx, from, code, update.Query)
-			if err != nil {
-				log.Error("inline", zap.Error(err))
-				return nil
-			}
-			//}
-			if err != nil {
-				log.Error("inline", zap.Error(err))
-				return nil
-			}
-			if tr.TranslatedText == "" {
-				log.Error("empty translation in inline mode", zap.String("query", update.Query), zap.String("language_code", update.From.LanguageCode))
-				return nil
-			}
+				btn := tgbotapi.InlineKeyboardButton{
+					Text:                         tables.Users{Lang: &code}.Localize("translate"),
+					URL:                          nil,
+					LoginURL:                     nil,
+					CallbackData:                 nil,
+					WebApp:                       nil,
+					SwitchInlineQuery:            nil,
+					SwitchInlineQueryCurrentChat: &tr.TranslatedText,
+					CallbackGame:                 nil,
+					Pay:                          false,
+				}
+				keyboard := tgbotapi.NewInlineKeyboardMarkup(
+					tgbotapi.NewInlineKeyboardRow(btn))
 
-			btn := tgbotapi.InlineKeyboardButton{
-				Text:                         tables.Users{Lang: &code}.Localize("translate"),
-				URL:                          nil,
-				LoginURL:                     nil,
-				CallbackData:                 nil,
-				WebApp:                       nil,
-				SwitchInlineQuery:            nil,
-				SwitchInlineQueryCurrentChat: &tr.TranslatedText,
-				CallbackGame:                 nil,
-				Pay:                          false,
-			}
-			keyboard := tgbotapi.NewInlineKeyboardMarkup(
-				tgbotapi.NewInlineKeyboardRow(btn))
-
-			mu.Lock()
-			defer mu.Unlock()
-			blocks = append(blocks, tgbotapi.InlineQueryResultArticle{
-				Type:  "article",
-				ID:    strconv.Itoa(i + offset),
-				Title: title,
-				InputMessageContent: map[string]interface{}{
-					"message_text":             tr.TranslatedText,
-					"disable_web_page_preview": true,
-				},
-				ReplyMarkup: &keyboard,
-				URL:         "",
-				HideURL:     true,
-				Description: tr.TranslatedText,
-				ThumbURL:    "",
-				ThumbWidth:  0,
-				ThumbHeight: 0,
+				mu.Lock()
+				defer mu.Unlock()
+				blocks = append(blocks, tgbotapi.InlineQueryResultArticle{
+					Type:  "article",
+					ID:    strconv.Itoa(i + offset),
+					Title: title,
+					InputMessageContent: map[string]interface{}{
+						"message_text":             tr.TranslatedText,
+						"disable_web_page_preview": true,
+					},
+					ReplyMarkup: &keyboard,
+					URL:         "",
+					HideURL:     true,
+					Description: tr.TranslatedText,
+					ThumbURL:    "",
+					ThumbWidth:  0,
+					ThumbHeight: 0,
+				})
+				return nil
 			})
-			return nil
-		})
-	}
-	if err = g.Wait(); err != nil {
-		warn(err)
-		log.Error("", zap.Error(err))
-		return
+		}
+		if err = g.Wait(); err != nil {
+			warn(err)
+			log.Error("", zap.Error(err))
+			return
+		}
+		go func() {
+			cacheData, err := json.Marshal(blocks)
+			if err != nil {
+				app.notifyAdmin(err)
+			}
+			if err = app.bc.Put(cacheKey, cacheData); err != nil {
+				app.notifyAdmin(err)
+			}
+		}()
 	}
 
 	if offset == 0 && !in([]string{"", "auto"}, user.MyLang, user.ToLang) {
@@ -245,14 +277,16 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 		blocks = blocks[:len(blocks)-diff]
 	}
 
-	if _, err = app.bot.AnswerInlineQuery(tgbotapi.InlineConfig{
+	inlineConfig := tgbotapi.InlineConfig{
 		InlineQueryID:     update.ID,
 		Results:           blocks,
 		IsPersonal:        true,
+		CacheTime:         0,
 		NextOffset:        strconv.Itoa(nextOffset),
 		SwitchPMText:      user.Localize("tap on translation to send it"),
 		SwitchPMParameter: "from_inline",
-	}); err != nil {
+	}
+	if _, err = app.bot.AnswerInlineQuery(inlineConfig); err != nil {
 		log.Error("", zap.Error(err))
 	}
 
@@ -260,5 +294,8 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 		if err = app.db.UpdateUserActivity(update.From.ID); err != nil {
 			warn(err)
 		}
+	}
+	if err = app.analytics.InlineBot(*update.From, inlineConfig); err != nil {
+		app.notifyAdmin(err)
 	}
 }
