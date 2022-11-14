@@ -149,7 +149,7 @@ func (app App) Run(ctx context.Context) error {
 										ChatID:              update.Message.From.ID,
 										DisableNotification: true,
 									},
-									Text:      user.Localize("<b>Пожалуйста, не флудите!</b> Подождите 3 секунды после каждого запроса"),
+									Text:      user.Localize(`<b>Too many requests.</b> Try again in %d seconds`, int(reserve.Delay().Seconds())),
 									ParseMode: tgbotapi.ModeHTML,
 								})
 								return

@@ -194,6 +194,18 @@ func (u Users) Localize(key string, placeholders ...interface{}) string {
 			"id": "Terlalu banyak permintaan. Coba lagi dalam 10 detik",
 			"ru": "Слишком много запросов. Повторите попытку через 10 секунд.",
 		},
+		"<b>Too many requests.</b> Try again in %d seconds": map[string]string{
+			"uz": "<b>Juda koʻp soʻrovlar.</b> %d soniyadan keyin qayta urinib ko‘ring",
+			"it": "<b>Troppe richieste.</b> Riprova tra %d secondi",
+			"de": "<b>Zu viele Anfragen.</b> Versuchen Sie es in %d Sekunden erneut",
+			"es": "<b>Demasiadas solicitudes.</b> Vuelva a intentarlo en %d segundos",
+			"uk": "<b>Забагато запитів.</b> Повторіть спробу через %d секунд",
+			"id": "<b>Terlalu banyak permintaan.</b> Coba lagi dalam %d detik",
+			"pt": "<b>Muitos pedidos.</b> Tente novamente em %d segundos",
+			"ar": "<b>طلبات كثيرة جدا.</b>حاول مرة أخرى بعد٪ d ثانية",
+			"en": "<b>Too many requests.</b> Try again in %d seconds",
+			"ru": "<b>Слишком много запросов.</b> Повторите попытку через %d секунд",
+		},
 		"Excuses": map[string]string{
 			"en": "We are sorry that we were unable to translate your text. \nHere is a list of other translators while we fix ours: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nWhen we fix the bug, we will write to you. It will be in 24-72h\n Best regards, Translo team",
 			"uk": "Жаль, що нам не вдалося перекласти ваш текст. \nОсь вам список інших перекладачів, поки ми виправляємо наш: 👇\n\n@YTranslateBot\n@lingvo_ebot\n@multitran_bot\n\nКоли ми виправимо помилку, ми вам напишемо. Це буде через 24-72ч\nЗ повагою, команда Трансло",
