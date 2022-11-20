@@ -7,9 +7,11 @@ import (
 	"github.com/armanokka/translobot/internal/tables"
 	"github.com/armanokka/translobot/pkg/errors"
 	"github.com/armanokka/translobot/pkg/helpers"
+	"github.com/armanokka/translobot/pkg/lingvo"
 	"github.com/armanokka/translobot/pkg/translate"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/text/unicode/norm"
 	"gorm.io/gorm"
 	"html"
@@ -689,7 +691,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			to = user.MyLang
 		}
 	}
-	// request translations: user.from-user.to, user.to-user.from, from-to
 	log = log.With(zap.String("to", to))
 
 	entities := message.Entities
@@ -697,21 +698,73 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		entities = message.CaptionEntities
 	}
 	log = log.With(zap.String("source", text))
-	log.Debug("")
 	text = norm.NFKC.String(helpers.ApplyEntitiesHtml(text, entities))
-	tr, from, err := app.translate(ctx, from, to, text) // examples мы сохраняем, чтобы соединить с keyboard.Examples и положить в кэш
-	if err != nil {
+	log = log.With(zap.String("source_with_html", text))
+
+	var trMylangTolang, trTolangMylang, trFromTo, trDict string
+	g, ctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		tr, err := app.translo.Translate(ctx, user.MyLang, user.ToLang, text)
+		trMylangTolang = tr.TranslatedText
+		return err
+	})
+	g.Go(func() error {
+		tr, err := app.translo.Translate(ctx, user.ToLang, user.MyLang, text)
+		trTolangMylang = tr.TranslatedText
+		return err
+	})
+	g.Go(func() error {
+		tr, err := app.translo.Translate(ctx, from, to, text)
+		trFromTo = tr.TranslatedText
+		return err
+	})
+	if from == user.MyLang {
+		_, ok1 := lingvo.Lingvo[from]
+		_, ok2 := lingvo.Lingvo[to]
+		if ok1 && ok2 && len(text) < 50 && !strings.ContainsAny(text, " \r\n") {
+			g.Go(func() error {
+				l, err := lingvo.GetDictionary(ctx, from, to, strings.ToLower(text))
+				if err != nil {
+					if IsCtxError(err) {
+						return nil
+					}
+					log.Error("lingvo err")
+					return err
+				}
+				tr := strings.TrimSpace(writeLingvo(l))
+				if tr != "" {
+					trDict = tr + "\n❤️ @TransloBot"
+				}
+				return nil
+			})
+		}
+	}
+
+	if err = g.Wait(); err != nil {
 		log.Error("", zap.Error(err))
-		warn(err)
-		return
+		app.notifyAdmin(err)
 	}
-	// TODO каждые 24ч капча
-	if from == to && user.MyLang == user.ToLang && tr == text {
-		app.bot.Send(tgbotapi.NewMessage(message.From.ID, user.Localize(`You translate from one language to the same language`)))
-	}
+
+	// request translations: user.from-user.to, user.to-user.from, from-to
+
+	//tr, from, err := app.translate(ctx, from, to, text) // examples мы сохраняем, чтобы соединить с keyboard.Examples и положить в кэш
+	//if err != nil {
+	//	log.Error("", zap.Error(err))
+	//	warn(err)
+	//	return
+	//}
+	//// TODO каждые 24ч капча
+	//if from == to && user.MyLang == user.ToLang && tr == text {
+	//	app.bot.Send(tgbotapi.NewMessage(message.From.ID, user.Localize(`You translate from one language to the same language`)))
+	//}
 
 	//app.bc.PutWithTTL() УПОМЯНУТЬ ОБ АПИ
 
+	tr := maxDiff(text, []string{trMylangTolang, trTolangMylang, trFromTo, trDict})
+	if strings.TrimSpace(tr) == "" {
+		log.Error("empty translation", zap.String("trMylangTolang", trMylangTolang), zap.String("trTolangMylang", trFromTo), zap.String("trFromTo", trFromTo), zap.String("trDict", trDict))
+	} // TODO fix closeUnclosedTagsAndClearUnsupported
+	log.Debug(tr)
 	chunks := translate.SplitIntoChunksBySentences(tr, 4000)
 	lastMsgID := 0
 	for _, chunk := range chunks {

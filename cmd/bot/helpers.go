@@ -279,6 +279,20 @@ func hasPrefix(s, prefix string, maxCharsDifference int) bool {
 	return maxCharsDifference > -1
 }
 
+func maxDiff(source string, s []string) string {
+	i, maxDifference := 0, 0
+	for idx, str := range s {
+		if strings.TrimSpace(str) == "" {
+			continue
+		}
+		difference := diff(source, str)
+		if difference > maxDifference {
+			i, maxDifference = idx, difference
+		}
+	}
+	return s[i]
+}
+
 func randid(seed int64) string {
 	rand.Seed(seed)
 	b := make([]byte, 16)
