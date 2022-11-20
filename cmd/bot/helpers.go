@@ -192,7 +192,7 @@ func buildLangsPagination(user tables.Users, offset int, count int, tickLang, bu
 		if offset == 0 {
 			count-- // уменьшаем кол-во кнопок, потому что мы пихаем свою
 			out.InlineKeyboard = append(out.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData(user.Localize("Detect language"), fmt.Sprintf(buttonSelectLangCallback, "auto"))))
+				tgbotapi.NewInlineKeyboardButtonData(user.Localize("Auto"), fmt.Sprintf(buttonSelectLangCallback, "auto"))))
 		} else {
 			offset-- // на первой странице мы недопоказали одну кнопку
 			if offset+count == len(codes[*user.Lang])-1 {
@@ -241,16 +241,42 @@ func buildLangsPagination(user tables.Users, offset int, count int, tickLang, bu
 		//offset = len(codes[*user.Lang]) / 18 * 18 // для счетчика снизу, а то на 181 строчке мы уменьшили оффсет
 	}
 	query := "hey"
+	keyboardForMyLang := strings.HasPrefix(buttonSelectLangCallback, "set_my_lang")
+	typeLanguageCallback := "type_my_lang_name"
+	if !keyboardForMyLang {
+		typeLanguageCallback = "type_to_lang_name"
+	}
 	out.InlineKeyboard = append(out.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
 		tgbotapi.NewInlineKeyboardButtonData("⬅️", buttonBackCallback),
 		tgbotapi.NewInlineKeyboardButtonData(strconv.Itoa(offset)+"/"+strconv.Itoa(len(codes[*user.Lang])/18*18), "none"),
 		tgbotapi.NewInlineKeyboardButtonData("➡️", buttonNextCallback)),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(user.Localize(`искать языки 🔎`), typeLanguageCallback)),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.InlineKeyboardButton{
-				Text:                         user.Localize("inline mode"),
-				SwitchInlineQueryCurrentChat: &query,
+				Text:              user.Localize("inline mode"),
+				SwitchInlineQuery: &query,
 			}))
 	return out, nil
+}
+
+func hasPrefix(s, prefix string, maxCharsDifference int) bool {
+	if maxCharsDifference < 1 {
+		maxCharsDifference = 0
+	}
+	runes := []rune(s)
+	prefixRunes := []rune(prefix)
+	if len(runes) > len(prefixRunes) {
+		runes = runes[:len(prefixRunes)]
+	}
+	for i, r := range runes {
+		if r != prefixRunes[i] {
+			maxCharsDifference--
+			if maxCharsDifference < 0 {
+				return false
+			}
+		}
+	}
+	return maxCharsDifference > -1
 }
 
 func randid(seed int64) string {
@@ -475,4 +501,26 @@ func removeHtml(s string) (string, error) {
 		return "", err
 	}
 	return doc.Text(), nil
+}
+
+func Tick(callbackData string, inlineKeyboard [][]tgbotapi.InlineKeyboardButton) {
+	for i1, row := range inlineKeyboard {
+		for i2, button := range row {
+			if button.CallbackData == nil {
+				continue
+			}
+			if *button.CallbackData == callbackData && !strings.HasPrefix(*button.CallbackData, "✅ ") {
+				inlineKeyboard[i1][i2].Text = "✅ " + button.Text
+				break
+			}
+		}
+	}
+}
+
+func UntickAll(inlineKeyboard [][]tgbotapi.InlineKeyboardButton) {
+	for i1, row := range inlineKeyboard {
+		for i2, button := range row {
+			inlineKeyboard[i1][i2].Text = strings.TrimPrefix(button.Text, "✅ ")
+		}
+	}
 }

@@ -144,6 +144,7 @@ func (app App) translate(ctx context.Context, from, to, text string) (string, st
 				if LingvoTr != "" {
 					cancel()
 				}
+				LingvoTr += "\n❤️ @TransloBot"
 				return nil
 			})
 		}

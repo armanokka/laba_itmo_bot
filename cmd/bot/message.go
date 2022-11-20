@@ -14,16 +14,23 @@ import (
 	"gorm.io/gorm"
 	"html"
 	"os"
+	"runtime"
 	"runtime/debug"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 )
 
 func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	log := app.log.With(zap.Int64("id", message.From.ID))
 	defer func() {
 		if err := recover(); err != nil {
+			_, f, line, ok := runtime.Caller(2)
+			if ok {
+				log = log.With(zap.String("caller", f+":"+strconv.Itoa(line)))
+			}
 			if e, ok := err.(errors.Error); ok {
 				app.bot.Send(tgbotapi.NewMessage(config.AdminID, "recover:"+fmt.Sprint(err)+"\nstack:"+string(e.Stack())))
 				return
@@ -90,8 +97,8 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			app.notifyAdmin(err)
 		}
 	}
-	log = log.With(zap.String("my_lang", user.MyLang), zap.String("to_lang", user.ToLang))
-
+	log = log.With(zap.String("my_lang", user.MyLang), zap.String("to_lang", user.ToLang), zap.Stringp("act", user.Act), zap.String("message", message.Text), zap.String("caption", message.Caption))
+	log.Debug("new message")
 	switch message.Command() {
 	case "start":
 		if user.Lang == nil || *user.Lang == "" {
@@ -136,6 +143,10 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			}
 			if err = app.analytics.Bot(msg, "/start"+message.CommandArguments()); err != nil {
 				app.notifyAdmin(err)
+			}
+			if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": nil}); err != nil {
+				warn(err)
+				return
 			}
 			return
 		}
@@ -192,12 +203,13 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		app.bot.Send(group)
 		return
 	case "set_bot_lang":
+
 		languages := map[string]string{
 			"en": "🇬🇧English",
 			"de": "🇩🇪Deutsch",
 			"es": "🇪🇸Español",
 			"uk": "🇺🇦Українська",
-			"ar": "🇪🇬عربي",
+			"ar": "عربي🇪🇬",
 			"ru": "🇷🇺Русский",
 			"uz": "🇺🇿O'Zbek",
 			"id": "🇮🇩Bahasa Indonesia",
@@ -234,16 +246,24 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		if err = app.analytics.Bot(msg, "/start"+message.CommandArguments()); err != nil {
 			app.notifyAdmin(err)
 		}
+		if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": nil}); err != nil {
+			warn(err)
+			return
+		}
 		return
 	case "id":
 		log.Info("/id")
 		msg := tgbotapi.NewMessage(message.From.ID, strconv.FormatInt(message.From.ID, 10))
 		app.bot.Send(msg)
-
+		if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": nil}); err != nil {
+			warn(err)
+			return
+		}
 		return
 	case "mailing":
 		log.Info("/mailing")
-		if err = app.db.UpdateUser(message.From.ID, tables.Users{Act: "mailing"}); err != nil {
+		mailing := "mailing"
+		if err = app.db.UpdateUser(message.From.ID, tables.Users{Act: &mailing}); err != nil {
 			warn(err)
 			return
 		}
@@ -273,11 +293,19 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"tts": true}); err != nil {
 			warn(err)
 		}
+		if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": nil}); err != nil {
+			warn(err)
+			return
+		}
 		return
 	case "tts_off":
 		app.bot.Send(tgbotapi.NewMessage(message.From.ID, user.Localize(`Бот больше не будет озвучивать переводы`)))
 		if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"tts": false}); err != nil {
 			warn(err)
+		}
+		if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": nil}); err != nil {
+			warn(err)
+			return
 		}
 		return
 	}
@@ -319,6 +347,10 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		if err = app.analytics.Bot(msg, "↔"); err != nil {
 			app.notifyAdmin(err)
 		}
+		if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": nil}); err != nil {
+			warn(err)
+			return
+		}
 		return
 	case concatNonEmpty(" ", langs[*user.Lang][user.MyLang], flags[user.MyLang].Emoji):
 		kb, err := buildLangsPagination(user, 0, 18, "",
@@ -333,7 +365,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				ChatID:      message.Chat.ID,
 				ReplyMarkup: kb,
 			},
-			Text: user.Localize("Choose language"),
+			Text: user.Localize("Choose language or send its name"),
 		}
 		app.bot.Send(msg)
 		if err = app.analytics.Bot(msg, "my_lang"); err != nil {
@@ -356,8 +388,9 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				ChatID:      message.Chat.ID,
 				ReplyMarkup: kb,
 			},
-			Text: user.Localize("Choose language"),
+			Text: user.Localize("Choose language or send its name"),
 		}
+		// TODO handle app.bot.send errors that are not 403
 		app.bot.Send(msg)
 		if err = app.analytics.Bot(msg, "to_lang"); err != nil {
 			app.notifyAdmin(err)
@@ -365,95 +398,250 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 
-	switch user.Act {
-	case "mailing":
-		if err = app.bc.Put([]byte("mailing_message_id"), []byte(strconv.Itoa(message.MessageID))); err != nil {
-			warn(err)
-			return
-		}
-		if err := app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": "mailing_keyboards"}); err != nil {
-			warn(err)
-			return
-		}
-		app.bot.Send(tgbotapi.MessageConfig{
-			BaseChat: tgbotapi.BaseChat{
-				ChatID:           message.From.ID,
-				ChannelUsername:  "",
-				ReplyToMessageID: 0,
-				ReplyMarkup: tgbotapi.NewReplyKeyboard(tgbotapi.NewKeyboardButtonRow(
-					tgbotapi.NewKeyboardButton("Empty"))),
-				DisableNotification:      false,
-				AllowSendingWithoutReply: false,
-			},
-			Text:                  "теперь отправь мне кнопки\nтекст|ссылка\nтекст|ссылка",
-			ParseMode:             "",
-			Entities:              nil,
-			DisableWebPagePreview: false,
-		})
-		return
-	case "mailing_keyboards":
-		keyboard := tgbotapi.InlineKeyboardMarkup{}
-		if message.Text != "Empty" {
-			keyboard = parseKeyboard(message.Text)
-		}
-		if err = app.bc.Put([]byte("mailing_keyboard_raw_text"), []byte(message.Text)); err != nil {
-			warn(err)
-			return
-		}
-		if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": ""}); err != nil {
-			warn(err)
-			return
-		}
-		app.bot.Send(tgbotapi.MessageConfig{
-			BaseChat: tgbotapi.BaseChat{
-				ChatID:                   message.From.ID,
-				ChannelUsername:          "",
-				ReplyToMessageID:         0,
-				ReplyMarkup:              tgbotapi.NewRemoveKeyboard(false),
-				DisableNotification:      false,
-				AllowSendingWithoutReply: false,
-			},
-			Text:                  "проверь",
-			ParseMode:             "",
-			Entities:              nil,
-			DisableWebPagePreview: false,
-		})
+	if user.Act != nil {
+		switch *user.Act {
+		case "set_my_lang":
+			app.bot.Send(tgbotapi.NewDeleteMessage(message.Chat.ID, message.MessageID))
 
-		mailingMessageId, err := app.bc.Get([]byte("mailing_message_id"))
-		if err != nil {
-			warn(err)
+			filter := "" // TODO implement filter_to_lang as I did filter_my_lang
+			// TODO понимать другую раскладку
+			for _, ch := range message.Text {
+				if !unicode.IsLetter(ch) && ch != '-' {
+					continue
+				}
+				filter += string(ch)
+			}
+			filter = strings.ToLower(filter)
+			searchSet := []string{*user.Lang, message.From.LanguageCode, user.MyLang, user.ToLang}
+			results := make([]string, 0, 2)
+			keyboard := tgbotapi.NewInlineKeyboardMarkup()
+			for i, set := range searchSet {
+				if i < len(searchSet)-1 && in(searchSet[i+1:], set) {
+					continue // уже искали в этом сете
+				}
+				for code, name := range langs[set] { // TODO filter and sort by less differnece
+					if !hasPrefix(name, filter, 1) && filter != code || in(results, code) {
+						continue
+					}
+					results = append(results, code)
+				}
+			}
+			sort.Slice(results, func(i, j int) bool {
+				return diff(filter, results[i]) < diff(filter, results[j])
+			})
+			for _, code := range results {
+				keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+					tgbotapi.NewInlineKeyboardButtonData(flags[code].Emoji+" "+langs[*user.Lang][code], "filtered_set_my_lang:"+code)))
+			}
+			msgIDsBytes, err := app.bc.Get([]byte(strconv.FormatInt(message.From.ID, 10)))
+			if err != nil {
+				warn(err)
+				return
+			}
+			msgIDs := strings.Split(string(msgIDsBytes), ";") // msgIDs[0] - search query message. msgIDs[1] - languages pagination message.
+			if len(msgIDs) != 2 {
+				warn(fmt.Errorf("strings.Split(app.bc.Get(message.From.ID), \";\") is not 2 chunks"))
+				return
+			}
+			msgID, err := strconv.ParseInt(msgIDs[0], 10, 64)
+			if err != nil {
+				warn(err)
+				log.Error("couldn't parse int64: app.bc.Get(message.From.ID)", zap.Error(err), zap.String("result", string(msgIDsBytes)))
+				return
+			}
+			// TODO send new message and delete previous instead of editing
+			keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData(user.Localize(`❌ Cancel`), "close_type_language_name_menu:my_lang"),
+				tgbotapi.NewInlineKeyboardButtonData(user.Localize(`🔄Try again`), `try_again_to_search_my_lang`)))
+			if len(results) == 0 {
+				keyboard.InlineKeyboard = keyboard.InlineKeyboard[len(keyboard.InlineKeyboard)-1:]
+				app.bot.Send(tgbotapi.EditMessageTextConfig{
+					BaseEdit: tgbotapi.BaseEdit{
+						ChatID:      message.From.ID,
+						MessageID:   int(msgID),
+						ReplyMarkup: &keyboard,
+					},
+					Text:      user.Localize(`No languages found starting with <b>%s</b>`, filter),
+					ParseMode: tgbotapi.ModeHTML,
+				})
+				return
+			}
+
+			app.bot.Send(tgbotapi.EditMessageTextConfig{
+				BaseEdit: tgbotapi.BaseEdit{
+					ChatID:      message.From.ID,
+					MessageID:   int(msgID),
+					ReplyMarkup: &keyboard,
+				},
+				Text: user.Localize(`🔎 Found %d languages starting with <b>%s</b>. Tap on language to choose it`, len(results), filter),
+				//Text:      fmt.Sprintf("%s\n%s", user.Localize(`Не найдены языки, начинающиеся на %s`, fmt.Sprintf(`<b>%s</b>`, filter)), user.Localize(`Напишите название языка, который вы хотите выбрать:`)),
+				ParseMode: tgbotapi.ModeHTML,
+			})
 			return
-		}
-		mailingMessageIdInt, err := strconv.Atoi(string(mailingMessageId))
-		if err != nil {
-			warn(err)
+		case "set_to_lang":
+			app.bot.Send(tgbotapi.NewDeleteMessage(message.Chat.ID, message.MessageID))
+
+			filter := "" // TODO implement filter_to_lang as I did filter_my_lang
+			// TODO понимать другую раскладку
+			for _, ch := range message.Text {
+				if !unicode.IsLetter(ch) && ch != '-' {
+					continue
+				}
+				filter += string(ch)
+			}
+			filter = strings.ToLower(filter)
+			searchSet := []string{*user.Lang, message.From.LanguageCode, user.MyLang, user.ToLang}
+			usedLangs := make([]string, 0, 2)
+			keyboard := tgbotapi.NewInlineKeyboardMarkup()
+			for i, set := range searchSet {
+				if i < len(searchSet)-1 && in(searchSet[i+1:], set) {
+					continue // уже искали в этом сете
+				}
+				for code, name := range langs[set] { // TODO filter and sort by less differnece
+					if !hasPrefix(name, filter, 1) && filter != code || in(usedLangs, code) {
+						continue
+					}
+					usedLangs = append(usedLangs, code)
+					keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+						tgbotapi.NewInlineKeyboardButtonData(flags[code].Emoji+" "+langs[*user.Lang][code], "filtered_set_to_lang:"+code)))
+				}
+			}
+			msgIDsBytes, err := app.bc.Get([]byte(strconv.FormatInt(message.From.ID, 10)))
+			if err != nil {
+				warn(err)
+				return
+			}
+			msgIDs := strings.Split(string(msgIDsBytes), ";") // msgIDs[0] - search query message. msgIDs[1] - languages pagination message.
+			if len(msgIDs) != 2 {
+				warn(fmt.Errorf("strings.Split(app.bc.Get(message.From.ID), \";\") is not 2 chunks"))
+				return
+			}
+			msgID, err := strconv.ParseInt(msgIDs[0], 10, 64)
+			if err != nil {
+				warn(err)
+				log.Error("couldn't parse int64: app.bc.Get(message.From.ID)", zap.Error(err), zap.String("result", string(msgIDsBytes)))
+				return
+			}
+			// TODO send new message and delete previous instead of editing
+			keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData(user.Localize(`❌ Cancel`), "close_type_language_name_menu:to_lang"),
+				tgbotapi.NewInlineKeyboardButtonData(user.Localize(`🔄Try again`), `try_again_to_search_to_lang`)))
+			if len(usedLangs) == 0 {
+				keyboard.InlineKeyboard = keyboard.InlineKeyboard[len(keyboard.InlineKeyboard)-1:]
+				app.bot.Send(tgbotapi.EditMessageTextConfig{
+					BaseEdit: tgbotapi.BaseEdit{
+						ChatID:      message.From.ID,
+						MessageID:   int(msgID),
+						ReplyMarkup: &keyboard,
+					},
+					Text:      user.Localize(`No languages found starting with <b>%s</b>`, filter),
+					ParseMode: tgbotapi.ModeHTML,
+				})
+				return
+			}
+
+			app.bot.Send(tgbotapi.EditMessageTextConfig{
+				BaseEdit: tgbotapi.BaseEdit{
+					ChatID:      message.From.ID,
+					MessageID:   int(msgID),
+					ReplyMarkup: &keyboard,
+				},
+				Text: user.Localize(`🔎 Found %d languages starting with <b>%s</b>. Tap on language to choose it`, len(usedLangs), filter),
+				//Text:      fmt.Sprintf("%s\n%s", user.Localize(`Не найдены языки, начинающиеся на %s`, fmt.Sprintf(`<b>%s</b>`, filter)), user.Localize(`Напишите название языка, который вы хотите выбрать:`)),
+				ParseMode: tgbotapi.ModeHTML,
+			})
+			return
+		case "mailing":
+			if err = app.bc.Put([]byte("mailing_message_id"), []byte(strconv.Itoa(message.MessageID))); err != nil {
+				warn(err)
+				return
+			}
+			if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": "mailing_keyboards"}); err != nil {
+				warn(err)
+				return
+			}
+			app.bot.Send(tgbotapi.MessageConfig{
+				BaseChat: tgbotapi.BaseChat{
+					ChatID:           message.From.ID,
+					ChannelUsername:  "",
+					ReplyToMessageID: 0,
+					ReplyMarkup: tgbotapi.NewReplyKeyboard(tgbotapi.NewKeyboardButtonRow(
+						tgbotapi.NewKeyboardButton("Empty"))),
+					DisableNotification:      false,
+					AllowSendingWithoutReply: false,
+				},
+				Text:                  "теперь отправь мне кнопки\nтекст|ссылка\nтекст|ссылка",
+				ParseMode:             "",
+				Entities:              nil,
+				DisableWebPagePreview: false,
+			})
+			return
+		case "mailing_keyboards":
+			keyboard := tgbotapi.InlineKeyboardMarkup{}
+			if message.Text != "Empty" {
+				keyboard = parseKeyboard(message.Text)
+			}
+			if err = app.bc.Put([]byte("mailing_keyboard_raw_text"), []byte(message.Text)); err != nil {
+				warn(err)
+				return
+			}
+
+			if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": nil}); err != nil {
+				warn(err)
+				return
+			}
+			app.bot.Send(tgbotapi.MessageConfig{
+				BaseChat: tgbotapi.BaseChat{
+					ChatID:                   message.From.ID,
+					ChannelUsername:          "",
+					ReplyToMessageID:         0,
+					ReplyMarkup:              tgbotapi.NewRemoveKeyboard(false),
+					DisableNotification:      false,
+					AllowSendingWithoutReply: false,
+				},
+				Text:                  "проверь",
+				ParseMode:             "",
+				Entities:              nil,
+				DisableWebPagePreview: false,
+			})
+
+			mailingMessageId, err := app.bc.Get([]byte("mailing_message_id"))
+			if err != nil {
+				warn(err)
+				return
+			}
+			mailingMessageIdInt, err := strconv.Atoi(string(mailingMessageId))
+			if err != nil {
+				warn(err)
+				return
+			}
+
+			keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
+				tgbotapi.NewInlineKeyboardRow(
+					tgbotapi.NewInlineKeyboardButtonData("Подтвердить", "start_mailing")))
+
+			if _, err = app.bot.Send(tgbotapi.CopyMessageConfig{
+				BaseChat: tgbotapi.BaseChat{
+					ChatID:                   message.From.ID,
+					ChannelUsername:          "",
+					ReplyToMessageID:         0,
+					ReplyMarkup:              &keyboard,
+					DisableNotification:      false,
+					AllowSendingWithoutReply: false,
+				},
+				FromChatID:          config.AdminID,
+				FromChannelUsername: "",
+				MessageID:           mailingMessageIdInt,
+				Caption:             "",
+				ParseMode:           "",
+				CaptionEntities:     nil,
+			}); err != nil {
+				warn(err)
+				return
+			}
 			return
 		}
 
-		keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("Подтвердить", "start_mailing")))
-
-		if _, err = app.bot.Send(tgbotapi.CopyMessageConfig{
-			BaseChat: tgbotapi.BaseChat{
-				ChatID:                   message.From.ID,
-				ChannelUsername:          "",
-				ReplyToMessageID:         0,
-				ReplyMarkup:              &keyboard,
-				DisableNotification:      false,
-				AllowSendingWithoutReply: false,
-			},
-			FromChatID:          config.AdminID,
-			FromChannelUsername: "",
-			MessageID:           mailingMessageIdInt,
-			Caption:             "",
-			ParseMode:           "",
-			CaptionEntities:     nil,
-		}); err != nil {
-			warn(err)
-			return
-		}
-		return
 	}
 
 	var text = message.Text
@@ -471,12 +659,12 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 
-	from, err := app.translo.Detect(ctx, text)
+	detection, err := app.translo.Translate(ctx, "auto", "en", text)
 	if err != nil {
 		warn(err)
 		return
 	}
-	from = strings.ToLower(from)
+	from := strings.ToLower(detection.TextLang)
 	if from == "" {
 		log.Error("from is auto")
 	} else if user.MyLang == "auto" {
@@ -486,6 +674,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		}
 		user.MyLang = from
 	}
+	log = log.With(zap.String("from", from))
 
 	// Подбираем язык перевода, зная язык сообщения
 	var to string
@@ -500,14 +689,19 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			to = user.MyLang
 		}
 	}
+	// request translations: user.from-user.to, user.to-user.from, from-to
+	log = log.With(zap.String("to", to))
 
 	entities := message.Entities
 	if len(message.CaptionEntities) > 0 {
 		entities = message.CaptionEntities
 	}
+	log = log.With(zap.String("source", text))
+	log.Debug("")
 	text = norm.NFKC.String(helpers.ApplyEntitiesHtml(text, entities))
 	tr, from, err := app.translate(ctx, from, to, text) // examples мы сохраняем, чтобы соединить с keyboard.Examples и положить в кэш
 	if err != nil {
+		log.Error("", zap.Error(err))
 		warn(err)
 		return
 	}
@@ -629,5 +823,13 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		},
 		Text: user.Localize("Did I translate it correctly?"),
 	})
+
+	if user.Usings == 3 || user.Usings == 6 || user.Usings == 10 {
+		app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, user.Localize(`Закрепите чат с ботом, чтобы не искать его! 📌`)))
+	}
+	if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": nil}); err != nil {
+		warn(err)
+		return
+	}
 
 }

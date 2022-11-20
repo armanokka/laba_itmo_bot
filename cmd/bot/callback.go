@@ -10,10 +10,13 @@ import (
 	"github.com/k0kubun/pp"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
+	"math/rand"
 	"reflect"
+	"runtime"
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQuery) {
@@ -24,6 +27,10 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 	}
 	defer func() {
 		if err := recover(); err != nil {
+			_, f, line, ok := runtime.Caller(4)
+			if ok {
+				log = log.With(zap.String("caller", f+":"+strconv.Itoa(line)))
+			}
 			if e, ok := err.(error); ok {
 				log.Error("", zap.Error(e))
 			} else {
@@ -50,15 +57,15 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		user.Lang = &callback.From.LanguageCode
 	}
 
-	// Uncomment this in test #2
-	//rand.Seed(time.Now().UnixNano())
-	//if rand.Intn(2) == 0 {
-	//	app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, user.Localize("Too many requests. Try again in 10 seconds")))
-	//	return
-	//}
-
+	rand.Seed(time.Now().UnixNano())
+	if rand.Intn(10) == 0 {
+		app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, user.Localize("Too many requests. Try again in 10 seconds")))
+		return
+	}
 	arr := strings.Split(callback.Data, ":")
 
+	log = log.With(zap.String("my_lang", user.MyLang), zap.String("to_lang", user.ToLang), zap.Stringp("act", user.Act), zap.String("callback_data", callback.Data))
+	log.Debug("new callback")
 	switch arr[0] {
 	case "set_bot_lang":
 		if err = app.db.UpdateUser(callback.From.ID, tables.Users{Lang: &arr[1]}); err != nil {
@@ -621,6 +628,325 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			return
 		}
 		if err = app.bc.Delete([]byte("mailing_message_id")); err != nil {
+			warn(err)
+			return
+		}
+	case "type_my_lang_name":
+		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
+		for i1, row := range callback.Message.ReplyMarkup.InlineKeyboard {
+			for i2, btn := range row {
+				if btn.CallbackData == nil {
+					continue
+				}
+				if *btn.CallbackData == callback.Data && strings.HasPrefix(btn.Text, "✅") { // наша кнопка
+					btn.Text = strings.TrimSpace(strings.TrimPrefix(btn.Text, "✅"))
+					callback.Message.ReplyMarkup.InlineKeyboard[i1][i2] = btn
+					app.bot.Send(tgbotapi.NewEditMessageReplyMarkup(callback.From.ID, callback.Message.MessageID, *callback.Message.ReplyMarkup))
+
+					data, err := app.bc.Get([]byte(strconv.FormatInt(callback.From.ID, 10)))
+					if err != nil {
+						warn(err)
+						return
+					}
+					chunks := strings.Split(string(data), ";")
+					if len(chunks) != 2 {
+						warn(err)
+						log.Error("len(chunks) is not 2", zap.String("result", string(data)))
+						return
+					}
+					msgID, err := strconv.ParseInt(chunks[0], 10, 64)
+					if err != nil {
+						warn(err)
+						return
+					}
+					app.bot.Send(tgbotapi.NewDeleteMessage(callback.From.ID, int(msgID)))
+
+					if err = app.db.UpdateUserByMap(callback.From.ID, map[string]interface{}{"act": nil}); err != nil {
+						warn(err)
+						return
+					}
+					return
+				}
+			}
+		}
+		setMyLang := "set_my_lang"
+		if err = app.db.UpdateUser(callback.From.ID, tables.Users{Act: &setMyLang}); err != nil {
+			app.notifyAdmin(err)
+		}
+
+		keyboard := callback.Message.ReplyMarkup
+		UntickAll(keyboard.InlineKeyboard)
+		Tick(callback.Data, keyboard.InlineKeyboard)
+		app.bot.Send(tgbotapi.NewEditMessageReplyMarkup(callback.From.ID, callback.Message.MessageID, *keyboard))
+		msg, err := app.bot.Send(tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:           callback.From.ID,
+				ReplyToMessageID: callback.Message.MessageID,
+				ReplyMarkup: tgbotapi.NewInlineKeyboardMarkup(
+					tgbotapi.NewInlineKeyboardRow(
+						tgbotapi.NewInlineKeyboardButtonData(user.Localize(`❌ Cancel`), "close_type_language_name_menu:my_lang"))),
+				DisableNotification: true,
+			},
+			Text: user.Localize(`🔎 Write the name of the language you want to search for:`),
+		})
+		if err != nil {
+			warn(err)
+			return
+		}
+		key := []byte(strconv.FormatInt(callback.From.ID, 10))
+		value := append([]byte(strconv.Itoa(msg.MessageID)), []byte(";")...)
+		value = append(value, []byte(strconv.Itoa(callback.Message.MessageID))...) // value = "msg.MessageID;callback.Message.MessageID"
+		if err = app.bc.Put(key, value); err != nil {
+			warn(err)
+		}
+		log.Debug("set act and put msg_id in bitcask", zap.String("act", setMyLang), zap.Int("msg_id", msg.MessageID))
+	case "type_to_lang_name":
+		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
+		for i1, row := range callback.Message.ReplyMarkup.InlineKeyboard {
+			for i2, btn := range row {
+				if btn.CallbackData == nil {
+					continue
+				}
+				if *btn.CallbackData == callback.Data && strings.HasPrefix(btn.Text, "✅") { // наша кнопка
+					btn.Text = strings.TrimSpace(strings.TrimPrefix(btn.Text, "✅"))
+					callback.Message.ReplyMarkup.InlineKeyboard[i1][i2] = btn
+					app.bot.Send(tgbotapi.NewEditMessageReplyMarkup(callback.From.ID, callback.Message.MessageID, *callback.Message.ReplyMarkup))
+
+					data, err := app.bc.Get([]byte(strconv.FormatInt(callback.From.ID, 10)))
+					if err != nil {
+						warn(err)
+						return
+					}
+					chunks := strings.Split(string(data), ";")
+					if len(chunks) != 2 {
+						warn(err)
+						log.Error("len(chunks) is not 2", zap.String("result", string(data)))
+						return
+					}
+					msgID, err := strconv.ParseInt(chunks[0], 10, 64)
+					if err != nil {
+						warn(err)
+						return
+					}
+					app.bot.Send(tgbotapi.NewDeleteMessage(callback.From.ID, int(msgID)))
+
+					if err = app.db.UpdateUserByMap(callback.From.ID, map[string]interface{}{"act": nil}); err != nil {
+						warn(err)
+						return
+					}
+					return
+				}
+			}
+		}
+		setToLang := "set_to_lang"
+		if err = app.db.UpdateUser(callback.From.ID, tables.Users{Act: &setToLang}); err != nil {
+			app.notifyAdmin(err)
+		}
+
+		keyboard := callback.Message.ReplyMarkup
+		UntickAll(keyboard.InlineKeyboard)
+		Tick(callback.Data, keyboard.InlineKeyboard)
+		app.bot.Send(tgbotapi.NewEditMessageReplyMarkup(callback.From.ID, callback.Message.MessageID, *keyboard))
+		msg, err := app.bot.Send(tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:           callback.From.ID,
+				ReplyToMessageID: callback.Message.MessageID,
+				ReplyMarkup: tgbotapi.NewInlineKeyboardMarkup(
+					tgbotapi.NewInlineKeyboardRow(
+						tgbotapi.NewInlineKeyboardButtonData(user.Localize(`❌ Cancel`), "close_type_language_name_menu:to_lang"))),
+				DisableNotification: true,
+			},
+			Text: user.Localize(`🔎 Write the name of the language you want to search for:`),
+		})
+		if err != nil {
+			warn(err)
+			return
+		}
+		key := []byte(strconv.FormatInt(callback.From.ID, 10))
+		value := append([]byte(strconv.Itoa(msg.MessageID)), []byte(";")...)
+		value = append(value, []byte(strconv.Itoa(callback.Message.MessageID))...) // value = "msg.MessageID;callback.Message.MessageID"
+		if err = app.bc.Put(key, value); err != nil {
+			warn(err)
+		}
+		log.Debug("set act and put msg_id in bitcask", zap.String("act", setToLang), zap.Int("msg_id", msg.MessageID))
+	case "try_again_to_search_my_lang":
+		app.bot.Send(tgbotapi.NewEditMessageTextAndMarkup(callback.From.ID, callback.Message.MessageID, user.Localize(`🔎 Write the name of the language you want to search for:`), tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData(user.Localize(`❌ Cancel`), "close_type_language_name_menu:my_lang")))))
+		if err = app.db.UpdateUserByMap(callback.From.ID, map[string]interface{}{"act": "set_my_lang"}); err != nil {
+			warn(err)
+			return
+		}
+	case "try_again_to_search_to_lang":
+		app.bot.Send(tgbotapi.NewEditMessageTextAndMarkup(callback.From.ID, callback.Message.MessageID, user.Localize(`🔎 Write the name of the language you want to search for:`), tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData(user.Localize(`❌ Cancel`), "close_type_language_name_menu:to_lang")))))
+		if err = app.db.UpdateUserByMap(callback.From.ID, map[string]interface{}{"act": "set_to_lang"}); err != nil {
+			warn(err)
+			return
+		}
+	case "close_type_language_name_menu": // arr[1] -  my_lang/to_lang
+		app.bot.Send(tgbotapi.NewDeleteMessage(callback.From.ID, callback.Message.MessageID))
+		keyboard := callback.Message.ReplyToMessage.ReplyMarkup
+		UntickAll(keyboard.InlineKeyboard)
+		app.bot.Send(tgbotapi.NewEditMessageReplyMarkup(callback.From.ID, callback.Message.ReplyToMessage.MessageID, *keyboard))
+		if err = app.db.UpdateUserByMap(callback.From.ID, map[string]interface{}{"act": nil}); err != nil {
+			warn(err)
+			return
+		}
+	case "filtered_set_my_lang": // arr[1] - set my_lang
+		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
+
+		// Building new keyboard for pagination message
+		codePosition := -1
+		for _, code := range codes[*user.Lang] {
+			codePosition++
+			if code == arr[1] {
+				break
+			}
+		}
+		offset := codePosition / 18 * 18
+		count := 18
+		if offset+count > len(codes[*user.Lang])-1 {
+			count = len(codes[*user.Lang]) - offset
+		}
+		back := offset - 18
+		if back < 0 {
+			back = len(codes[*user.Lang]) / count * count // end
+		}
+		next := offset + 18
+		if next >= len(codes[*user.Lang])-1 {
+			next = 0 // start
+		}
+		keyboard, err := buildLangsPagination(user, codePosition/18*18, 18, arr[1],
+			fmt.Sprintf("set_my_lang:%s:%d", "%s", offset),
+			fmt.Sprintf("set_my_lang_pagination:%d", back),
+			fmt.Sprintf("set_my_lang_pagination:%d", next), true)
+		if err != nil {
+			warn(err)
+			return
+		}
+
+		// Getting pagination message
+		msgIDsBytes, err := app.bc.Get([]byte(strconv.FormatInt(callback.From.ID, 10)))
+		if err != nil {
+			warn(err)
+			return
+		}
+		msgIDs := strings.Split(string(msgIDsBytes), ";") // msgIDs[0] - search query message. msgIDs[1] - languages pagination message.
+		if len(msgIDs) != 2 {
+			warn(fmt.Errorf("strings.Split(app.bc.Get(message.From.ID), \";\") is not 2 chunks"))
+			return
+		}
+		paginationMsgID, err := strconv.ParseInt(msgIDs[1], 10, 64)
+		if err != nil {
+			warn(err)
+			log.Error("couldn't parse int64: app.bc.Get(message.From.ID)", zap.Error(err), zap.String("result", string(msgIDsBytes)))
+			return
+		}
+		// Updating pagination message
+		app.bot.Send(tgbotapi.NewEditMessageReplyMarkup(callback.From.ID, int(paginationMsgID), keyboard))
+
+		// Updating user's my_lang
+		user.MyLang = arr[1]
+		app.bot.Send(tgbotapi.NewDeleteMessage(callback.From.ID, callback.Message.MessageID))
+		if _, err = app.bot.Send(tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:           callback.From.ID,
+				ChannelUsername:  "",
+				ReplyToMessageID: 0,
+				ReplyMarkup: tgbotapi.NewReplyKeyboard(
+					tgbotapi.NewKeyboardButtonRow(
+						tgbotapi.NewKeyboardButton(langs[*user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
+						tgbotapi.NewKeyboardButton("↔"),
+						tgbotapi.NewKeyboardButton(langs[*user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji))),
+				DisableNotification:      true,
+				AllowSendingWithoutReply: false,
+			},
+			Text: user.Localize("Клавиатура обновлена"),
+		}); err != nil {
+			warn(err)
+			return
+		}
+		if err = app.db.UpdateUserByMap(callback.From.ID, map[string]interface{}{"my_lang": arr[1], "act": nil}); err != nil {
+			warn(err)
+			return
+		}
+	case "filtered_set_to_lang":
+		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
+
+		// Building new keyboard for pagination message
+		codePosition := -1
+		for _, code := range codes[*user.Lang] {
+			codePosition++
+			if code == arr[1] {
+				break
+			}
+		}
+		offset := codePosition / 18 * 18
+		count := 18
+		if offset+count > len(codes[*user.Lang])-1 {
+			count = len(codes[*user.Lang]) - offset
+		}
+		back := offset - 18
+		if back < 0 {
+			back = len(codes[*user.Lang]) / count * count // end
+		}
+		next := offset + 18
+		if next >= len(codes[*user.Lang])-1 {
+			next = 0 // start
+		}
+		keyboard, err := buildLangsPagination(user, codePosition/18*18, 18, arr[1],
+			fmt.Sprintf("set_to_lang:%s:%d", "%s", offset),
+			fmt.Sprintf("set_to_lang_pagination:%d", back),
+			fmt.Sprintf("set_to_lang_pagination:%d", next), true)
+		if err != nil {
+			warn(err)
+			return
+		}
+
+		// Getting pagination message
+		msgIDsBytes, err := app.bc.Get([]byte(strconv.FormatInt(callback.From.ID, 10)))
+		if err != nil {
+			warn(err)
+			return
+		}
+		msgIDs := strings.Split(string(msgIDsBytes), ";") // msgIDs[0] - search query message. msgIDs[1] - languages pagination message.
+		if len(msgIDs) != 2 {
+			warn(fmt.Errorf("strings.Split(app.bc.Get(message.From.ID), \";\") is not 2 chunks"))
+			return
+		}
+		paginationMsgID, err := strconv.ParseInt(msgIDs[1], 10, 64)
+		if err != nil {
+			warn(err)
+			log.Error("couldn't parse int64: app.bc.Get(message.From.ID)", zap.Error(err), zap.String("result", string(msgIDsBytes)))
+			return
+		}
+		// Updating pagination message
+		app.bot.Send(tgbotapi.NewEditMessageReplyMarkup(callback.From.ID, int(paginationMsgID), keyboard))
+
+		// Updating user's my_lang
+		user.ToLang = arr[1]
+		app.bot.Send(tgbotapi.NewDeleteMessage(callback.From.ID, callback.Message.MessageID))
+		if _, err = app.bot.Send(tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:           callback.From.ID,
+				ChannelUsername:  "",
+				ReplyToMessageID: 0,
+				ReplyMarkup: tgbotapi.NewReplyKeyboard(
+					tgbotapi.NewKeyboardButtonRow(
+						tgbotapi.NewKeyboardButton(langs[*user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
+						tgbotapi.NewKeyboardButton("↔"),
+						tgbotapi.NewKeyboardButton(langs[*user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji))),
+				DisableNotification:      true,
+				AllowSendingWithoutReply: false,
+			},
+			Text: user.Localize("Клавиатура обновлена"),
+		}); err != nil {
+			warn(err)
+			return
+		}
+		if err = app.db.UpdateUserByMap(callback.From.ID, map[string]interface{}{"to_lang": arr[1], "act": nil}); err != nil {
 			warn(err)
 			return
 		}

@@ -12,6 +12,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/text/unicode/norm"
 	"gorm.io/gorm"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -67,7 +68,15 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 
 	defer func() {
 		if err := recover(); err != nil {
-			log.Error("%w", zap.Any("error", err))
+			_, f, line, ok := runtime.Caller(2)
+			if ok {
+				log = log.With(zap.String("caller", f+":"+strconv.Itoa(line)))
+			}
+			if e, ok := err.(errors.Error); ok {
+				log.Error("inline", zap.Error(e))
+			} else {
+				log.Error("", zap.Any("error", err))
+			}
 			app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Panic:"+fmt.Sprint(err)))
 		}
 	}()
