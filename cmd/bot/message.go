@@ -10,6 +10,7 @@ import (
 	"github.com/armanokka/translobot/pkg/lingvo"
 	"github.com/armanokka/translobot/pkg/translate"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/k0kubun/pp"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/text/unicode/norm"
@@ -728,7 +729,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 					if IsCtxError(err) {
 						return nil
 					}
-					log.Error("lingvo err")
+					log.Error("lingvo err", zap.Error(err))
 					return err
 				}
 				tr := strings.TrimSpace(writeLingvo(l))
@@ -759,7 +760,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	//}
 
 	//app.bc.PutWithTTL() УПОМЯНУТЬ ОБ АПИ
-
+	pp.Println([]string{trMylangTolang, trTolangMylang, trFromTo, trDict})
 	tr := maxDiff(text, []string{trMylangTolang, trTolangMylang, trFromTo, trDict})
 	if strings.TrimSpace(tr) == "" {
 		log.Error("empty translation", zap.String("trMylangTolang", trMylangTolang), zap.String("trTolangMylang", trFromTo), zap.String("trFromTo", trFromTo), zap.String("trDict", trDict))

@@ -2,9 +2,11 @@ package lingvo
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"github.com/go-resty/resty/v2"
+	"net/http"
 	"net/url"
 )
 
@@ -19,8 +21,11 @@ func TutorCards(from, to, text string) (*[]TutorCard, error) {
 	}
 
 	dst := fmt.Sprintf("https://api.lingvolive.com/Translation/tutor-cards?text=%s&srcLang=%d&dstLang=%d", url.PathEscape(text), srcLang, dstLang)
-
-	res, err := resty.New().R().SetHeaders(map[string]string{
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
+	res, err := resty.NewWithClient(client).R().SetHeaders(map[string]string{
 		"User-Agent":      "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36",
 		"Origin":          "https://www.lingvolive.com",
 		"Referrer":        "https://www.lingvolive.com/",
@@ -52,8 +57,11 @@ func GetDictionary(ctx context.Context, from, to, text string) ([]Dictionary, er
 	}
 
 	dst := fmt.Sprintf("https://api.lingvolive.com/Translation/tutor-cards?text=%s&srcLang=%d&dstLang=%d", url.PathEscape(text), srcLang, dstLang)
-
-	res, err := resty.New().R().SetContext(ctx).SetHeaders(map[string]string{
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
+	res, err := resty.NewWithClient(client).R().SetContext(ctx).SetHeaders(map[string]string{
 		"User-Agent":      "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36",
 		"Origin":          "https://www.lingvolive.com",
 		"Referrer":        "https://www.lingvolive.com/",
@@ -113,7 +121,11 @@ func suggestions(from, to, text string, count, offset int) (*SuggestionResult, e
 	}
 
 	dst := fmt.Sprintf("https://api.lingvolive.com/Translation/WordListPart?prefix=%s&srcLang=%d&dstLang=%d&pageSize=%d&startIndex=%d", url.PathEscape(text), srcLang, dstLang, count, offset)
-	res, err := resty.New().R().SetHeaders(map[string]string{
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
+	res, err := resty.NewWithClient(client).R().SetHeaders(map[string]string{
 		"User-Agent":      "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36",
 		"Origin":          "https://www.lingvolive.com",
 		"Referrer":        "https://www.lingvolive.com/",
