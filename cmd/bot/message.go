@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"github.com/armanokka/translobot/internal/config"
@@ -55,9 +56,11 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 
 	app.bot.Send(tgbotapi.NewChatAction(message.Chat.ID, "typing"))
 
-	if err := app.analytics.User(message); err != nil {
-		app.notifyAdmin(err)
-	}
+	go func() {
+		if err := app.analytics.User(message); err != nil {
+			app.notifyAdmin(err)
+		}
+	}()
 
 	defer func() {
 		if err := app.db.UpdateUserActivity(message.From.ID); err != nil {
@@ -176,7 +179,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		}
 		return
 	case "users":
-		log.Info("/users")
 		if message.From.ID != config.AdminID {
 			return
 		}
@@ -204,7 +206,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		app.bot.Send(group)
 		return
 	case "set_bot_lang":
-
 		languages := map[string]string{
 			"en": "🇬🇧English",
 			"de": "🇩🇪Deutsch",
@@ -253,7 +254,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		}
 		return
 	case "id":
-		log.Info("/id")
 		msg := tgbotapi.NewMessage(message.From.ID, strconv.FormatInt(message.From.ID, 10))
 		app.bot.Send(msg)
 		if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": nil}); err != nil {
@@ -262,32 +262,29 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		}
 		return
 	case "mailing":
-		log.Info("/mailing")
-		mailing := "mailing"
-		if err = app.db.UpdateUser(message.From.ID, tables.Users{Act: &mailing}); err != nil {
-			warn(err)
-			return
-		}
-		keyboard := tgbotapi.NewInlineKeyboardMarkup(
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("отменить", "cancel_mailing_act"),
-			),
-		)
-
 		app.bot.Send(tgbotapi.MessageConfig{
 			BaseChat: tgbotapi.BaseChat{
-				ChatID:                   message.From.ID,
-				ChannelUsername:          "",
-				ReplyToMessageID:         message.MessageID,
-				ReplyMarkup:              keyboard,
+				ChatID:           message.From.ID,
+				ChannelUsername:  "",
+				ReplyToMessageID: 0,
+				ReplyMarkup: tgbotapi.NewInlineKeyboardMarkup(
+					tgbotapi.NewInlineKeyboardRow(
+						tgbotapi.NewInlineKeyboardButtonData("❌ Отменить", "cancel_mailing"),
+					),
+				),
 				DisableNotification:      false,
 				AllowSendingWithoutReply: false,
 			},
-			Text:                  "отправь сообщение для рассылки\b\bбез клавиатуры",
+			Text:                  "Отправь сообщение для рассылки:",
 			ParseMode:             "",
 			Entities:              nil,
 			DisableWebPagePreview: false,
 		})
+		act := "send_mailing_message"
+		if err = app.db.UpdateUser(message.From.ID, tables.Users{Act: &act}); err != nil {
+			warn(err)
+			return
+		}
 		return
 	case "tts_on":
 		app.bot.Send(tgbotapi.NewMessage(message.From.ID, user.Localize(`Бот будет озвучивать переводы`)))
@@ -552,94 +549,114 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				ParseMode: tgbotapi.ModeHTML,
 			})
 			return
-		case "mailing":
+		case "send_mailing_message":
+			app.bot.Send(tgbotapi.MessageConfig{
+				BaseChat: tgbotapi.BaseChat{
+					ChatID:           message.From.ID,
+					ReplyToMessageID: message.MessageID,
+				},
+				Text: "Текст рассылки 👇",
+			})
+			app.bot.Send(tgbotapi.NewCopyMessage(message.From.ID, message.From.ID, message.MessageID))
 			if err = app.bc.Put([]byte("mailing_message_id"), []byte(strconv.Itoa(message.MessageID))); err != nil {
 				warn(err)
 				return
 			}
-			if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": "mailing_keyboards"}); err != nil {
+			act := "send_mailing_keyboard"
+			if err = app.db.UpdateUser(message.From.ID, tables.Users{Act: &act}); err != nil {
 				warn(err)
 				return
 			}
 			app.bot.Send(tgbotapi.MessageConfig{
 				BaseChat: tgbotapi.BaseChat{
-					ChatID:           message.From.ID,
-					ChannelUsername:  "",
-					ReplyToMessageID: 0,
-					ReplyMarkup: tgbotapi.NewReplyKeyboard(tgbotapi.NewKeyboardButtonRow(
-						tgbotapi.NewKeyboardButton("Empty"))),
-					DisableNotification:      false,
-					AllowSendingWithoutReply: false,
+					ChatID: message.From.ID,
+					ReplyMarkup: tgbotapi.NewInlineKeyboardMarkup(
+						tgbotapi.NewInlineKeyboardRow(
+							tgbotapi.NewInlineKeyboardButtonData("❌ Отменить", "cancel_mailing"),
+						),
+					),
 				},
-				Text:                  "теперь отправь мне кнопки\nтекст|ссылка\nтекст|ссылка",
-				ParseMode:             "",
-				Entities:              nil,
-				DisableWebPagePreview: false,
+				Text:      "Отправьте кнопки в формате текст|ссылка текст|ссылка. Можно в ряд через пробел или с новой строки.\n\nПример:\n<code>текст|ссылка текст|ссылка\nтекст|ссылка</code>\n\nЕсли кнопки не нужны, отправьте /empty",
+				ParseMode: tgbotapi.ModeHTML,
 			})
 			return
-		case "mailing_keyboards":
-			keyboard := tgbotapi.InlineKeyboardMarkup{}
-			if message.Text != "Empty" {
-				keyboard = parseKeyboard(message.Text)
-			}
-			if err = app.bc.Put([]byte("mailing_keyboard_raw_text"), []byte(message.Text)); err != nil {
+		case "send_mailing_keyboard":
+			message.Text = strings.TrimSpace(message.Text)
+			if err = app.bc.Put([]byte("mailing_keyboard_text"), []byte(message.Text)); err != nil {
 				warn(err)
 				return
 			}
-
 			if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": nil}); err != nil {
 				warn(err)
 				return
 			}
+			keyboard := tgbotapi.NewInlineKeyboardMarkup()
+			if message.Text != "/empty" {
+				scanner := bufio.NewScanner(strings.NewReader(message.Text))
+				for scanner.Scan() {
+					if scanner.Err() != nil {
+						warn(scanner.Err())
+						return
+					}
+					btns := strings.Fields(scanner.Text())
+					row := tgbotapi.NewInlineKeyboardRow()
+					for _, btn := range btns {
+						parts := strings.Split(btn, "|") // parts[0] - text on button, parts[1] - link for button
+						if len(parts) != 2 {
+							app.bot.Send(tgbotapi.NewMessage(message.From.ID, "Не смог распарсить: "+btn+"\nСсылки должны быть в формате текст_на_кнопке|ссылка"))
+							return
+						}
+						row = append(row, tgbotapi.NewInlineKeyboardButtonURL(parts[0], parts[1]))
+					}
+					keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
+				}
+			}
+
+			mailingMsgIDBytes, err := app.bc.Get([]byte(`mailing_message_id`))
+			if err != nil {
+				warn(err)
+				return
+			}
+			mailingMsgID, err := strconv.ParseInt(string(mailingMsgIDBytes), 10, 64)
+			if err != nil {
+				warn(err)
+				return
+			}
+			app.bot.Send(tgbotapi.NewMessage(message.From.ID, "Проверьте рассылку 👇"))
+
+			var kb interface{}
+			if len(keyboard.InlineKeyboard) > 0 {
+				kb = keyboard
+			}
+			msg, err := app.bot.Send(tgbotapi.CopyMessageConfig{
+				BaseChat: tgbotapi.BaseChat{
+					ChatID:      message.From.ID,
+					ReplyMarkup: kb,
+				},
+				FromChatID: message.From.ID,
+				MessageID:  int(mailingMsgID),
+			})
+			if err != nil {
+				warn(err)
+				return
+			}
+
 			app.bot.Send(tgbotapi.MessageConfig{
 				BaseChat: tgbotapi.BaseChat{
-					ChatID:                   message.From.ID,
-					ChannelUsername:          "",
-					ReplyToMessageID:         0,
-					ReplyMarkup:              tgbotapi.NewRemoveKeyboard(false),
+					ChatID:           message.From.ID,
+					ReplyToMessageID: msg.MessageID,
+					ReplyMarkup: tgbotapi.NewInlineKeyboardMarkup(
+						tgbotapi.NewInlineKeyboardRow(
+							tgbotapi.NewInlineKeyboardButtonData("🚀 Отправить рассылку", "send_mailing"),
+							tgbotapi.NewInlineKeyboardButtonData("❌ Отменить", "cancel_mailing"))),
 					DisableNotification:      false,
 					AllowSendingWithoutReply: false,
 				},
-				Text:                  "проверь",
+				Text:                  "Отправляем?",
 				ParseMode:             "",
 				Entities:              nil,
 				DisableWebPagePreview: false,
 			})
-
-			mailingMessageId, err := app.bc.Get([]byte("mailing_message_id"))
-			if err != nil {
-				warn(err)
-				return
-			}
-			mailingMessageIdInt, err := strconv.Atoi(string(mailingMessageId))
-			if err != nil {
-				warn(err)
-				return
-			}
-
-			keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
-				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("Подтвердить", "start_mailing")))
-
-			if _, err = app.bot.Send(tgbotapi.CopyMessageConfig{
-				BaseChat: tgbotapi.BaseChat{
-					ChatID:                   message.From.ID,
-					ChannelUsername:          "",
-					ReplyToMessageID:         0,
-					ReplyMarkup:              &keyboard,
-					DisableNotification:      false,
-					AllowSendingWithoutReply: false,
-				},
-				FromChatID:          config.AdminID,
-				FromChannelUsername: "",
-				MessageID:           mailingMessageIdInt,
-				Caption:             "",
-				ParseMode:           "",
-				CaptionEntities:     nil,
-			}); err != nil {
-				warn(err)
-				return
-			}
 			return
 		}
 
@@ -737,6 +754,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		_, ok2 := lingvo.Lingvo[to]
 		if ok1 && ok2 && len(text) < 50 && !strings.ContainsAny(text, " \r\n") {
 			g.Go(func() error {
+				ctx, _ := context.WithTimeout(ctx, time.Second*3)
 				l, err := lingvo.GetDictionary(ctx, from, to, strings.ToLower(text))
 				if err != nil {
 					if IsCtxError(err) {
@@ -754,7 +772,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		}
 	}
 
-	if err = g.Wait(); err != nil {
+	if err = g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
 		log.Error("", zap.Error(err))
 		app.notifyAdmin(err)
 	}

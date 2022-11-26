@@ -22,9 +22,11 @@ import (
 func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQuery) {
 	log := app.log.With(zap.Int64("id", callback.From.ID))
 
-	if err := app.analytics.UserButtonClick(*callback.From, callback.Data); err != nil {
-		app.notifyAdmin(err)
-	}
+	go func() {
+		if err := app.analytics.UserButtonClick(*callback.From, callback.Data); err != nil {
+			app.notifyAdmin(err)
+		}
+	}()
 	defer func() {
 		if err := recover(); err != nil {
 			_, f, line, ok := runtime.Caller(4)
@@ -263,14 +265,30 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			},
 			Text: user.Localize("Excuses"),
 		}, "wrong_translation")
-	case "cancel_mailing_act":
-		if err := app.db.UpdateUserByMap(callback.From.ID, map[string]interface{}{"act": ""}); err != nil {
+	case "send_mailing":
+
+	case "cancel_mailing":
+		if err = app.bc.Delete([]byte(`mailing_message_id`)); err != nil {
 			warn(err)
 			return
 		}
-		app.bot.Send(tgbotapi.NewDeleteMessage(callback.From.ID, callback.Message.MessageID))
-		app.bot.Send(tgbotapi.NewDeleteMessage(callback.From.ID, callback.Message.ReplyToMessage.MessageID))
-		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, "OK"))
+		if err = app.bc.Delete([]byte(`mailing_keyboard_text`)); err != nil {
+			warn(err)
+			return
+		}
+		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
+		if err = app.db.UpdateUserByMap(callback.From.ID, map[string]interface{}{"act": nil}); err != nil {
+			warn(err)
+			return
+		}
+		app.bot.Send(tgbotapi.EditMessageTextConfig{
+			BaseEdit: tgbotapi.BaseEdit{
+				ChatID:    callback.From.ID,
+				MessageID: callback.Message.MessageID,
+			},
+			Text:      "<b>Рассылка отменена.</b> Чтобы создать рассылку, введите /mailing",
+			ParseMode: tgbotapi.ModeHTML,
+		})
 	case "none":
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
 	case "delete": // arr[1] - text for callback query
