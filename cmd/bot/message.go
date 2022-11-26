@@ -54,11 +54,11 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 
 	app.bot.Send(tgbotapi.NewChatAction(message.Chat.ID, "typing"))
 
-	go func() {
-		if err := app.analytics.User(message); err != nil {
-			app.notifyAdmin(err)
-		}
-	}()
+	//go func() {
+	//	if err := app.analytics.User(message); err != nil {
+	//		app.notifyAdmin(err)
+	//	}
+	//}()
 
 	defer func() {
 		if err := app.db.UpdateUserActivity(message.From.ID); err != nil {
@@ -143,9 +143,9 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				warn(err)
 				return
 			}
-			if err = app.analytics.Bot(msg, "/start"+message.CommandArguments()); err != nil {
-				app.notifyAdmin(err)
-			}
+			//if err = app.analytics.Bot(msg, "/start"+message.CommandArguments()); err != nil {
+			//	app.notifyAdmin(err)
+			//}
 			if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": nil}); err != nil {
 				warn(err)
 				return
@@ -243,9 +243,9 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			warn(err)
 			return
 		}
-		if err = app.analytics.Bot(msg, "/start"+message.CommandArguments()); err != nil {
-			app.notifyAdmin(err)
-		}
+		//if err = app.analytics.Bot(msg, "/start"+message.CommandArguments()); err != nil {
+		//	app.notifyAdmin(err)
+		//}
 		if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": nil}); err != nil {
 			warn(err)
 			return
@@ -312,14 +312,14 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	case "↔":
 		if user.MyLang == "auto" {
 			app.bot.Send(tgbotapi.NewDeleteMessage(message.Chat.ID, message.MessageID))
-			if err = app.analytics.Bot(tgbotapi.MessageConfig{
-				BaseChat: tgbotapi.BaseChat{
-					ChatID: message.Chat.ID,
-				},
-				Text: ":delete_message",
-			}, "tried_to_swap_autodetect_lang"); err != nil {
-				app.notifyAdmin(err)
-			}
+			//if err = app.analytics.Bot(tgbotapi.MessageConfig{
+			//	BaseChat: tgbotapi.BaseChat{
+			//		ChatID: message.Chat.ID,
+			//	},
+			//	Text: ":delete_message",
+			//}, "tried_to_swap_autodetect_lang"); err != nil {
+			//	app.notifyAdmin(err)
+			//}
 			return
 		}
 
@@ -340,9 +340,9 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			warn(err)
 			return
 		}
-		if err = app.analytics.Bot(msg, "↔"); err != nil {
-			app.notifyAdmin(err)
-		}
+		//if err = app.analytics.Bot(msg, "↔"); err != nil {
+		//	app.notifyAdmin(err)
+		//}
 		if err = app.db.UpdateUserByMap(message.From.ID, map[string]interface{}{"act": nil}); err != nil {
 			warn(err)
 			return
@@ -364,9 +364,9 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			Text: user.Localize("Choose language or send its name"),
 		}
 		app.bot.Send(msg)
-		if err = app.analytics.Bot(msg, "my_lang"); err != nil {
-			app.notifyAdmin(err)
-		}
+		//if err = app.analytics.Bot(msg, "my_lang"); err != nil {
+		//	app.notifyAdmin(err)
+		//}
 		return
 	case concatNonEmpty(" ", langs[*user.Lang][user.ToLang], flags[user.ToLang].Emoji):
 		if user.Lang == nil {
@@ -388,9 +388,9 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		}
 		// TODO handle app.bot.send errors that are not 403
 		app.bot.Send(msg)
-		if err = app.analytics.Bot(msg, "to_lang"); err != nil {
-			app.notifyAdmin(err)
-		}
+		//if err = app.analytics.Bot(msg, "to_lang"); err != nil {
+		//	app.notifyAdmin(err)
+		//}
 		return
 	}
 
@@ -651,7 +651,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		//app.bot.Send(tgbotapi.NewDeleteMessage())
 		msg := tgbotapi.NewMessage(message.Chat.ID, user.Localize("Отправь текстовое сообщение, чтобы я его перевел"))
 		app.bot.Send(msg)
-		app.analytics.Bot(msg, "not_text_message")
+		//app.analytics.Bot(msg, "not_text_message")
 		return
 	}
 
@@ -727,7 +727,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	//	}
 	//	return g.Wait()
 	//})
-	//_, ok1 := lingvo.Lingvo[from]
+	//_, ok1 := lingvo.Lingvo[from] // TODO get it back
 	//_, ok2 := lingvo.Lingvo[to]
 	//if ok1 && ok2 && len(text) < 50 && !strings.ContainsAny(text, " \r\n") {
 	//	g.Go(func() error {
@@ -821,7 +821,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			//warn(err)
 			return
 		}
-		app.analytics.Bot(msgConfig, "translate")
+		//app.analytics.Bot(msgConfig, "translate")
 
 		if user.TTS {
 			chunk, err = removeHtml(chunk)

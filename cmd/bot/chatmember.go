@@ -29,24 +29,23 @@ func (app App) onMyChatMember(update tgbotapi.ChatMemberUpdated) {
 		//}
 		app.bot.Send(tgbotapi.NewMessage(update.From.ID, user.Localize("Glad to see you again, %s", update.From.FirstName)))
 	case "kicked":
-		if err = app.analytics.User(tgbotapi.Message{
-			MessageID:  0,
-			From:       &update.From,
-			SenderChat: nil,
-			Date:       0,
-			Chat: &tgbotapi.Chat{
-				ID:        update.From.ID,
-				Type:      "private",
-				UserName:  update.From.UserName,
-				FirstName: update.From.FirstName,
-				LastName:  update.From.LastName,
-			},
-			Text: ":bot_was_blocked",
-		}); err != nil {
-			app.notifyAdmin(err)
-		}
-		if err = app.db.UpdateUserByMap(update.From.ID, map[string]interface{}{"blocked": true}); err != nil {
-			app.notifyAdmin(err)
-		}
+		//if err = app.analytics.User(tgbotapi.Message{
+		//	MessageID:  0,
+		//	From:       &update.From,
+		//	SenderChat: nil,
+		//	Date:       0,
+		//	Chat: &tgbotapi.Chat{
+		//		ID:        update.From.ID,
+		//		Type:      "private",
+		//		UserName:  update.From.UserName,
+		//		FirstName: update.From.FirstName,
+		//		LastName:  update.From.LastName,
+		//	},
+		//	Text: ":bot_was_blocked",
+		//}); err != nil {
+		app.notifyAdmin(err)
+	}
+	if err = app.db.UpdateUserByMap(update.From.ID, map[string]interface{}{"blocked": true}); err != nil {
+		app.notifyAdmin(err)
 	}
 }

@@ -79,11 +79,11 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 			app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Panic:"+fmt.Sprint(err)))
 		}
 	}()
-	go func() {
-		if err := app.analytics.InlineUser(update); err != nil {
-			app.notifyAdmin(err)
-		}
-	}()
+	//go func() {
+	//	if err := app.analytics.InlineUser(update); err != nil {
+	//		app.notifyAdmin(err)
+	//	}
+	//}()
 
 	warn := func(err error) {
 		app.bot.AnswerInlineQuery(tgbotapi.InlineConfig{
@@ -303,7 +303,7 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 			warn(err)
 		}
 	}
-	if err = app.analytics.InlineBot(*update.From, inlineConfig); err != nil {
-		app.notifyAdmin(err)
-	}
+	//if err = app.analytics.InlineBot(*update.From, inlineConfig); err != nil {
+	//	app.notifyAdmin(err)
+	//}
 }

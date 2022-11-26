@@ -22,11 +22,11 @@ import (
 func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQuery) {
 	log := app.log.With(zap.Int64("id", callback.From.ID))
 
-	go func() {
-		if err := app.analytics.UserButtonClick(*callback.From, callback.Data); err != nil {
-			app.notifyAdmin(err)
-		}
-	}()
+	//go func() {
+	//	if err := app.analytics.UserButtonClick(*callback.From, callback.Data); err != nil {
+	//		app.notifyAdmin(err)
+	//	}
+	//}()
 	defer func() {
 		if err := recover(); err != nil {
 			_, f, line, ok := runtime.Caller(4)
@@ -107,32 +107,32 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			Text:      user.Localize("<i>Thank you for choosing our translator Translo</i>"),
 			ParseMode: tgbotapi.ModeHTML,
 		})
-		app.analytics.Bot(tgbotapi.MessageConfig{
-			BaseChat: tgbotapi.BaseChat{
-				ChatID:           callback.From.ID,
-				ReplyToMessageID: callback.Message.MessageID,
-			},
-			Text:                  user.Localize("<i>Thank you for choosing our translator Translo</i>"),
-			ParseMode:             "",
-			Entities:              nil,
-			DisableWebPagePreview: false,
-		}, "correct_translation")
+		//app.analytics.Bot(tgbotapi.MessageConfig{
+		//	BaseChat: tgbotapi.BaseChat{
+		//		ChatID:           callback.From.ID,
+		//		ReplyToMessageID: callback.Message.MessageID,
+		//	},
+		//	Text:                  user.Localize("<i>Thank you for choosing our translator Translo</i>"),
+		//	ParseMode:             "",
+		//	Entities:              nil,
+		//	DisableWebPagePreview: false,
+		//}, "correct_translation")
 	case "wrong_translation": // arr[1] - used 'from', arr[2] - used 'to'
 		tryingToFixMsg, err := app.bot.Send(tgbotapi.NewEditMessageText(callback.From.ID, callback.Message.MessageID, user.Localize("Попытаюсь исправить...")))
 		if err != nil {
 			warn(err)
 			return
 		}
-		app.analytics.Bot(tgbotapi.MessageConfig{
-			BaseChat: tgbotapi.BaseChat{
-				ChatID:           callback.From.ID,
-				ReplyToMessageID: callback.Message.MessageID,
-			},
-			Text:                  user.Localize("Попытаюсь исправить..."),
-			ParseMode:             "",
-			Entities:              nil,
-			DisableWebPagePreview: false,
-		}, "wrong_translation")
+		//app.analytics.Bot(tgbotapi.MessageConfig{
+		//	BaseChat: tgbotapi.BaseChat{
+		//		ChatID:           callback.From.ID,
+		//		ReplyToMessageID: callback.Message.MessageID,
+		//	},
+		//	Text:                  user.Localize("Попытаюсь исправить..."),
+		//	ParseMode:             "",
+		//	Entities:              nil,
+		//	DisableWebPagePreview: false,
+		//}, "wrong_translation")
 		// from != user.MyLang && from != user.ToLang: (to = user.MyLang)
 		// переводим с from на user.ToLang
 		// Переводим на user.MyLang-user.ToLang
@@ -178,7 +178,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 				}
 			}
 			lastMsgID = msg.MessageID
-			app.analytics.Bot(cfg, "wrong_translation")
+			//app.analytics.Bot(cfg, "wrong_translation")
 		case user.ToLang:
 			tr, _, err := app.translate(ctx, user.MyLang, user.ToLang, text)
 			if err != nil {
@@ -203,7 +203,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 				}
 			}
 			lastMsgID = msg.MessageID
-			app.analytics.Bot(cfg, "wrong_translation")
+			//app.analytics.Bot(cfg, "wrong_translation")
 		default:
 			g, ctx := errgroup.WithContext(ctx)
 			for from, to := range map[string]string{from: user.ToLang, user.MyLang: user.ToLang, user.ToLang: user.MyLang} {
@@ -231,7 +231,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 						}
 					}
 					lastMsgID = msg.MessageID
-					app.analytics.Bot(cfg, "wrong_translation")
+					//app.analytics.Bot(cfg, "wrong_translation")
 					return nil
 				})
 			}
@@ -254,17 +254,17 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			Text: user.Localize("Did I translate it correctly?"),
 		}
 		app.bot.Send(cfg)
-		app.analytics.Bot(cfg, "wrong_translation")
+		//app.analytics.Bot(cfg, "wrong_translation")
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
 	case "wrong_translation_eventually":
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
 		app.bot.Send(tgbotapi.NewEditMessageText(callback.From.ID, callback.Message.MessageID, user.Localize("Excuses")))
-		app.analytics.Bot(tgbotapi.MessageConfig{
-			BaseChat: tgbotapi.BaseChat{
-				ChatID: callback.From.ID,
-			},
-			Text: user.Localize("Excuses"),
-		}, "wrong_translation")
+		//app.analytics.Bot(tgbotapi.MessageConfig{
+		//	BaseChat: tgbotapi.BaseChat{
+		//		ChatID: callback.From.ID,
+		//	},
+		//	Text: user.Localize("Excuses"),
+		//}, "wrong_translation")
 	case "send_mailing":
 		// Getting message_id of the mailing
 		msgIDBytes, err := app.bc.Get([]byte(`mailing_message_id`))
