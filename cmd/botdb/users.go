@@ -63,6 +63,11 @@ func (db BotDB) UpdateUserByMap(id int64, updates map[string]interface{}) error 
 }
 
 func (db BotDB) GetAllUsers() (users []tables.Users, err error) {
+	l, err := db.GetUsersLen()
+	if err != nil {
+		return nil, err
+	}
+	users = make([]tables.Users, 0, l)
 	err = db.Model(&tables.Users{}).Find(&users).Error
 	return users, err
 }
@@ -78,7 +83,7 @@ func (db BotDB) UpdateUserActivity(id int64) error {
 	return nil
 }
 
-func (db BotDB) GetUsersNumber() (num int64, err error) {
+func (db BotDB) GetUsersLen() (num int64, err error) {
 	err = db.Model(&tables.Users{}).Raw("SELECT COUNT(*) FROM users").Find(&num).Error
 	return
 }

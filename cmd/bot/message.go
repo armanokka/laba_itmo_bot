@@ -1,7 +1,6 @@
 package bot
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"github.com/armanokka/translobot/internal/config"
@@ -590,26 +589,10 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				warn(err)
 				return
 			}
-			keyboard := tgbotapi.NewInlineKeyboardMarkup()
-			if message.Text != "/empty" {
-				scanner := bufio.NewScanner(strings.NewReader(message.Text))
-				for scanner.Scan() {
-					if scanner.Err() != nil {
-						warn(scanner.Err())
-						return
-					}
-					btns := strings.Fields(scanner.Text())
-					row := tgbotapi.NewInlineKeyboardRow()
-					for _, btn := range btns {
-						parts := strings.Split(btn, "|") // parts[0] - text on button, parts[1] - link for button
-						if len(parts) != 2 {
-							app.bot.Send(tgbotapi.NewMessage(message.From.ID, "Не смог распарсить: "+btn+"\nСсылки должны быть в формате текст_на_кнопке|ссылка"))
-							return
-						}
-						row = append(row, tgbotapi.NewInlineKeyboardButtonURL(parts[0], parts[1]))
-					}
-					keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
-				}
+			keyboard, valid := parseKeyboard(message.Text)
+			if !valid {
+				warn(fmt.Errorf("invalid keyboard for mailing: %s", message.Text))
+				return
 			}
 
 			mailingMsgIDBytes, err := app.bc.Get([]byte(`mailing_message_id`))
@@ -624,14 +607,10 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			}
 			app.bot.Send(tgbotapi.NewMessage(message.From.ID, "Проверьте рассылку 👇"))
 
-			var kb interface{}
-			if len(keyboard.InlineKeyboard) > 0 {
-				kb = keyboard
-			}
 			msg, err := app.bot.Send(tgbotapi.CopyMessageConfig{
 				BaseChat: tgbotapi.BaseChat{
 					ChatID:      message.From.ID,
-					ReplyMarkup: kb,
+					ReplyMarkup: keyboard,
 				},
 				FromChatID: message.From.ID,
 				MessageID:  int(mailingMsgID),
@@ -677,22 +656,21 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 
-	detection, err := app.translo.Translate(ctx, "auto", "en", text)
+	from, err := app.translo.Detect(ctx, text)
 	if err != nil {
 		warn(err)
 		return
 	}
-	from := strings.ToLower(detection.TextLang)
-	if from == "" {
-		log.Error("from is auto")
-	} else if user.MyLang == "auto" {
+	from = strings.ToLower(from)
+	//pp.Println("from", from)
+	if user.MyLang == "auto" {
 		if err = app.db.UpdateUser(message.From.ID, tables.Users{MyLang: from}); err != nil {
 			warn(err)
 			return
 		}
 		user.MyLang = from
 	}
-	log = log.With(zap.String("from", from))
+	log = log.With(zap.String("detection", from))
 
 	// Подбираем язык перевода, зная язык сообщения
 	var to string
@@ -716,39 +694,40 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	log = log.With(zap.String("source", text))
 	texts := helpers.ApplyEntitiesHtml(text, entities, 4000)
 	log = log.With(zap.Strings("source_with_applied_entities", texts))
+	//pp.Println("from", from, "to", to, "texts", texts)
 	var (
-		trMylangTolang = make([]string, 0, len(texts))
-		trFromTo       = make([]string, 0, len(texts))
-		trDict         string
+		//trMylangTolang = make([]string, 0, len(texts))
+		trFromTo = make([]string, 0, len(texts))
+		trDict   string
 	)
 	g, ctx := errgroup.WithContext(ctx)
 
-	if from != user.MyLang && from != user.ToLang && len(strings.Fields(text)) > 1 {
-		g.Go(func() error {
-			g, ctx := errgroup.WithContext(ctx)
-			for _, text := range texts {
-				text := text
-				g.Go(func() error {
-					tr, err := app.translo.Translate(ctx, from, to, text)
-					trFromTo = append(trFromTo, tr.TranslatedText)
-					return err
-				})
-			}
-			return g.Wait()
-		})
-	}
+	//if from != user.MyLang && from != user.ToLang && len(strings.Fields(text)) > 1 {
 	g.Go(func() error {
 		g, ctx := errgroup.WithContext(ctx)
 		for _, text := range texts {
 			text := text
 			g.Go(func() error {
-				tr, err := app.translo.Translate(ctx, user.MyLang, user.ToLang, text)
-				trMylangTolang = append(trMylangTolang, tr.TranslatedText)
+				tr, err := app.translo.Translate(ctx, from, to, text)
+				trFromTo = append(trFromTo, tr.TranslatedText)
 				return err
 			})
 		}
 		return g.Wait()
 	})
+	//}
+	//g.Go(func() error {
+	//	g, ctx := errgroup.WithContext(ctx)
+	//	for _, text := range texts {
+	//		text := text
+	//		g.Go(func() error {
+	//			tr, err := app.translo.Translate(ctx, user.MyLang, user.ToLang, text)
+	//			trMylangTolang = append(trMylangTolang, tr.TranslatedText)
+	//			return err
+	//		})
+	//	}
+	//	return g.Wait()
+	//})
 	if from == user.MyLang {
 		_, ok1 := lingvo.Lingvo[from]
 		_, ok2 := lingvo.Lingvo[to]
@@ -791,13 +770,17 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	//}
 
 	//app.bc.PutWithTTL() УПОМЯНУТЬ ОБ АПИ
-	translations := [][]string{trMylangTolang, []string{trDict}}
-	if len(strings.Fields(text)) > 1 {
-		translations = append(translations, trFromTo)
-	}
+	//translations := [][]string{trMylangTolang, []string{trDict}}
+	//if len(strings.Fields(text)) > 1 {
+	//	translations = append(translations, trFromTo)
+	//}
 	// TODO ask 'from' if detected lang != user.MyLang
 	// TODO bot for buying ads here
-	translation := maxDiff(text, translations)
+	//translation := maxDiff(text, translations)
+	translation := trFromTo
+	if trDict != "" {
+		translation = []string{trDict}
+	}
 
 	lastMsgID := 0
 	for _, chunk := range translation {

@@ -4,6 +4,7 @@ Helper functions
 package bot
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -21,7 +22,6 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
-	"reflect"
 	"strconv"
 	"strings"
 	"unicode"
@@ -35,25 +35,6 @@ func cutStringUTF16(text string, limit int) string {
 		return string(utf16.Decode(points[:limit]))
 	}
 	return text
-}
-
-func parseKeyboard(messageText string) tgbotapi.InlineKeyboardMarkup {
-	keyboard := tgbotapi.NewInlineKeyboardMarkup()
-	if messageText != "Empty" {
-		lines := strings.Split(messageText, "\n")
-		for _, line := range lines {
-			parts := strings.Split(line, "|")
-			if len(parts) != 2 {
-				continue
-			}
-			keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonURL(parts[0], parts[1])))
-		}
-	}
-	if reflect.DeepEqual(keyboard, tgbotapi.NewInlineKeyboardMarkup()) {
-		return tgbotapi.InlineKeyboardMarkup{}
-	}
-	return keyboard
 }
 
 func in(arr []string, keys ...string) bool {
@@ -369,6 +350,32 @@ func IsCtxError(err error) bool {
 		return IsCtxError(e.Err)
 	}
 	return errors.Is(err, context.Canceled)
+}
+
+func parseKeyboard(text string) (keyboard interface{}, valid bool) {
+	kb := tgbotapi.NewInlineKeyboardMarkup()
+	if text != "/empty" {
+		scanner := bufio.NewScanner(strings.NewReader(text))
+		for scanner.Scan() {
+			if scanner.Err() != nil {
+				return
+			}
+			btns := strings.Fields(scanner.Text())
+			row := tgbotapi.NewInlineKeyboardRow()
+			for _, btn := range btns {
+				parts := strings.Split(btn, "|") // parts[0] - text on button, parts[1] - link for button
+				if len(parts) != 2 {
+					return
+				}
+				row = append(row, tgbotapi.NewInlineKeyboardButtonURL(parts[0], parts[1]))
+			}
+			kb.InlineKeyboard = append(kb.InlineKeyboard, row)
+		}
+	}
+	if len(kb.InlineKeyboard) > 0 {
+		return kb, true
+	}
+	return
 }
 
 func writeLingvo(lingvo []lingvo.Dictionary) string {

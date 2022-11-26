@@ -23,7 +23,7 @@ type BotDB interface {
 
 	SwapLangs(userID int64) error
 
-	GetUsersNumber() (int64, error)
+	GetUsersLen() (int64, error)
 	GetUsersSlice(offset, count int64, slice []int64) (err error)
 
 	GetAllUsers() ([]tables.Users, error)

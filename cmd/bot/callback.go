@@ -7,7 +7,7 @@ import (
 	"github.com/armanokka/translobot/internal/tables"
 	"github.com/armanokka/translobot/pkg/helpers"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/k0kubun/pp"
+	"go.uber.org/ratelimit"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"math/rand"
@@ -266,7 +266,61 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			Text: user.Localize("Excuses"),
 		}, "wrong_translation")
 	case "send_mailing":
+		// Getting message_id of the mailing
+		msgIDBytes, err := app.bc.Get([]byte(`mailing_message_id`))
+		if err != nil {
+			warn(err)
+			return
+		}
+		mailingMsgID, err := strconv.Atoi(string(msgIDBytes))
+		if err != nil {
+			warn(err)
+			return
+		}
 
+		// Getting keyboard of the mailing
+		keyboardTextBytes, err := app.bc.Get([]byte(`mailing_keyboard_text`))
+		if err != nil {
+			warn(err)
+			return
+		}
+		keyboard, valid := parseKeyboard(string(keyboardTextBytes))
+		if !valid {
+			warn(fmt.Errorf("invalid keyboard for mailing: %s", string(keyboardTextBytes)))
+			return
+		}
+
+		users, err := app.db.GetAllUsers()
+		if err != nil {
+			warn(err)
+			return
+		}
+		app.bot.Send(tgbotapi.NewEditMessageText(callback.From.ID, callback.Message.MessageID, "Рассылка начата! 🚀"))
+		rateLimiter := ratelimit.New(30)
+		for i := 0; i < len(users); i++ {
+			_, err := app.bot.Send(tgbotapi.CopyMessageConfig{
+				BaseChat: tgbotapi.BaseChat{
+					ChatID:              users[i].ID, // TODO multiple admins
+					ReplyMarkup:         keyboard,
+					DisableNotification: false,
+				},
+				FromChatID: config.AdminID,
+				MessageID:  mailingMsgID,
+			})
+			if err != nil {
+				// TODO handle
+			}
+			rateLimiter.Take()
+		}
+		app.bot.Send(tgbotapi.NewMessage(config.AdminID, fmt.Sprintf(`"Рассылка завершена. Отправлено %d сообщений"`, len(users))))
+		if err = app.bc.Delete([]byte("mailing_keyboard_raw_text")); err != nil {
+			warn(err)
+			return
+		}
+		if err = app.bc.Delete([]byte("mailing_message_id")); err != nil {
+			warn(err)
+			return
+		}
 	case "cancel_mailing":
 		if err = app.bc.Delete([]byte(`mailing_message_id`)); err != nil {
 			warn(err)
@@ -562,93 +616,6 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			})
 		}
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
-	case "start_mailing":
-		mailingMessageId, err := app.bc.Get([]byte("mailing_message_id"))
-		if err != nil {
-			warn(err)
-			return
-		}
-		mailingMessageIdInt, err := strconv.Atoi(string(mailingMessageId))
-		if err != nil {
-			warn(err)
-			return
-		}
-
-		keyboardBytes, err := app.bc.Get([]byte("mailing_keyboard_raw_text"))
-		if err != nil {
-			warn(err)
-			return
-		}
-		keyboardText := string(keyboardBytes)
-		keyboard := tgbotapi.NewInlineKeyboardMarkup()
-		if keyboardText != "Empty" {
-			keyboard = parseKeyboard(keyboardText)
-		}
-
-		if _, err = app.bot.Send(tgbotapi.CopyMessageConfig{
-			BaseChat: tgbotapi.BaseChat{
-				ChatID:                   callback.From.ID,
-				ChannelUsername:          "",
-				ReplyToMessageID:         0,
-				ReplyMarkup:              &keyboard,
-				DisableNotification:      false,
-				AllowSendingWithoutReply: false,
-			},
-			FromChatID:          config.AdminID,
-			FromChannelUsername: "",
-			MessageID:           mailingMessageIdInt,
-			Caption:             "",
-			ParseMode:           "",
-			CaptionEntities:     nil,
-		}); err != nil {
-			warn(err)
-			return
-		}
-		usersNumber, err := app.db.GetUsersNumber()
-		if err != nil {
-			return
-		}
-
-		slice := make([]int64, 0, 100)
-		for n := usersNumber / 100; n < usersNumber/100; n++ { // iterate over each 100 users
-			offset := n*100 + 100
-			if err = app.db.GetUsersSlice(offset, 100, slice); err != nil {
-				warn(err)
-				return
-			}
-			pp.Println(slice)
-			for j := 0; j < 100; j++ {
-				if _, err = app.bot.Send(tgbotapi.CopyMessageConfig{
-					BaseChat: tgbotapi.BaseChat{
-						ChatID:                   slice[j],
-						ChannelUsername:          "",
-						ReplyToMessageID:         0,
-						ReplyMarkup:              &keyboard,
-						DisableNotification:      false,
-						AllowSendingWithoutReply: false,
-					},
-					FromChatID:          config.AdminID,
-					FromChannelUsername: "",
-					MessageID:           mailingMessageIdInt,
-					Caption:             "",
-					ParseMode:           "",
-					CaptionEntities:     nil,
-				}); err != nil {
-					pp.Println(err)
-				}
-				log.Info("mailing was sent", zap.Int64("recepient_id", slice[j]))
-			}
-		}
-
-		app.bot.Send(tgbotapi.NewMessage(callback.From.ID, "рассылка закончена"))
-		if err = app.bc.Delete([]byte("mailing_keyboard_raw_text")); err != nil {
-			warn(err)
-			return
-		}
-		if err = app.bc.Delete([]byte("mailing_message_id")); err != nil {
-			warn(err)
-			return
-		}
 	case "type_my_lang_name":
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
 		for i1, row := range callback.Message.ReplyMarkup.InlineKeyboard {
