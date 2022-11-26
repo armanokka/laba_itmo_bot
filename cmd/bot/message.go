@@ -10,10 +10,8 @@ import (
 	"github.com/armanokka/translobot/pkg/lingvo"
 	"github.com/armanokka/translobot/pkg/translate"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/k0kubun/pp"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-	"golang.org/x/text/unicode/norm"
 	"gorm.io/gorm"
 	"html"
 	"os"
@@ -699,25 +697,40 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		entities = message.CaptionEntities
 	}
 	log = log.With(zap.String("source", text))
-	text = norm.NFKC.String(helpers.ApplyEntitiesHtml(text, entities))
-	log = log.With(zap.String("source_with_html", text))
-
-	var trMylangTolang, trTolangMylang, trFromTo, trDict string
+	texts := helpers.ApplyEntitiesHtml(text, entities, 4000)
+	log = log.With(zap.Strings("source_with_applied_entities", texts))
+	var (
+		trMylangTolang = make([]string, 0, len(texts))
+		trFromTo       = make([]string, 0, len(texts))
+		trDict         string
+	)
 	g, ctx := errgroup.WithContext(ctx)
+
+	if from != user.MyLang && from != user.ToLang && len(strings.Fields(text)) > 1 {
+		g.Go(func() error {
+			g, ctx := errgroup.WithContext(ctx)
+			for _, text := range texts {
+				text := text
+				g.Go(func() error {
+					tr, err := app.translo.Translate(ctx, from, to, text)
+					trFromTo = append(trFromTo, tr.TranslatedText)
+					return err
+				})
+			}
+			return g.Wait()
+		})
+	}
 	g.Go(func() error {
-		tr, err := app.translo.Translate(ctx, user.MyLang, user.ToLang, text)
-		trMylangTolang = tr.TranslatedText
-		return err
-	})
-	g.Go(func() error {
-		tr, err := app.translo.Translate(ctx, user.ToLang, user.MyLang, text)
-		trTolangMylang = tr.TranslatedText
-		return err
-	})
-	g.Go(func() error {
-		tr, err := app.translo.Translate(ctx, from, to, text)
-		trFromTo = tr.TranslatedText
-		return err
+		g, ctx := errgroup.WithContext(ctx)
+		for _, text := range texts {
+			text := text
+			g.Go(func() error {
+				tr, err := app.translo.Translate(ctx, user.MyLang, user.ToLang, text)
+				trMylangTolang = append(trMylangTolang, tr.TranslatedText)
+				return err
+			})
+		}
+		return g.Wait()
 	})
 	if from == user.MyLang {
 		_, ok1 := lingvo.Lingvo[from]
@@ -760,16 +773,17 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	//}
 
 	//app.bc.PutWithTTL() УПОМЯНУТЬ ОБ АПИ
-	pp.Println([]string{trMylangTolang, trTolangMylang, trFromTo, trDict})
-	tr := maxDiff(text, []string{trMylangTolang, trTolangMylang, trFromTo, trDict})
-	if strings.TrimSpace(tr) == "" {
-		log.Error("empty translation", zap.String("trMylangTolang", trMylangTolang), zap.String("trTolangMylang", trFromTo), zap.String("trFromTo", trFromTo), zap.String("trDict", trDict))
-	} // TODO fix closeUnclosedTagsAndClearUnsupported
-	log.Debug(tr)
-	chunks := translate.SplitIntoChunksBySentences(tr, 4000)
+	translations := [][]string{trMylangTolang, []string{trDict}}
+	if len(strings.Fields(text)) > 1 {
+		translations = append(translations, trFromTo)
+	}
+	// TODO ask 'from' if detected lang != user.MyLang
+	// TODO bot for buying ads here
+	translation := maxDiff(text, translations)
+
 	lastMsgID := 0
-	for _, chunk := range chunks {
-		chunk = closeUnclosedTagsAndClearUnsupported(chunk) /* + "\n❤️ @TransloBot" */ // я не знаю, почему это не работает
+	for _, chunk := range translation {
+		chunk = strings.NewReplacer(`<notranslate>`, "", `</notranslate>`, "").Replace(chunk)
 		keyboard := tgbotapi.NewReplyKeyboard(
 			tgbotapi.NewKeyboardButtonRow(
 				tgbotapi.NewKeyboardButton(langs[*user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
@@ -810,55 +824,56 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			return
 		}
 		app.analytics.Bot(msgConfig, "translate")
-	}
-	if user.TTS {
-		tr, err = removeHtml(tr)
-		if err != nil {
-			warn(err)
-			return
-		}
-		data, _ := translate.TTS(to, tr)
-		app.bot.Send(tgbotapi.AudioConfig{
-			BaseFile: tgbotapi.BaseFile{
-				BaseChat: tgbotapi.BaseChat{
-					ChatID: message.Chat.ID,
-					ReplyMarkup: tgbotapi.NewReplyKeyboard(
-						tgbotapi.NewKeyboardButtonRow(
-							tgbotapi.NewKeyboardButton(langs[*user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
-							tgbotapi.NewKeyboardButton("↔"),
-							tgbotapi.NewKeyboardButton(langs[*user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji))),
-				},
-				File: tgbotapi.FileBytes{
-					Name:  html.UnescapeString(helpers.CutStringUTF16(tr, 50)),
-					Bytes: data,
-				},
-			},
-			Title: helpers.CutStringUTF16(tr, 40),
-		})
 
-		text, err = removeHtml(text)
-		if err != nil {
-			warn(err)
-			return
+		if user.TTS {
+			chunk, err = removeHtml(chunk)
+			if err != nil {
+				warn(err)
+				return
+			}
+			data, _ := translate.TTS(ctx, to, chunk)
+			app.bot.Send(tgbotapi.AudioConfig{
+				BaseFile: tgbotapi.BaseFile{
+					BaseChat: tgbotapi.BaseChat{
+						ChatID: message.Chat.ID,
+						ReplyMarkup: tgbotapi.NewReplyKeyboard(
+							tgbotapi.NewKeyboardButtonRow(
+								tgbotapi.NewKeyboardButton(langs[*user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
+								tgbotapi.NewKeyboardButton("↔"),
+								tgbotapi.NewKeyboardButton(langs[*user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji))),
+					},
+					File: tgbotapi.FileBytes{
+						Name:  html.UnescapeString(helpers.CutStringUTF16(chunk, 50)),
+						Bytes: data,
+					},
+				},
+				Title: helpers.CutStringUTF16(chunk, 40),
+			})
+
+			text, err = removeHtml(text)
+			if err != nil {
+				warn(err)
+				return
+			}
+			data, _ = translate.TTS(ctx, from, html.UnescapeString(chunk))
+			app.bot.Send(tgbotapi.AudioConfig{
+				BaseFile: tgbotapi.BaseFile{
+					BaseChat: tgbotapi.BaseChat{
+						ChatID: message.Chat.ID,
+						ReplyMarkup: tgbotapi.NewReplyKeyboard(
+							tgbotapi.NewKeyboardButtonRow(
+								tgbotapi.NewKeyboardButton(langs[*user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
+								tgbotapi.NewKeyboardButton("↔"),
+								tgbotapi.NewKeyboardButton(langs[*user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji))),
+					},
+					File: tgbotapi.FileBytes{
+						Name:  html.UnescapeString(helpers.CutStringUTF16(text, 50)),
+						Bytes: data,
+					},
+				},
+				Title: helpers.CutStringUTF16(text, 40),
+			})
 		}
-		data, _ = translate.TTS(from, html.UnescapeString(text))
-		app.bot.Send(tgbotapi.AudioConfig{
-			BaseFile: tgbotapi.BaseFile{
-				BaseChat: tgbotapi.BaseChat{
-					ChatID: message.Chat.ID,
-					ReplyMarkup: tgbotapi.NewReplyKeyboard(
-						tgbotapi.NewKeyboardButtonRow(
-							tgbotapi.NewKeyboardButton(langs[*user.Lang][user.MyLang]+" "+flags[user.MyLang].Emoji),
-							tgbotapi.NewKeyboardButton("↔"),
-							tgbotapi.NewKeyboardButton(langs[*user.Lang][user.ToLang]+" "+flags[user.ToLang].Emoji))),
-				},
-				File: tgbotapi.FileBytes{
-					Name:  html.UnescapeString(helpers.CutStringUTF16(text, 50)),
-					Bytes: data,
-				},
-			},
-			Title: helpers.CutStringUTF16(text, 40),
-		})
 	}
 
 	app.bot.Send(tgbotapi.MessageConfig{

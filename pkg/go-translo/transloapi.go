@@ -38,7 +38,7 @@ func (c API) Translate(ctx context.Context, from, to, text string) (Translation,
 	params.Set("from", from)
 	params.Set("to", to)
 	params.Set("text", text)
-	req, err := http.NewRequestWithContext(ctx, "POST", apiHost+"api/v3/translate", bytes.NewBufferString(params.Encode()))
+	req, err := http.NewRequestWithContext(ctx, "POST", apiHost+"api/v3/translate?disableCache&deleteCache", bytes.NewBufferString(params.Encode()))
 	if err != nil {
 		return Translation{}, err
 	}

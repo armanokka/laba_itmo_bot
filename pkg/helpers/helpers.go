@@ -3,7 +3,7 @@ package helpers
 import (
 	"bytes"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"html"
+	"golang.org/x/text/unicode/norm"
 	"strconv"
 	"strings"
 	"unicode/utf16"
@@ -91,57 +91,128 @@ var htmlEscape = map[uint16][]uint16{
 	utf16.Encode([]rune(`"`))[0]: utf16.Encode([]rune("&quot;")),
 }
 
-// ApplyEntitiesHtml adds <notranslate></notranslate> to some types of entities
-func ApplyEntitiesHtml(text string, entities []tgbotapi.MessageEntity) string {
-	if len(entities) == 0 {
-		return html.EscapeString(text)
+// SplitIntoChunksBySentences. You can merge output by ""
+func SplitIntoChunksBySentences(text string, limit int) []string {
+	if len(text) < limit {
+		return []string{text}
 	}
+	chunks := make([]string, 0, len(text)/limit+1)
+	points := utf16.Encode([]rune(text))
+	for i := 0; i < len(points); {
+		offset := indexDelim(points[i:], limit, ".!?;\r\n\t\f\v*)")
+		ch := string(utf16.Decode(points[i : i+offset]))
+		chunks = append(chunks, ch)
+		i += offset
+	}
+	return chunks
+}
 
-	encoded := utf16.Encode([]rune(text))
-	pointers := make(map[int]string)
-
-	for _, entity := range entities {
-		var before, after string
-		switch entity.Type {
-		case "code", "pre":
-			before, after = `<notranslate><code>`, `</code></notranslate>`
-		case "bold":
-			before, after = `<b>`, `</b>`
-		case "italic":
-			before, after = `<i>`, `</i>`
-		case "underline":
-			before, after = `<u>`, `</u>`
-		case "strikethrough":
-			before, after = `<s>`, `</s>`
-		case "text_link":
-			before, after = `<notranslate><a href="`+entity.URL+`">`, `</a></notranslate>`
-		case "text_mention":
-			before, after = `<notranslate><a href="tg://user?id=`+strconv.FormatInt(entity.User.ID, 10)+`">`, `</a></notranslate>`
-		case "spoiler":
-			before, after = "<span class=\"tg-spoiler\">", "</span>"
-		case "mention", "hashtag", "cashtag", "bot_command", "url", "email", "phone_number", "custom_emoji":
-			before, after = "<notranslate>", "</notranslate>"
+func indexDelim(text []uint16, limit int, delims string) (offset int) {
+	if len(text) < limit {
+		return len(text)
+	} else if len(text) > limit {
+		text = text[:limit]
+	}
+	offset = len(text)
+	delimeters := utf16.Encode([]rune(delims))
+	for i := len(text) - 1; i >= 0; i-- {
+		if in(delimeters, text[i]) {
+			return i + 1
 		}
-		pointers[entity.Offset] += before
-		pointers[entity.Offset+entity.Length] = after + pointers[entity.Offset+entity.Length]
+	}
+	return offset
+}
+func in(arr []uint16, keys ...uint16) bool {
+	for _, v := range arr {
+		for _, k := range keys {
+			if k == v {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// TODO объединить GetPrefixSpaces и GetPostfixSpaces в одну GetEdgeSpaces
+func GetPrefixSpaces(s string) (prefix string) {
+	for _, ch := range s {
+		if ch != '\n' && ch != '\r' && ch != '\t' && ch != '\f' && ch != '\v' && ch != ' ' {
+			break
+		}
+		prefix += string(ch)
+	}
+	return
+}
+
+func GetPostfixSpaces(s string) (postfix string) {
+	for i := len(s) - 1; i >= 0; i-- {
+		ch := s[i]
+		if ch != '\n' && ch != '\r' && ch != '\t' && ch != '\f' && ch != '\v' && ch != ' ' {
+			break
+		}
+		postfix += string(ch)
+	}
+	return
+}
+
+// ApplyEntitiesHtml adds <notranslate></notranslate> to some types of entities
+func ApplyEntitiesHtml(text string, entities []tgbotapi.MessageEntity, messageLengthLimit int) []string {
+	chunks := SplitIntoChunksBySentences(text, messageLengthLimit)
+	if len(entities) == 0 {
+		return chunks
 	}
 
-	var out = make([]uint16, 0, len(encoded))
+	for i, chunkOffset := 0, 0; i < len(chunks); i, chunkOffset = i+1, chunkOffset+len(utf16.Encode([]rune(chunks[i]))) {
+		chunk := utf16.Encode([]rune(chunks[i]))
+		pointers := make(map[int]string)
+		for _, entity := range entities {
+			start := entity.Offset       // entity start
+			end := start + entity.Length // entity end
+			if start > chunkOffset+len(chunk) || end < chunkOffset {
+				continue
+			}
+			var before, after string
+			switch entity.Type {
+			case "code", "pre":
+				before, after = `<notranslate><code>`, `</code></notranslate>`
+			case "bold":
+				before, after = `<b>`, `</b>`
+			case "italic":
+				before, after = `<i>`, `</i>`
+			case "underline":
+				before, after = `<u>`, `</u>`
+			case "strikethrough":
+				before, after = `<s>`, `</s>`
+			case "text_link":
+				before, after = `<notranslate><a href="`+entity.URL+`">`, `</a></notranslate>`
+			case "text_mention":
+				before, after = `<notranslate><a href="tg://user?id=`+strconv.FormatInt(entity.User.ID, 10)+`">`, `</a></notranslate>`
+			case "spoiler":
+				before, after = "<span class=\"tg-spoiler\">", "</span>"
+			case "mention", "hashtag", "cashtag", "bot_command", "url", "email", "phone_number", "custom_emoji":
+				before, after = "<notranslate>", "</notranslate>"
+			}
+			pointers[entity.Offset] += before
+			pointers[entity.Offset+entity.Length] = after + pointers[entity.Offset+entity.Length]
+		}
 
-	for i, ch := range encoded {
-		if m, ok := pointers[i]; ok {
+		var out = make([]uint16, 0, len(chunk))
+		for i, ch := range chunk {
+			if m, ok := pointers[i]; ok {
+				out = append(out, utf16.Encode([]rune(m))...)
+			}
+			if escaped, ok := htmlEscape[ch]; ok {
+				out = append(out, escaped...)
+			} else {
+				out = append(out, ch)
+			}
+		}
+		if m, ok := pointers[len(chunk)]; ok {
 			out = append(out, utf16.Encode([]rune(m))...)
 		}
-		if escaped, ok := htmlEscape[ch]; ok {
-			out = append(out, escaped...)
-		} else {
-			out = append(out, ch)
-		}
+		chunks[i] = norm.NFKC.String(strings.ReplaceAll(string(utf16.Decode(out)), "<br>", "\n"))
 	}
-	if m, ok := pointers[len(encoded)]; ok {
-		out = append(out, utf16.Encode([]rune(m))...)
-	}
-	return strings.NewReplacer("<br>", "\n").Replace(string(utf16.Decode(out)))
+	return chunks
 }
 
 func index(arr []string, k string) int {

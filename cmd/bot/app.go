@@ -366,7 +366,7 @@ func (app App) sendSpeech(user tables.Users, lang, text string, callbackID strin
 		en := "en"
 		user.Lang = &en
 	}
-	sdec, err := translate2.TTS(lang, text)
+	sdec, err := translate2.TTS(context.Background(), lang, text)
 	if err != nil {
 		if err == translate2.ErrTTSLanguageNotSupported {
 			app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callbackID, user.Localize("%s не поддерживается", langs[*user.Lang][lang])))

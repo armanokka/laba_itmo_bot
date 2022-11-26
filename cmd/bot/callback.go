@@ -144,10 +144,10 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 
 		from, text := arr[1], callback.Message.ReplyToMessage.Text
 
-		if len(callback.Message.ReplyToMessage.Entities) > 0 {
-			text = helpers.ApplyEntitiesHtml(text, callback.Message.ReplyToMessage.Entities)
+		if len(callback.Message.ReplyToMessage.Entities) > 0 { // TODO handle all results from helpers.ApplyEntitiesHtml
+			text = helpers.ApplyEntitiesHtml(text, callback.Message.ReplyToMessage.Entities, 4098)[0]
 		} else if len(callback.Message.ReplyToMessage.CaptionEntities) > 0 {
-			text = helpers.ApplyEntitiesHtml(text, callback.Message.ReplyToMessage.CaptionEntities)
+			text = helpers.ApplyEntitiesHtml(text, callback.Message.ReplyToMessage.CaptionEntities, 4098)[0]
 		}
 
 		lastMsgID := 0

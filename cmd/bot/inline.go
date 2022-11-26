@@ -6,7 +6,6 @@ import (
 	"github.com/armanokka/translobot/internal/config"
 	"github.com/armanokka/translobot/internal/tables"
 	"github.com/armanokka/translobot/pkg/errors"
-	translate2 "github.com/armanokka/translobot/pkg/translate"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -132,13 +131,13 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 
 	nextOffset := offset + count
 
-	from, err := translate2.DetectLanguageGoogle(ctx, update.Query)
+	tr, err := app.translo.Translate(ctx, "auto", "en", update.Query)
 	// TODO: detect lang via yandex if there are all emojis in message except spec. chars
 	if err != nil {
 		warn(err)
 		return
 	}
-	from = strings.ToLower(from)
+	from := strings.ToLower(tr.TextLang)
 
 	g, _ := errgroup.WithContext(context.Background())
 	var mu sync.Mutex

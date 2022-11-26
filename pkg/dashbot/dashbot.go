@@ -131,7 +131,7 @@ func (d DashBot) Bot(message tgbotapi.MessageConfig, intent string) error {
 		}
 	}
 	data, err := json.Marshal(Message{
-		Text:    helpers.ApplyEntitiesHtml(message.Text, message.Entities),
+		Text:    helpers.ApplyEntitiesHtml(message.Text, message.Entities, 4098)[0],
 		UserId:  message.ChatID,
 		Buttons: btns,
 		Intent: Intent{

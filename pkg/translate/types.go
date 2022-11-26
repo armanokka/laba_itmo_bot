@@ -23,12 +23,14 @@ type Variant struct {
 }
 
 type TranslateGoogleAPIResponse struct {
-	Text               string     `json:"text"`
-	FromLang           string     `json:"translated_from"`
-	FromLangNativeName string     `json:"from_lang_native_name"`
-	Variants           []*Variant `json:"synonyms,omitempty"`
-	SourceRomanization string     `json:"source_romanization"`
-	Images             []string   `json:"images"`
+	Text     string `json:"text"`
+	FromLang string `json:"translated_from"`
+	//FromLangNativeName string `json:"from_lang_native_name"`
+	//Variants           []*Variant `json:"synonyms,omitempty"`
+	//SourceRomanization string     `json:"source_romanization"`
+	ReverseTranslations map[string][]string `json:"reverse_translations"`
+	CommunityVerified   bool                `json:"community_verified"`
+	//Images              []string            `json:"images"`
 }
 
 var ErrTTSLanguageNotSupported = errors.New("translateTTS js object not found")
@@ -91,7 +93,7 @@ type Results struct {
 	PartOfSpeech   string   `json:"partOfSpeech"`
 }
 
-var reversoSupportedLangs = map[string]string{
+var ReversoSupportedLangs = map[string]string{
 	"dut": "nl",
 	"ita": "it",
 	"ger": "de",
@@ -110,7 +112,7 @@ var reversoSupportedLangs = map[string]string{
 }
 
 func ReversoIso6391(iso6392 string) string {
-	v, ok := reversoSupportedLangs[iso6392]
+	v, ok := ReversoSupportedLangs[iso6392]
 	if !ok {
 		return ""
 	}
@@ -118,12 +120,12 @@ func ReversoIso6391(iso6392 string) string {
 }
 
 func ReversoIso6392(iso6391 string) string {
-	for k, v := range reversoSupportedLangs {
+	for k, v := range ReversoSupportedLangs {
 		if v == iso6391 {
 			return k
 		}
 	}
-	if _, ok := reversoSupportedLangs[iso6391]; ok { // нам и так дали iso6392
+	if _, ok := ReversoSupportedLangs[iso6391]; ok { // нам и так дали iso6392
 		return iso6391
 	}
 	return ""
@@ -729,33 +731,6 @@ func SplitIntoChunksBySentences(text string, limit int) []string {
 	return chunks
 }
 
-func indexDelim(text []uint16, limit int, delims string) (offset int) {
-	if len(text) < limit {
-		return len(text)
-	} else if len(text) > limit {
-		text = text[:limit]
-	}
-	offset = len(text)
-	delimeters := utf16.Encode([]rune(delims))
-	for i := len(text) - 1; i >= 0; i-- {
-		if in(delimeters, text[i]) {
-			return i + 1
-		}
-	}
-	return offset
-}
-
-func in(arr []uint16, keys ...uint16) bool {
-	for _, v := range arr {
-		for _, k := range keys {
-			if k == v {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 func CheckHtmlTags(in, out string) string {
 	r, err := regexp.Compile("<\\s*[^>]+>(.*?)")
 	if err != nil {
@@ -784,18 +759,31 @@ func CheckHtmlTags(in, out string) string {
 	return out
 }
 
-func cutUpToDelim(text string, limit int, delims string) (offset int) {
+func indexDelim(text []uint16, limit int, delims string) (offset int) {
 	if len(text) < limit {
 		return len(text)
 	} else if len(text) > limit {
 		text = text[:limit]
 	}
 	offset = len(text)
-	if i := strings.LastIndexAny(text, delims); i > 0 {
-		i++
-		return i
+	delimeters := utf16.Encode([]rune(delims))
+	for i := len(text) - 1; i >= 0; i-- {
+		if in(delimeters, text[i]) {
+			return i + 1
+		}
 	}
 	return offset
+}
+
+func in(arr []uint16, keys ...uint16) bool {
+	for _, v := range arr {
+		for _, k := range keys {
+			if k == v {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 //func lastIndexAny(text string, chars string) (idx int, delim string) {
@@ -809,3 +797,189 @@ func cutUpToDelim(text string, limit int, delims string) (offset int) {
 //	}
 //	return
 //}
+
+var SupportedLanguageCodes = []string{
+	"lu",
+	"hu",
+	"ko",
+	"zh-tw",
+	"ik",
+	"os",
+	"th",
+	"id",
+	"ja",
+	"mt",
+	"nb",
+	"fa",
+	"ve",
+	"uk",
+	"kv",
+	"is",
+	"be",
+	"om",
+	"ta",
+	"ro",
+	"ky",
+	"hi",
+	"lo",
+	"kw",
+	"sq",
+	"na",
+	"rm",
+	"tr",
+	"av",
+	"he",
+	"or",
+	"as",
+	"ay",
+	"tk",
+	"kj",
+	"kg",
+	"zh-hk",
+	"gn",
+	"fo",
+	"si",
+	"sw",
+	"nn",
+	"fr",
+	"bh",
+	"bn",
+	"bs",
+	"mh",
+	"el",
+	"to",
+	"bo",
+	"gv",
+	"ka",
+	"sk",
+	"cs",
+	"lb",
+	"ho",
+	"yi",
+	"hz",
+	"st",
+	"zh",
+	"cy",
+	"gl",
+	"uz",
+	"ne",
+	"hy",
+	"ru",
+	"ch",
+	"rn",
+	"wa",
+	"gd",
+	"mg",
+	"nr",
+	"km",
+	"no",
+	"sd",
+	"jv",
+	"zh-sg",
+	"sa",
+	"io",
+	"sn",
+	"cv",
+	"ny",
+	"ng",
+	"ms",
+	"fy",
+	"kr",
+	"zh-mo",
+	"ab",
+	"ee",
+	"su",
+	"ff",
+	"sm",
+	"ps",
+	"an",
+	"sg",
+	"ie",
+	"tn",
+	"ks",
+	"ss",
+	"ha",
+	"nv",
+	"co",
+	"my",
+	"et",
+	"ga",
+	"ae",
+	"ia",
+	"eo",
+	"tl",
+	"bg",
+	"ki",
+	"iu",
+	"za",
+	"es",
+	"pa",
+	"cr",
+	"ug",
+	"gu",
+	"sv",
+	"ii",
+	"ht",
+	"so",
+	"ty",
+	"am",
+	"tg",
+	"mr",
+	"te",
+	"ce",
+	"zh-cn",
+	"qu",
+	"hr",
+	"it",
+	"fi",
+	"da",
+	"oj",
+	"li",
+	"lt",
+	"de",
+	"ig",
+	"az",
+	"ln",
+	"vo",
+	"dv",
+	"mn",
+	"kn",
+	"sl",
+	"en",
+	"af",
+	"nd",
+	"la",
+	"sr",
+	"fj",
+	"yo",
+	"mi",
+	"ml",
+	"se",
+	"kk",
+	"pl",
+	"vi",
+	"sc",
+	"oc",
+	"bi",
+	"br",
+	"pi",
+	"ku",
+	"pt",
+	"ti",
+	"kl",
+	"nl",
+	"rw",
+	"cu",
+	"wo",
+	"ar",
+	"eu",
+	"ba",
+	"ur",
+	"lv",
+	"ca",
+	"tt",
+	"lg",
+	"ts",
+	"xh",
+	"mk",
+}
