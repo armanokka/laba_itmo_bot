@@ -116,7 +116,7 @@ func (c API) BatchTranslate(ctx context.Context, batches []Batch) ([]Batch, erro
 }
 
 func (c API) Detect(ctx context.Context, text string) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", apiHost+"api/v3/detect?text="+url.PathEscape(text), nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", apiHost+"api/v3/detect?disableCache&deleteCache&text="+url.PathEscape(text), nil)
 	if err != nil {
 		return "", err
 	}

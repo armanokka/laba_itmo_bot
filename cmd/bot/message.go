@@ -656,12 +656,15 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 
-	from, err := app.translo.Detect(ctx, text)
+	from, err := app.translo.Detect(ctx, helpers.CutStringUTF16(text, 50))
 	if err != nil {
 		warn(err)
 		return
 	}
 	from = strings.ToLower(from)
+	if !strings.Contains(from, "-") && len(from) != 2 {
+		from = from[:2]
+	}
 	//pp.Println("from", from)
 	if user.MyLang == "auto" {
 		if err = app.db.UpdateUser(message.From.ID, tables.Users{MyLang: from}); err != nil {
