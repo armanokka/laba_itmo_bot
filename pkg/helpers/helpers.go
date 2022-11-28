@@ -4,6 +4,7 @@ import (
 	"bytes"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"golang.org/x/text/unicode/norm"
+	"html"
 	"strconv"
 	"strings"
 	"unicode/utf16"
@@ -159,16 +160,20 @@ func GetPostfixSpaces(s string) (postfix string) {
 func ApplyEntitiesHtml(text string, entities []tgbotapi.MessageEntity, messageLengthLimit int) []string {
 	chunks := SplitIntoChunksBySentences(text, messageLengthLimit)
 	if len(entities) == 0 {
+		for i, chunk := range chunks {
+			chunks[i] = html.EscapeString(chunk)
+		}
 		return chunks
 	}
 
-	for i, chunkOffset := 0, 0; i < len(chunks); i, chunkOffset = i+1, chunkOffset+len(utf16.Encode([]rune(chunks[i]))) {
+	var chunkOffset int
+	for i := 0; i < len(chunks); i += 1 {
 		chunk := utf16.Encode([]rune(chunks[i]))
 		pointers := make(map[int]string)
 		for _, entity := range entities {
-			start := entity.Offset       // entity start
-			end := start + entity.Length // entity end
-			if start > chunkOffset+len(chunk) || end < chunkOffset {
+			entityStart := entity.Offset
+			entityEnd := entityStart + entity.Length
+			if entityEnd < chunkOffset || entityStart > chunkOffset+len(chunk) {
 				continue
 			}
 			var before, after string
@@ -192,8 +197,28 @@ func ApplyEntitiesHtml(text string, entities []tgbotapi.MessageEntity, messageLe
 			case "mention", "hashtag", "cashtag", "bot_command", "url", "email", "phone_number", "custom_emoji":
 				before, after = "<notranslate>", "</notranslate>"
 			}
-			pointers[entity.Offset] += before
-			pointers[entity.Offset+entity.Length] = after + pointers[entity.Offset+entity.Length]
+
+			//pointers[entity.Offset] += before
+			//pointers[entity.Offset+entity.Length] = after + pointers[entity.Offset+entity.Length]
+
+			// All scenarios:
+			// 1. tag starts before chunk and ends before/in/after chunk
+			// 2. tag starts in chunk and ends in/after chunk
+			// 3. tag starts after chunk and ends after chunk
+			// Scenarios we have to handle:
+			// 1. tag ends after chunk [*]
+			// 2. tag starts before chunk and ends after chunk
+
+			if entityStart < chunkOffset {
+				pointers[0] += before
+			} else {
+				pointers[entityStart-chunkOffset] += before
+			}
+			if entityEnd > chunkOffset+len(chunk) {
+				pointers[len(chunk)] += after
+			} else {
+				pointers[entityEnd-chunkOffset] += after
+			}
 		}
 
 		var out = make([]uint16, 0, len(chunk))
@@ -211,6 +236,7 @@ func ApplyEntitiesHtml(text string, entities []tgbotapi.MessageEntity, messageLe
 			out = append(out, utf16.Encode([]rune(m))...)
 		}
 		chunks[i] = norm.NFKC.String(strings.ReplaceAll(string(utf16.Decode(out)), "<br>", "\n"))
+		chunkOffset += len(chunk)
 	}
 	return chunks
 }

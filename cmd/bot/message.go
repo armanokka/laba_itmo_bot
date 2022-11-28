@@ -696,11 +696,11 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	}
 	log = log.With(zap.String("source", text))
 	texts := helpers.ApplyEntitiesHtml(text, entities, 4000)
-	log = log.With(zap.Strings("source_with_applied_entities", texts))
+	log = log.With(zap.Strings("applied_entities", texts))
 	//pp.Println("from", from, "to", to, "texts", texts)
 	var (
 		//trMylangTolang = make([]string, 0, len(texts))
-		trFromTo = make([]string, 0, len(texts))
+		trFromTo = make([]string, len(texts))
 		trDict   string
 	)
 	g, ctx := errgroup.WithContext(ctx)
@@ -708,11 +708,12 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	//if from != user.MyLang && from != user.ToLang && len(strings.Fields(text)) > 1 {
 	g.Go(func() error {
 		g, ctx := errgroup.WithContext(ctx)
-		for _, text := range texts {
+		for i, text := range texts {
 			text := text
+			i := i
 			g.Go(func() error {
 				tr, err := app.translo.Translate(ctx, from, to, text)
-				trFromTo = append(trFromTo, tr.TranslatedText)
+				trFromTo[i] = tr.TranslatedText
 				return err
 			})
 		}
@@ -783,8 +784,10 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		translation = []string{trDict}
 	}
 
+	log = log.With(zap.Strings("translation", translation))
+	log.Debug("")
 	lastMsgID := 0
-	for _, chunk := range translation {
+	for i, chunk := range translation {
 		chunk = strings.NewReplacer(`<notranslate>`, "", `</notranslate>`, "").Replace(chunk)
 		keyboard := tgbotapi.NewReplyKeyboard(
 			tgbotapi.NewKeyboardButtonRow(
@@ -802,6 +805,9 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			ParseMode:             tgbotapi.ModeHTML,
 			Entities:              nil,
 			DisableWebPagePreview: false,
+		}
+		if i > 0 {
+			msgConfig.ReplyToMessageID = 0
 		}
 		msg, err := app.bot.Send(msgConfig)
 		lastMsgID = msg.MessageID
