@@ -3,7 +3,6 @@ package bot
 import (
 	"github.com/armanokka/translobot/pkg/errors"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -13,8 +12,7 @@ func (app App) onMyChatMember(update tgbotapi.ChatMemberUpdated) {
 	//isNew := false
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			app.log.Error("", zap.Error(err))
-			return
+			app.notifyAdmin(err)
 		}
 		//isNew = true
 	}
@@ -43,9 +41,12 @@ func (app App) onMyChatMember(update tgbotapi.ChatMemberUpdated) {
 		//	},
 		//	Text: ":bot_was_blocked",
 		//}); err != nil {
-		app.notifyAdmin(err)
+		//	app.notifyAdmin(err)
+		//}
+		//if err = app.db.UpdateUserByMap(update.From.ID, map[string]interface{}{"blocked": true}); err != nil {
+		//	app.notifyAdmin(err)
+		//}
+		// TODO blocked ща показывает неправильно. синхронизирую при рассылке
 	}
-	if err = app.db.UpdateUserByMap(update.From.ID, map[string]interface{}{"blocked": true}); err != nil {
-		app.notifyAdmin(err)
-	}
+
 }

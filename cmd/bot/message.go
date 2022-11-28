@@ -7,6 +7,7 @@ import (
 	"github.com/armanokka/translobot/internal/tables"
 	"github.com/armanokka/translobot/pkg/errors"
 	"github.com/armanokka/translobot/pkg/helpers"
+	"github.com/armanokka/translobot/pkg/lingvo"
 	"github.com/armanokka/translobot/pkg/translate"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
@@ -361,7 +362,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				ChatID:      message.Chat.ID,
 				ReplyMarkup: kb,
 			},
-			Text: user.Localize("Choose language or send its name"),
+			Text: user.Localize("Choose language"),
 		}
 		app.bot.Send(msg)
 		//if err = app.analytics.Bot(msg, "my_lang"); err != nil {
@@ -384,7 +385,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				ChatID:      message.Chat.ID,
 				ReplyMarkup: kb,
 			},
-			Text: user.Localize("Choose language or send its name"),
+			Text: user.Localize("Choose language"),
 		}
 		// TODO handle app.bot.send errors that are not 403
 		app.bot.Send(msg)
@@ -727,26 +728,26 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	//	}
 	//	return g.Wait()
 	//})
-	//_, ok1 := lingvo.Lingvo[from] // TODO get it back
-	//_, ok2 := lingvo.Lingvo[to]
-	//if ok1 && ok2 && len(text) < 50 && !strings.ContainsAny(text, " \r\n") {
-	//	g.Go(func() error {
-	//		ctx, _ := context.WithTimeout(ctx, time.Second*3)
-	//		l, err := lingvo.GetDictionary(ctx, from, to, strings.ToLower(text))
-	//		if err != nil {
-	//			if IsCtxError(err) {
-	//				return nil
-	//			}
-	//			log.Error("lingvo err", zap.Error(err))
-	//			return err
-	//		}
-	//		tr := strings.TrimSpace(writeLingvo(l))
-	//		if tr != "" {
-	//			trDict = tr + "\n❤️ @TransloBot"
-	//		}
-	//		return nil
-	//	})
-	//}
+	_, ok1 := lingvo.Lingvo[from]
+	_, ok2 := lingvo.Lingvo[to]
+	if ok1 && ok2 && len(text) < 50 && !strings.ContainsAny(text, " \r\n") {
+		g.Go(func() error {
+			ctx, _ := context.WithTimeout(ctx, time.Second*3)
+			l, err := lingvo.GetDictionary(ctx, from, to, strings.ToLower(text))
+			if err != nil {
+				if IsCtxError(err) {
+					return nil
+				}
+				log.Error("lingvo err", zap.Error(err))
+				return err
+			}
+			tr := strings.TrimSpace(writeLingvo(l))
+			if tr != "" {
+				trDict = tr + "\n❤️ @TransloBot"
+			}
+			return nil
+		})
+	}
 
 	if err = g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
 		log.Error("", zap.Error(err))
