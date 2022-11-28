@@ -772,6 +772,7 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		}
 	case "close_type_language_name_menu": // arr[1] -  my_lang/to_lang
 		app.bot.Send(tgbotapi.NewDeleteMessage(callback.From.ID, callback.Message.MessageID))
+		//if callback.
 		keyboard := callback.Message.ReplyToMessage.ReplyMarkup
 		UntickAll(keyboard.InlineKeyboard)
 		app.bot.Send(tgbotapi.NewEditMessageReplyMarkup(callback.From.ID, callback.Message.ReplyToMessage.MessageID, *keyboard))

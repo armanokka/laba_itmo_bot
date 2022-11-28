@@ -410,23 +410,23 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			}
 			filter = strings.ToLower(filter)
 			searchSet := []string{*user.Lang, message.From.LanguageCode, user.MyLang, user.ToLang}
-			results := make([]string, 0, 2)
+			usedLangs := make([]string, 0, 2)
 			keyboard := tgbotapi.NewInlineKeyboardMarkup()
 			for i, set := range searchSet {
 				if i < len(searchSet)-1 && in(searchSet[i+1:], set) {
 					continue // уже искали в этом сете
 				}
 				for code, name := range langs[set] { // TODO filter and sort by less differnece
-					if !hasPrefix(name, filter, 1) && filter != code || in(results, code) {
+					if !hasPrefix(name, filter, 1) && filter != code || in(usedLangs, code) {
 						continue
 					}
-					results = append(results, code)
+					usedLangs = append(usedLangs, code)
 				}
 			}
-			sort.Slice(results, func(i, j int) bool {
-				return diff(filter, results[i]) < diff(filter, results[j])
+			sort.Slice(usedLangs, func(i, j int) bool {
+				return diff(filter, usedLangs[i]) < diff(filter, usedLangs[j])
 			})
-			for _, code := range results {
+			for _, code := range usedLangs {
 				keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
 					tgbotapi.NewInlineKeyboardButtonData(flags[code].Emoji+" "+langs[*user.Lang][code], "filtered_set_my_lang:"+code)))
 			}
@@ -440,7 +440,13 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				warn(fmt.Errorf("strings.Split(app.bc.Get(message.From.ID), \";\") is not 2 chunks"))
 				return
 			}
-			msgID, err := strconv.ParseInt(msgIDs[0], 10, 64)
+			searchQueryMsgID, err := strconv.Atoi(msgIDs[0])
+			if err != nil {
+				warn(err)
+				log.Error("couldn't parse int64: app.bc.Get(message.From.ID)", zap.Error(err), zap.String("result", string(msgIDsBytes)))
+				return
+			}
+			languagesPaginationMsgID, err := strconv.Atoi(msgIDs[1])
 			if err != nil {
 				warn(err)
 				log.Error("couldn't parse int64: app.bc.Get(message.From.ID)", zap.Error(err), zap.String("result", string(msgIDsBytes)))
@@ -450,34 +456,50 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
 				tgbotapi.NewInlineKeyboardButtonData(user.Localize(`❌ Cancel`), "close_type_language_name_menu:my_lang"),
 				tgbotapi.NewInlineKeyboardButtonData(user.Localize(`🔄Try again`), `try_again_to_search_my_lang`)))
-			if len(results) == 0 {
+			if len(usedLangs) == 0 {
 				keyboard.InlineKeyboard = keyboard.InlineKeyboard[len(keyboard.InlineKeyboard)-1:]
-				app.bot.Send(tgbotapi.EditMessageTextConfig{
-					BaseEdit: tgbotapi.BaseEdit{
-						ChatID:      message.From.ID,
-						MessageID:   int(msgID),
-						ReplyMarkup: &keyboard,
+				msg, err := app.bot.Send(tgbotapi.MessageConfig{
+					BaseChat: tgbotapi.BaseChat{
+						ChatID:           message.From.ID,
+						ReplyToMessageID: languagesPaginationMsgID,
+						ReplyMarkup:      &keyboard,
 					},
 					Text:      user.Localize(`No languages found starting with <b>%s</b>`, filter),
 					ParseMode: tgbotapi.ModeHTML,
 				})
+				if err != nil {
+					warn(err)
+					return
+				}
+				if err = app.bc.Put([]byte(strconv.FormatInt(message.From.ID, 10)), []byte(strconv.Itoa(msg.MessageID)+";"+msgIDs[1])); err != nil {
+					warn(err)
+					return
+				}
+				app.bot.Send(tgbotapi.NewDeleteMessage(message.From.ID, searchQueryMsgID))
+				app.bot.Send(tgbotapi.NewDeleteMessage(message.Chat.ID, message.MessageID))
 				return
 			}
-
-			app.bot.Send(tgbotapi.EditMessageTextConfig{
-				BaseEdit: tgbotapi.BaseEdit{
-					ChatID:      message.From.ID,
-					MessageID:   int(msgID),
-					ReplyMarkup: &keyboard,
+			msg, err := app.bot.Send(tgbotapi.MessageConfig{
+				BaseChat: tgbotapi.BaseChat{
+					ChatID:           message.From.ID,
+					ReplyToMessageID: languagesPaginationMsgID,
+					ReplyMarkup:      &keyboard,
 				},
-				Text: user.Localize(`🔎 Found %d languages starting with <b>%s</b>. Tap on language to choose it`, len(results), filter),
-				//Text:      fmt.Sprintf("%s\n%s", user.Localize(`Не найдены языки, начинающиеся на %s`, fmt.Sprintf(`<b>%s</b>`, filter)), user.Localize(`Напишите название языка, который вы хотите выбрать:`)),
+				Text:      user.Localize(`🔎 Found %d languages starting with <b>%s</b>. Tap on language to choose it`, len(usedLangs), filter),
 				ParseMode: tgbotapi.ModeHTML,
 			})
+			if err != nil {
+				warn(err)
+				return
+			}
+			if err = app.bc.Put([]byte(strconv.FormatInt(message.From.ID, 10)), []byte(strconv.Itoa(msg.MessageID)+";"+msgIDs[1])); err != nil {
+				warn(err)
+				return
+			}
+			app.bot.Send(tgbotapi.NewDeleteMessage(message.From.ID, searchQueryMsgID))
+			app.bot.Send(tgbotapi.NewDeleteMessage(message.Chat.ID, message.MessageID))
 			return
 		case "set_to_lang":
-			app.bot.Send(tgbotapi.NewDeleteMessage(message.Chat.ID, message.MessageID))
-
 			filter := "" // TODO implement filter_to_lang as I did filter_my_lang
 			// TODO понимать другую раскладку
 			for _, ch := range message.Text {
@@ -513,7 +535,13 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				warn(fmt.Errorf("strings.Split(app.bc.Get(message.From.ID), \";\") is not 2 chunks"))
 				return
 			}
-			msgID, err := strconv.ParseInt(msgIDs[0], 10, 64)
+			searchQueryMsgID, err := strconv.Atoi(msgIDs[0])
+			if err != nil {
+				warn(err)
+				log.Error("couldn't parse int64: app.bc.Get(message.From.ID)", zap.Error(err), zap.String("result", string(msgIDsBytes)))
+				return
+			}
+			languagesPaginationMsgID, err := strconv.Atoi(msgIDs[1])
 			if err != nil {
 				warn(err)
 				log.Error("couldn't parse int64: app.bc.Get(message.From.ID)", zap.Error(err), zap.String("result", string(msgIDsBytes)))
@@ -525,28 +553,46 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				tgbotapi.NewInlineKeyboardButtonData(user.Localize(`🔄Try again`), `try_again_to_search_to_lang`)))
 			if len(usedLangs) == 0 {
 				keyboard.InlineKeyboard = keyboard.InlineKeyboard[len(keyboard.InlineKeyboard)-1:]
-				app.bot.Send(tgbotapi.EditMessageTextConfig{
-					BaseEdit: tgbotapi.BaseEdit{
-						ChatID:      message.From.ID,
-						MessageID:   int(msgID),
-						ReplyMarkup: &keyboard,
+				msg, err := app.bot.Send(tgbotapi.MessageConfig{
+					BaseChat: tgbotapi.BaseChat{
+						ChatID:           message.From.ID,
+						ReplyToMessageID: languagesPaginationMsgID,
+						ReplyMarkup:      &keyboard,
 					},
 					Text:      user.Localize(`No languages found starting with <b>%s</b>`, filter),
 					ParseMode: tgbotapi.ModeHTML,
 				})
+				if err != nil {
+					warn(err)
+					return
+				}
+				if err = app.bc.Put([]byte(strconv.FormatInt(message.From.ID, 10)), []byte(strconv.Itoa(msg.MessageID)+";"+msgIDs[1])); err != nil {
+					warn(err)
+					return
+				}
+				app.bot.Send(tgbotapi.NewDeleteMessage(message.From.ID, searchQueryMsgID))
+				app.bot.Send(tgbotapi.NewDeleteMessage(message.Chat.ID, message.MessageID))
 				return
 			}
-
-			app.bot.Send(tgbotapi.EditMessageTextConfig{
-				BaseEdit: tgbotapi.BaseEdit{
-					ChatID:      message.From.ID,
-					MessageID:   int(msgID),
-					ReplyMarkup: &keyboard,
+			msg, err := app.bot.Send(tgbotapi.MessageConfig{
+				BaseChat: tgbotapi.BaseChat{
+					ChatID:           message.From.ID,
+					ReplyToMessageID: languagesPaginationMsgID,
+					ReplyMarkup:      &keyboard,
 				},
-				Text: user.Localize(`🔎 Found %d languages starting with <b>%s</b>. Tap on language to choose it`, len(usedLangs), filter),
-				//Text:      fmt.Sprintf("%s\n%s", user.Localize(`Не найдены языки, начинающиеся на %s`, fmt.Sprintf(`<b>%s</b>`, filter)), user.Localize(`Напишите название языка, который вы хотите выбрать:`)),
+				Text:      user.Localize(`🔎 Found %d languages starting with <b>%s</b>. Tap on language to choose it`, len(usedLangs), filter),
 				ParseMode: tgbotapi.ModeHTML,
 			})
+			if err != nil {
+				warn(err)
+				return
+			}
+			if err = app.bc.Put([]byte(strconv.FormatInt(message.From.ID, 10)), []byte(strconv.Itoa(msg.MessageID)+";"+msgIDs[1])); err != nil {
+				warn(err)
+				return
+			}
+			app.bot.Send(tgbotapi.NewDeleteMessage(message.From.ID, searchQueryMsgID))
+			app.bot.Send(tgbotapi.NewDeleteMessage(message.Chat.ID, message.MessageID))
 			return
 		case "send_mailing_message":
 			app.bot.Send(tgbotapi.MessageConfig{
@@ -661,7 +707,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		warn(err)
 		return
 	}
-	from = strings.ToLower(from)
 	if !strings.Contains(from, "-") && len(from) != 2 {
 		from = from[:2]
 	}
