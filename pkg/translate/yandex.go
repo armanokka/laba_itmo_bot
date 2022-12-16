@@ -60,7 +60,7 @@ func yandexTranslate(ctx context.Context, from, to, text string) (string, error)
 			req.Header["Origin"] = []string{"https://stackoverflow.com"}
 			req.Header["Referrer"] = []string{"https://stackoverflow.com/"}
 
-			resp, err := request(req, 3)
+			resp, err := request(req)
 			if err != nil {
 				return err
 			}
@@ -159,7 +159,7 @@ func detectLanguageYandex(ctx context.Context, text string) (string, error) {
 	req.Header["sec-ch-ua-mobile"] = []string{"?0"}
 	req.Header["sec-ch-ua"] = []string{`" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"`}
 
-	resp, err := request(req, 3)
+	resp, err := request(req)
 	if err != nil {
 		return "", err
 	}

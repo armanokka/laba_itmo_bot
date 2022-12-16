@@ -1,6 +1,7 @@
 package translo
 
 const apiHost string = "https://us.translo.org/" // with trailing slash
+//const apiHost string = "http://localhost:8085/" // with trailing slash
 
 type APIResponse struct {
 	Ok      bool   `json:"ok"`

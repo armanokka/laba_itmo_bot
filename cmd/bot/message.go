@@ -305,6 +305,22 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			return
 		}
 		return
+	case "set_op":
+		if message.Chat.ID != config.AdminID {
+			break
+		}
+		app.bot.Send(tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID: message.From.ID,
+				ReplyMarkup: tgbotapi.NewInlineKeyboardMarkup(
+					tgbotapi.NewInlineKeyboardRow(
+						tgbotapi.NewInlineKeyboardButtonData("❌ Отменить", "cancel_set_op"))),
+			},
+			Text:                  "", //TODO
+			ParseMode:             "",
+			Entities:              nil,
+			DisableWebPagePreview: false,
+		})
 	}
 	if user.Lang == nil {
 		user.Lang = &message.From.LanguageCode
@@ -684,7 +700,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			})
 			return
 		}
-
 	}
 
 	var text = message.Text
@@ -702,15 +717,55 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		return
 	}
 
+	done := make(chan bool)
+	go func() {
+		start := time.Now()
+		template := `Translating... %s %s` // 'Translating... ⢿ 0.1s'
+		ticker := time.NewTicker(time.Second / 10)
+		i := 0
+		indicators := []string{"⢿", "⣻", "⣽", "⣾", "⣷", "⣯", "⣟", "⡿"}
+		msg, err := app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, fmt.Sprintf(template, "0s", indicators[i])))
+		if err != nil {
+			return
+		}
+		i++
+		for {
+			select {
+			case <-ticker.C:
+				if i > len(indicators)-1 {
+					i = 0
+				}
+				since := time.Since(start).Truncate(time.Second / 10)
+				if since > time.Second*3 {
+					since = since.Truncate(time.Second)
+				}
+				if since > time.Second*60 {
+					done <- true
+					continue
+				}
+				app.bot.Send(tgbotapi.NewEditMessageText(message.Chat.ID, msg.MessageID, fmt.Sprintf(template, strconv.FormatFloat(since.Seconds(), 'f', 1, 64)+"s", indicators[i])))
+				i++
+			case <-ctx.Done():
+				app.bot.Send(tgbotapi.NewDeleteMessage(message.Chat.ID, msg.MessageID))
+				return
+			case <-done:
+				app.bot.Send(tgbotapi.NewDeleteMessage(message.Chat.ID, msg.MessageID))
+				return
+			}
+		}
+	}()
+	defer func() {
+		done <- true
+	}()
+
 	from, err := app.translo.Detect(ctx, helpers.CutStringUTF16(text, 50))
 	if err != nil {
 		warn(err)
 		return
 	}
-	if !strings.Contains(from, "-") && len(from) != 2 {
+	if !strings.Contains(from, "-") && len(from) > 3 {
 		from = from[:2]
 	}
-	//pp.Println("from", from)
 	if user.MyLang == "auto" {
 		if err = app.db.UpdateUser(message.From.ID, tables.Users{MyLang: from}); err != nil {
 			warn(err)
@@ -748,8 +803,8 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		trFromTo = make([]string, len(texts))
 		trDict   string
 	)
+	ctx, cancel := context.WithCancel(ctx)
 	g, ctx := errgroup.WithContext(ctx)
-
 	//if from != user.MyLang && from != user.ToLang && len(strings.Fields(text)) > 1 {
 	g.Go(func() error {
 		g, ctx := errgroup.WithContext(ctx)
@@ -762,21 +817,12 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				return err
 			})
 		}
-		return g.Wait()
+		if err = g.Wait(); err != nil {
+			return err
+		}
+		cancel()
+		return nil
 	})
-	//}
-	//g.Go(func() error {
-	//	g, ctx := errgroup.WithContext(ctx)
-	//	for _, text := range texts {
-	//		text := text
-	//		g.Go(func() error {
-	//			tr, err := app.translo.Translate(ctx, user.MyLang, user.ToLang, text)
-	//			trMylangTolang = append(trMylangTolang, tr.TranslatedText)
-	//			return err
-	//		})
-	//	}
-	//	return g.Wait()
-	//})
 	_, ok1 := lingvo.Lingvo[from]
 	_, ok2 := lingvo.Lingvo[to]
 	if ok1 && ok2 && len(text) < 50 && !strings.ContainsAny(text, " \r\n") {
@@ -793,46 +839,29 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			tr := strings.TrimSpace(writeLingvo(l))
 			if tr != "" {
 				trDict = tr + "\n❤️ @TransloBot"
+				cancel()
 			}
 			return nil
 		})
 	}
 
-	if err = g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
+	err = g.Wait()
+
+	if err != nil && !errors.Is(err, context.Canceled) {
 		log.Error("", zap.Error(err))
 		app.notifyAdmin(err)
+		return
 	}
 
-	// request translations: user.from-user.to, user.to-user.from, from-to
-
-	//tr, from, err := app.translate(ctx, from, to, text) // examples мы сохраняем, чтобы соединить с keyboard.Examples и положить в кэш
-	//if err != nil {
-	//	log.Error("", zap.Error(err))
-	//	warn(err)
-	//	return
-	//}
-	//// TODO каждые 24ч капча
-	//if from == to && user.MyLang == user.ToLang && tr == text {
-	//	app.bot.Send(tgbotapi.NewMessage(message.From.ID, user.Localize(`You translate from one language to the same language`)))
-	//}
-
-	//app.bc.PutWithTTL() УПОМЯНУТЬ ОБ АПИ
-	//translations := [][]string{trMylangTolang, []string{trDict}}
-	//if len(strings.Fields(text)) > 1 {
-	//	translations = append(translations, trFromTo)
-	//}
-	// TODO ask 'from' if detected lang != user.MyLang
-	// TODO bot for buying ads here
-	//translation := maxDiff(text, translations)
-	translation := trFromTo
 	if trDict != "" {
-		translation = []string{trDict}
+		trFromTo = []string{trDict}
 	}
 
-	log = log.With(zap.Strings("translation", translation))
+	log = log.With(zap.Strings("translation", trFromTo))
 	log.Debug("")
 	lastMsgID := 0
-	for i, chunk := range translation {
+
+	for i, chunk := range trFromTo {
 		chunk = strings.NewReplacer(`<notranslate>`, "", `</notranslate>`, "").Replace(chunk)
 		keyboard := tgbotapi.NewReplyKeyboard(
 			tgbotapi.NewKeyboardButtonRow(
@@ -945,6 +974,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		},
 		Text: user.Localize("Did I translate it correctly?"),
 	})
+	done <- true
 
 	if user.Usings == 3 || user.Usings == 6 || user.Usings == 10 {
 		app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, user.Localize(`Закрепите чат с ботом, чтобы не искать его! 📌`)))

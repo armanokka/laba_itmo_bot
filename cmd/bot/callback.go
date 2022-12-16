@@ -780,6 +780,12 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			warn(err)
 			return
 		}
+	case "cancel_set_op":
+		app.bot.Send(tgbotapi.NewDeleteMessage(callback.From.ID, callback.Message.MessageID))
+		if err = app.db.UpdateUserByMap(callback.From.ID, map[string]interface{}{"act": nil}); err != nil {
+			warn(err)
+			return
+		}
 	case "filtered_set_my_lang": // arr[1] - set my_lang
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
 

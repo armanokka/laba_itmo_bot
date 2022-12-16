@@ -23,7 +23,6 @@ var (
 	db                      *gorm.DB
 	analytics               dashbot.DashBot
 	bot                     *botapi.BotAPI
-	botID                   int64
 	once                    sync.Once
 )
 

@@ -3,26 +3,21 @@ package translate
 import (
 	"bytes"
 	"context"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/armanokka/translobot/pkg/helpers"
-	"github.com/go-resty/resty/v2"
-	"github.com/k0kubun/pp"
 	"github.com/tidwall/gjson"
-	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/text/unicode/norm"
-	"html"
+	"io"
 	"io/ioutil"
 	"math"
 	"math/rand"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
-	"os"
 	"regexp"
 	"sort"
 	"strconv"
@@ -31,12 +26,20 @@ import (
 	"time"
 	"unicode"
 	"unicode/utf16"
-	"unicode/utf8"
 )
 
 var proxies = []string{
-	"http://armangokka7796:Ob3mMsp26e0hUVop1YE4N0PVvxo1nFyG@172.96.166.123:10455",
-	"http://armangokka7796:77813e@162.19.173.183:10799",
+	"http://armangokka7796:77813e@64.74.163.173:10813",
+}
+
+func SetProxies(newProxies []string) error {
+	for i := 0; i < len(newProxies); i++ {
+		if _, err := url.Parse(newProxies[i]); err != nil {
+			return fmt.Errorf("SetProxies: unable to parse proxy %s", newProxies[i])
+		}
+	}
+	proxies = newProxies
+	return nil
 }
 
 func TTS(ctx context.Context, lang, text string) ([]byte, error) {
@@ -82,118 +85,198 @@ func TTS(ctx context.Context, lang, text string) ([]byte, error) {
 	return base64.StdEncoding.DecodeString(out.String())
 }
 
-var client *http.Client
-
 //go :embed certs/*.pem
 //var embedFS embed.FS
 
 // request requests with proxy on 3 error responses
-func request(req *http.Request, times int) (resp *http.Response, err error) {
-	if client == nil {
-		//certs := x509.NewCertPool()
-		//if err = fs.WalkDir(embedFS, "certs", func(path string, d fs.DirEntry, err error) error {
-		//	if d.IsDir() {
-		//		return nil
-		//	}
-		//	pemData, err := os.ReadFile(path)
-		//	if err != nil {
-		//		return err
-		//	}
-		//	if ok := certs.AppendCertsFromPEM(pemData); !ok {
-		//		return fmt.Errorf("request: can't parse %s", path)
-		//	}
-		//	return nil
-		//}); err != nil {
-		//	return nil, err
-		//}
+//func request(req *http.Request) (resp *http.Response, err error) {
+//	ctx, cancel := context.WithCancel(req.Context())
+//	defer cancel()
+//	req = req.WithContext(ctx)
+//
+//	log, ok := ctx.Value("log").(*zap.Logger)
+//	if !ok {
+//		log, err = zap.NewDevelopment()
+//		if err != nil {
+//			return nil, err
+//		}
+//		log.Error("request: context.Value(\"log\") is not *zap.Logger")
+//	}
+//
+//	results := make(chan interface{}) // responses and errors here
+//	go func() {
+//		resp, err := http.DefaultClient.Do(req)
+//		if err != nil {
+//			if errors.Is(err, context.Canceled) {
+//				return
+//			}
+//			requestDump, _ := httputil.DumpRequest(req, false)
+//			log.Error("", zap.Error(err), zap.String("request", string(requestDump)))
+//			results <- err
+//			return
+//		}
+//		results <- resp
+//		if resp != nil && resp.StatusCode > 199 && resp.StatusCode < 300 { // success
+//			log.Debug("translated ourself")
+//			cancel()
+//		}
+//		return
+//	}()
+//	go func() {
+//		client := http.DefaultClient
+//		for i := 0; i < len(proxies); i++ {
+//			u, err := url.Parse(proxies[i])
+//			if err != nil {
+//				log.Error("", zap.Error(err))
+//				continue
+//			}
+//			client.Transport = &http.Transport{
+//				Proxy: http.ProxyURL(u),
+//			}
+//			resp, err := client.Do(req)  // НЕЛЬЗЯ ПЕРЕИСПОЛЬЗОВАТЬ *HTTP.REQUEST
+//			if err != nil {
+//				if errors.Is(err, context.Canceled) {
+//					return
+//				}
+//				requestDump, _ := httputil.DumpRequest(req, false)
+//				log.Error("", zap.Error(err), zap.String("request", string(requestDump)))
+//				results <- err
+//				return
+//			}
+//			results <- resp
+//			if resp != nil && resp.StatusCode > 199 && resp.StatusCode < 300 { // success
+//				log.Debug("translated through proxy")
+//				cancel()
+//			}
+//			return
+//		}
+//	}()
+//
+//	for i := 0; i < 2; i++ {
+//		result := <-results
+//		switch v := result.(type) {
+//		case *http.Response:
+//			if v != nil && v.StatusCode > 199 && v.StatusCode < 300 { // success
+//				return v, nil
+//			}
+//			if i == 1 {
+//				if v != nil {
+//					return v, nil
+//				}
+//				return nil, fmt.Errorf("request: couldn't send request by ourself and with proxy")
+//			}
+//		case error:
+//			if i == 1 {
+//				pp.Println("error again")
+//				return nil, v
+//			}
+//			pp.Println("err")
+//			log.Error("", zap.Error(v))
+//		}
+//	}
+//	return nil, fmt.Errorf("request: couldn't send request by ourself and with proxy")
+//}
+//
+//func requestLocally(req *http.Request, times int) (resp *http.Response, err error) {
+//	for i := 0; i < times; i++ {
+//		resp, err = http.DefaultClient.Do(req)
+//		if resp != nil && err == nil && resp.StatusCode >= 200 && resp.StatusCode < 400 {
+//			return
+//		}
+//	}
+//	return
+//}
 
-		//client = &http.Client{
-		//Transport: &http.Transport{
-		//	TLSClientConfig: &tls.Config{
-		//RootCAs: certs,
-		//	},
-		//},
-		//}
-		client = http.DefaultClient
-	}
-	log, ok := req.Context().Value("log").(*zap.Logger)
-	if !ok {
-		log, err = zap.NewDevelopment()
-		if err != nil {
-			return nil, err
+// request makes http request. DO NOT FORGET TO CLOSE RESP BODY
+//func request(req *http.Request) (resp *http.Response, err error) {
+//	return http.DefaultClient.Do(req)
+//}
+
+func request(req *http.Request) (*http.Response, error) {
+	responses := make(chan *http.Response, 2)
+
+	ctx, cancel := context.WithCancel(req.Context())
+	defer cancel()
+
+	var errs errgroup.Group
+	var err error
+
+	body := make([]byte, 0)
+	if req.Body != nil {
+		body, err = io.ReadAll(req.Body)
+		if err != nil && !errors.Is(err, io.EOF) {
+			return nil, fmt.Errorf("read body")
 		}
-		log.Error("request: context.Value(\"log\") is not *zap.Logger")
 	}
 
-	for i := 0; i < times; i++ {
-		ctx, _ := context.WithTimeout(req.Context(), time.Second*150)
-		req := req.WithContext(ctx)
-		resp, err = client.Do(req)
+	errs.Go(func() error {
+		reqClone := req.Clone(ctx)
+		if len(body) > 0 {
+			reqClone.Body = io.NopCloser(bytes.NewReader(body))
+		}
+
+		resp, err := http.DefaultClient.Do(reqClone)
 		if err != nil {
-			if e, ok := err.(*url.Error); ok {
-				switch e.Err.(type) {
-				case x509.CertificateInvalidError, x509.HostnameError, x509.SystemRootsError, x509.InsecureAlgorithmError, x509.UnknownAuthorityError, x509.ConstraintViolationError:
-					log.Error("hacking detected. this incident will be reported")
-					os.Exit(1)
-					return nil, nil
-				}
+			return fmt.Errorf("do without proxy: %w", err)
+		}
+
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			responses <- resp
+			cancel()
+			return nil
+		}
+
+		return fmt.Errorf("bad status code %d", resp.StatusCode)
+	})
+
+	errs.Go(func() error {
+		var client http.Client
+		reqClone := req.Clone(ctx)
+		if len(body) > 0 {
+			reqClone.Body = io.NopCloser(bytes.NewReader(body))
+		}
+
+		for i := range proxies {
+
+			u, err := url.Parse(proxies[i])
+			if err != nil {
+				return fmt.Errorf("parse proxy url: %w", err)
 			}
 
-			requestDump, _ := httputil.DumpRequest(req, true)
-			log.Error("", zap.Error(err), zap.String("request", string(requestDump)))
-		}
-		if resp != nil && err == nil && resp.StatusCode >= 200 && resp.StatusCode < 400 {
-			//fmt.Println("request repeated", i+1, "times")
-			return
-		}
-	}
-	for i := 0; i < len(proxies); i++ {
-		u, err := url.Parse(proxies[i])
-		if err != nil {
-			return nil, fmt.Errorf("proxies[%d] - invalid proxy url", i)
-		}
-		client.Transport = &http.Transport{
-			Proxy: http.ProxyURL(u),
-		}
-		resp, err = client.Do(req)
-		if err != nil {
-			requestDump, _ := httputil.DumpRequest(req, true)
-			log.Error("", zap.Error(err), zap.String("request", string(requestDump)))
-		}
-		if resp != nil && err == nil && resp.StatusCode >= 200 && resp.StatusCode < 400 {
-			return resp, err
-		}
-	}
-	return nil, fmt.Errorf("translate.request(): couldn't send request by ourself and with proxy")
-}
+			client.Transport = &http.Transport{
+				Proxy: http.ProxyURL(u),
+			}
 
-func requestLocally(req *http.Request, times int) (resp *http.Response, err error) {
-	for i := 0; i < times; i++ {
-		resp, err = http.DefaultClient.Do(req)
-		if resp != nil && err == nil && resp.StatusCode >= 200 && resp.StatusCode < 400 {
-			return
-		}
-	}
-	return
-}
+			resp, err := client.Do(reqClone)
+			if err != nil {
+				return fmt.Errorf("do with proxy: %w", err)
+			}
 
-func requestProxy(req *http.Request) (resp *http.Response, err error) {
-	client := http.DefaultClient
-	for i := 0; i < len(proxies); i++ {
-		var u *url.URL
-		u, err = url.Parse(proxies[i])
-		if err != nil {
-			return
+			if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+				responses <- resp
+				cancel()
+				break
+			}
 		}
-		client.Transport = &http.Transport{
-			Proxy: http.ProxyURL(u),
-		}
-		resp, err = client.Do(req)
-		if resp != nil && err == nil && resp.StatusCode >= 200 && resp.StatusCode < 400 {
-			return
-		}
+
+		return nil
+	})
+
+	err = errs.Wait()
+	close(responses)
+
+	resp, ok := <-responses
+	if ok {
+		for r := range responses {
+			r.Body.Close()
+		} // close other responses
+		return resp, nil
 	}
-	return
+
+	if err == nil {
+		return nil, errors.New("no data returned")
+	}
+	return nil, err
 }
 
 // request requests with proxy on 3 error responses
@@ -269,11 +352,11 @@ func ttsRequest(ctx context.Context, lang, text string) (string, error) {
 	req.Header["sec-ch-ua"] = []string{`" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"`}
 	req.Header["user-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.101 Safari/537.36"}
 
-	res, err := request(req, 3)
+	res, err := request(req)
 	if err != nil {
 		return "", err
 	}
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", err
 	}
@@ -385,16 +468,16 @@ type GoogleHTMLTranslation struct {
 //	return tkk, nil
 //}
 
-func getTk(tkk string, text string) (string, error) {
-	resp, err := resty.New().R().SetFormData(map[string]string{
-		"tkk":  tkk,
-		"text": text,
-	}).Post(fmt.Sprintf("http://ancient-springs-54230.herokuapp.com/tkk.php"))
-	if err != nil {
-		return "", err
-	}
-	return resp.String(), nil
-}
+//func getTk(tkk string, text string) (string, error) {
+//	resp, err := resty.New().R().SetFormData(map[string]string{
+//		"tkk":  tkk,
+//		"text": text,
+//	}).Post(fmt.Sprintf("http://ancient-springs-54230.herokuapp.com/tkk.php"))
+//	if err != nil {
+//		return "", err
+//	}
+//	return resp.String(), nil
+//}
 
 //func GoogleHTMLTranslate(ctx context.Context, from, to, text string) (GoogleHTMLTranslation, error) {
 //	text = strings.ReplaceAll(text, "\n", "<br>")
@@ -492,78 +575,23 @@ func getTk(tkk string, text string) (string, error) {
 //	}, nil
 //}
 
-var englishAlphabet = map[rune]bool{
-	69:  true,
-	84:  true,
-	85:  true,
-	99:  true,
-	103: true,
-	109: true,
-	67:  true,
-	87:  true,
-	105: true,
-	112: true,
-	117: true,
-	81:  true,
-	86:  true,
-	97:  true,
-	68:  true,
-	75:  true,
-	80:  true,
-	66:  true,
-	76:  true,
-	79:  true,
-	82:  true,
-	98:  true,
-	106: true,
-	111: true,
-	122: true,
-	89:  true,
-	118: true,
-	119: true,
-	71:  true,
-	72:  true,
-	102: true,
-	107: true,
-	110: true,
-	115: true,
-	88:  true,
-	100: true,
-	113: true,
-	114: true,
-	77:  true,
-	65:  true,
-	73:  true,
-	74:  true,
-	83:  true,
-	101: true,
-	104: true,
-	108: true,
-	120: true,
-	90:  true,
-	116: true,
-	121: true,
-	70:  true,
-	78:  true,
-}
-
-func validHTMLTagNotNotranslate(tag string) bool {
-	tag = strings.Trim(tag, "<>/ ")
-	spaceIdx := strings.IndexAny(tag, "\r\n\t\f\v ")
-	if spaceIdx != -1 {
-		tag = tag[:spaceIdx]
-	}
-	tag = strings.TrimSpace(tag)
-	if tag == "notranslate" {
-		return false
-	}
-	for _, r := range tag {
-		if _, ok := englishAlphabet[r]; !ok && !unicode.IsDigit(r) && r != '_' && r != '-' && !unicode.IsSpace(r) {
-			return false
-		}
-	}
-	return true
-}
+//func validHTMLTagNotNotranslate(tag string) bool {
+//	tag = strings.Trim(tag, "<>/ ")
+//	spaceIdx := strings.IndexAny(tag, "\r\n\t\f\v ")
+//	if spaceIdx != -1 {
+//		tag = tag[:spaceIdx]
+//	}
+//	tag = strings.TrimSpace(tag)
+//	if tag == "notranslate" {
+//		return false
+//	}
+//	for _, r := range tag {
+//		if _, ok := englishAlphabet[r]; !ok && !unicode.IsDigit(r) && r != '_' && r != '-' && !unicode.IsSpace(r) {
+//			return false
+//		}
+//	}
+//	return true
+//}
 
 // plainTag: <a href=""> --> a, <b/> --> b, <code> --> code
 func plainTag(s string) string {
@@ -580,21 +608,6 @@ func plainTag(s string) string {
 		i = len(tag)
 	}
 	return strings.TrimPrefix(strings.TrimSuffix(tag[:i], "/"), "/")
-}
-
-func nextNotranslate(s string) (start int, end int) {
-	start, end, skip := -1, -1, 0
-	for {
-		start, end = IndexesOfFirstHTMLTag(s[skip:])
-		if start == -1 || end == -1 {
-			return -1, -1
-		}
-		//pp.Println(plainTag(s[start:end]), start, end, skip, s[skip:])
-		if plainTag(s[start+skip:end+skip]) == "notranslate" {
-			return start + skip, end + skip
-		}
-		skip += end
-	}
 }
 
 func IndexesOfFirstHTMLTag(s string) (start int, end int) {
@@ -702,17 +715,13 @@ func NotranslateRanges(s string) [][2]int {
 	}
 }
 
+type ErrFromOrToAreInvalid struct{}
+
+func (ErrFromOrToAreInvalid) Error() string {
+	return "GoogleTranslate: from or to are invalid"
+}
+
 func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateGoogleAPIResponse, err error) {
-	// use log in ctx
-	if !helpers.In(SupportedLanguageCodes, from, to) {
-		return TranslateGoogleAPIResponse{}, fmt.Errorf("GoogleTranslate: unsupported language code %s %s", from, to)
-	}
-	if strings.TrimSpace(text) == "" {
-		return TranslateGoogleAPIResponse{
-			Text:     text,
-			FromLang: from,
-		}, nil
-	}
 	// Получаем тексты между тегами
 	texts := make([]string, 0, 3)
 	start, end := -1, -1
@@ -745,9 +754,10 @@ func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateG
 	notranslateRanges := NotranslateRanges(text)
 	g, ctx := errgroup.WithContext(ctx)
 	var mu sync.Mutex
+	//pp.Println("texts", texts)
 	for _, chunk := range texts {
 		chunk := chunk
-		if chunk == "" {
+		if strings.TrimSpace(chunk) == "" {
 			continue
 		}
 		g.Go(func() error {
@@ -757,16 +767,20 @@ func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateG
 			if to != "ar" && !strings.HasPrefix(to, "zh") && to != "th" && to != "ja" && to != "ko" {
 				prefixSpaces, postfixSpaces = helpers.GetPrefixSpaces(chunk), helpers.GetPostfixSpaces(chunk)
 			}
-			out, err = googleTranslate(ctx, from, to, chunk)
+			//tr, err := googleTranslate(ctx, from, to, strings.TrimSpace(chunk))
+			tr, err := googleTranslateSingleRequest(ctx, from, to, strings.TrimSpace(chunk))
 			if err != nil {
 				return err
 			}
-			if prefixSpaces != "" {
-				out.Text = prefixSpaces + out.Text
+			if tr.Text == "" {
+				return fmt.Errorf("googleTranslate: empty translation")
 			}
-			if postfixSpaces != "" {
-				out.Text += postfixSpaces
+			tr.Text = prefixSpaces + tr.Text + postfixSpaces
+			mu.Lock()
+			if out.FromLang == "" {
+				out.FromLang = tr.FromLang
 			}
+			mu.Unlock()
 
 			if len(notranslateRanges) > 0 {
 				i, skip := strings.Index(text, chunk), 0 // idx - это индекс, с которого надо искать следующий strings.Index. skip - это сколько совпадений мы пропустили
@@ -777,11 +791,8 @@ func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateG
 							continue
 						}
 						mu.Lock()
-						defer mu.Unlock()
-						if out.FromLang == "" {
-							out.FromLang = out.FromLang
-						}
-						text = replace(text, chunk, out.Text, 1, skip)
+						text = replace(text, chunk, tr.Text, 1, skip)
+						mu.Unlock()
 						return nil
 					}
 					if i == 0 {
@@ -791,15 +802,12 @@ func GoogleTranslate(ctx context.Context, from, to, text string) (out TranslateG
 			}
 			mu.Lock()
 			defer mu.Unlock()
-			if out.FromLang == "" {
-				out.FromLang = out.FromLang
-			}
-			text = replace(text, chunk, out.Text, 1, 0)
+			text = replace(text, chunk, tr.Text, 1, 0) // TODO optimize
 			return nil
 		})
 	}
 	err = g.Wait()
-	out.Text = html.UnescapeString(text)
+	out.Text = text
 	return out, err
 }
 
@@ -810,15 +818,104 @@ func googleTranslate(ctx context.Context, from, to, text string) (result Transla
 	return result, err
 }
 
-func googleTranslateRequest(ctx context.Context, from, to, text string) (result TranslateGoogleAPIResponse, err error) {
-	buf := new(bytes.Buffer)
-	buf.WriteString("async=translate,sl:" + url.QueryEscape(from) + ",tl:" + url.QueryEscape(to) + ",st:" + url.QueryEscape(text) + ",id:1624032860465,qc:true,ac:true,_id:tw-async-translate,_pms:s,_fmt:pc,format:html")
-	req, err := http.NewRequestWithContext(ctx, "POST", "https://www.google.com/async/translate?vet=12ahUKEwjFh8rkyaHxAhXqs4sKHYvmAqAQqDgwAHoECAIQJg..i&ei=SMbMYMXDKernrgSLzYuACg&yv=3&cs=0&rlz=1C1GCEA_enUZ1012UZ1012", buf)
+func googleTranslateSingleRequest(ctx context.Context, from, to, text string) (result TranslateGoogleAPIResponse, err error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("https://translate.googleapis.com/translate_a/single?client=gtx&sl=%s&tl=%s&dt=t&q=%s", from, to, url.PathEscape(text)), nil)
 	if err != nil {
 		return TranslateGoogleAPIResponse{}, err
 	}
+	req.Close = true
+	req.Header["origin"] = []string{"https://www.google.com"}
+	req.Header["referer"] = []string{"https://www.google.com/"}
+	req.Header["user-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.101 Safari/537.36"}
+
+	resp, err := request(req)
+	if err != nil {
+		return TranslateGoogleAPIResponse{}, err
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case 200:
+		body, err := io.ReadAll(resp.Body)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			return TranslateGoogleAPIResponse{}, err
+		}
+		data := gjson.ParseBytes(body)
+
+		result.Text = text
+		if v := data.Get("0.0.0"); v.Exists() {
+			result.Text = v.String()
+		}
+
+		result.FromLang = to
+		if v := data.Get("2"); v.Exists() {
+			result.FromLang = v.String()
+		}
+		return result, nil
+	case 413:
+		l := len(utf16.Encode([]rune(text)))
+		fmt.Println("googleTranslateSingleRequest: got 413 when len", l)
+		parts := SplitIntoChunksBySentences(text, l/2)
+		g, ctx := errgroup.WithContext(ctx)
+		var mu sync.Mutex
+		from = ""
+		for i, part := range parts {
+			part := part
+			g.Go(func() error {
+				tr, err := googleTranslateSingleRequest(ctx, from, to, part)
+				if err != nil {
+					return err
+				}
+				mu.Lock()
+				defer mu.Unlock()
+				if from == "" {
+					from = tr.FromLang
+				}
+				parts[i] = tr.Text
+				return nil
+			})
+		}
+		if err = g.Wait(); err != nil {
+			return TranslateGoogleAPIResponse{}, err
+		}
+		return TranslateGoogleAPIResponse{
+			Text:                strings.Join(parts, ""),
+			FromLang:            from,
+			ReverseTranslations: nil,
+			CommunityVerified:   false,
+		}, nil
+	default:
+		body, err := io.ReadAll(resp.Body)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			return TranslateGoogleAPIResponse{}, err
+		}
+		return TranslateGoogleAPIResponse{}, HTTPError{
+			Code:        resp.StatusCode,
+			Description: fmt.Sprintf("googleTranslateRequest: got not 200 http code [%d]: %s", resp.StatusCode, string(body)),
+		}
+	}
+
+}
+
+func googleTranslateRequest(ctx context.Context, from, to, text string) (result TranslateGoogleAPIResponse, err error) {
+	//buf := new(bytes.Buffer)
+	//buf.WriteString("async=translate,sl:" + url.QueryEscape(from) + ",tl:" + url.QueryEscape(to) + ",st:" + url.QueryEscape(text) + ",id:1624032860465,qc:true,ac:true,_id:tw-async-translate,_pms:s,_fmt:pc,format:html")
+	//req, err := http.NewRequestWithContext(ctx, "POST", "https://www.google.com/async/translate?vet=12ahUKEwjFh8rkyaHxAhXqs4sKHYvmAqAQqDgwAHoECAIQJg..i&ei=SMbMYMXDKernrgSLzYuACg&yv=3&cs=0&rlz=1C1GCEA_enUZ1012UZ1012", buf)
+	values := url.Values{}
+	values.Set("async", fmt.Sprintf(`translate,sl:%s,tl:%s,st:%s,id:1671082529932,qc:true,ac:true,_id:tw-async-translate,_pms:s,_fmt:pc`, from, to, text))
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://www.google.com/async/translate?vet=12ahUKEwjFh8rkyaHxAhXqs4sKHYvmAqAQqDgwAHoECAIQJg..i&ei=SMbMYMXDKernrgSLzYuACg&yv=3&cs=0&rlz=1C1GCEA_enUZ1012UZ1012", bytes.NewBufferString(values.Encode()))
+	if err != nil {
+		return TranslateGoogleAPIResponse{}, err
+	}
+	req.Close = true // NOTE THIS!
 	req.Header["content-type"] = []string{"application/x-www-form-urlencoded;charset=UTF-16"}
 	req.Header["accept"] = []string{"*/*"}
+	req.Header["alt-svc"] = []string{`h3=":443"; ma=2592000,h3-29=":443"; ma=2592000,h3-Q050=":443"; ma=2592000,h3-Q046=":443"; ma=2592000,h3-Q043=":443"; ma=2592000,quic=":443"; ma=2592000; v="46,43"`}
+	req.Header["bfcache-opt-in"] = []string{`unload`}
+	req.Header["cache-control"] = []string{`private`}
+	req.Header["bfcache-opt-in"] = []string{`unload`}
+	req.Header["bfcache-opt-in"] = []string{`unload`}
+
 	req.Header["accept-ch"] = []string{"Sec-CH-UA-Platform", "Sec-CH-UA-Platform", "Sec-CH-UA-Full-Version", "Sec-CH-UA-Arch", "Sec-CH-UA-Model", "Sec-CH-UA-Bitness", "Sec-CH-UA-Full-Version-List", "Sec-CH-UA-WoW64"}
 	req.Header["cookie"] = []string{"NID=217=mKKVUv88-BW4Vouxnh-qItLKFt7zm0Gj3yDLC8oDKb_PuLIb-p6fcPVcsXZWeNwkjDSFfypZ8BKqy27dcJH-vFliM4dKaiKdFrm7CherEXVt-u_DPr9Yecyv_tZRSDU7E52n5PWwOkaN2I0-naa85Tb9-uTjaKjO0gmdbShqba5MqKxuTLY; 1P_JAR=2021-06-18-16; DV=A3qPWv6ELckmsH4dFRGdR1fe4Gj-oRcZWqaFSPtAjwAAAAA"}
 	req.Header["origin"] = []string{"https://www.google.com"}
@@ -830,34 +927,35 @@ func googleTranslateRequest(ctx context.Context, from, to, text string) (result 
 	req.Header["sec-ch-ua"] = []string{`" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"`}
 	req.Header["user-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.101 Safari/537.36"}
 
-	resp, err := request(req, 3)
+	resp, err := request(req)
 	if err != nil {
 		return TranslateGoogleAPIResponse{}, err
 	}
+	defer resp.Body.Close()
 	switch resp.StatusCode {
 	case 200:
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil && !errors.Is(err, context.Canceled) {
 			return TranslateGoogleAPIResponse{}, err
 		}
-		//fmt.Println(string(body))
 		doc, err := goquery.NewDocumentFromReader(bytes.NewBuffer(body))
 		if err != nil {
 			return TranslateGoogleAPIResponse{}, err
 		}
-		if result.FromLang == "" {
-			result.FromLang = doc.Find("span[id=tw-answ-detected-sl]").Text()
-		}
+		result.FromLang = doc.Find("span[id=tw-answ-detected-sl]").Text()
 		if result.FromLang == "" {
 			return TranslateGoogleAPIResponse{}, fmt.Errorf("googleTranslateRequest: didn't find \"tw-answ-detected-sl\" in:\n%s", string(body))
 		}
 		result.Text = doc.Find("span[id=tw-answ-target-text]").Text()
 		if result.Text == "" {
-			if doc.Find("span[id=tw-answ-id]").Text() != "" {
-				return TranslateGoogleAPIResponse{
-					Text:     "",
-					FromLang: to,
-				}, nil
+			//if doc.Find("span[id=tw-answ-id]").Text() != "" {
+			//	return TranslateGoogleAPIResponse{
+			//		Text:     "",
+			//		FromLang: to,
+			//	}, nil
+			//}
+			if result.FromLang != "" && result.Text == "" {
+				return TranslateGoogleAPIResponse{}, ErrFromOrToAreInvalid{}
 			}
 			return TranslateGoogleAPIResponse{}, fmt.Errorf("googleTranslateRequest: didn't find \"tw-answ-target-text\" in:\n%s", string(body))
 		}
@@ -877,10 +975,12 @@ func googleTranslateRequest(ctx context.Context, from, to, text string) (result 
 		}
 
 	case 413:
-		parts := SplitIntoChunksBySentences(text, utf8.RuneCountInString(text)/2)
+		l := len(utf16.Encode([]rune(text)))
+		fmt.Println("googleTranslateRequest: got 413 when len", l)
+		parts := SplitIntoChunksBySentences(text, l/2)
 		g, ctx := errgroup.WithContext(ctx)
 		var mu sync.Mutex
-		from := ""
+		from = ""
 		for i, part := range parts {
 			part := part
 			g.Go(func() error {
@@ -893,7 +993,7 @@ func googleTranslateRequest(ctx context.Context, from, to, text string) (result 
 				if from == "" {
 					from = tr.FromLang
 				}
-				parts[i] = norm.NFKC.String(tr.Text)
+				parts[i] = tr.Text
 				return nil
 			})
 		}
@@ -903,7 +1003,7 @@ func googleTranslateRequest(ctx context.Context, from, to, text string) (result 
 		result.Text = strings.Join(parts, "")
 		result.FromLang = from
 	default:
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return TranslateGoogleAPIResponse{}, err
 		}
@@ -978,6 +1078,7 @@ func ReversoTranslate(ctx context.Context, from, to, text string) (ReversoTransl
 	if err != nil {
 		return ReversoTranslation{}, err
 	}
+	req.Close = true
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Add("accept-language", "en-US,en;q=0.8")
 	req.Header.Add("user-agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36")
@@ -986,21 +1087,18 @@ func ReversoTranslate(ctx context.Context, from, to, text string) (ReversoTransl
 	req.Header.Add("X-Requested-With", "XMLHttpRequest")
 	req.Header.Add("Content-Length", strconv.Itoa(len(text)))
 
-	res, err := request(req, 3)
+	resp, err := request(req)
 	if err != nil {
 		return ReversoTranslation{}, err
 	}
+	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return ReversoTranslation{}, err
 	}
-	if res.StatusCode != 200 {
-		//if res.StatusCode == 403 {
-		//	return ReversoTranslation{}, nil
-		//}
-		pp.Println("error", string(body))
-		return ReversoTranslation{}, fmt.Errorf("Not 200 CODE from Reverso [%d]\n%s->%s,text:%s\nresponse:%s", res.StatusCode, from, to, text, string(body))
+	if resp.StatusCode != 200 {
+		return ReversoTranslation{}, fmt.Errorf("Not 200 CODE from Reverso [%d]\n%s->%s,text:%s\nresponse:%s", resp.StatusCode, from, to, text, string(body))
 	}
 
 	var ret ReversoTranslation
@@ -1025,26 +1123,23 @@ func ReversoQueryService(ctx context.Context, sourceText, sourceLang, targetText
 
 	buf := bytes.NewBuffer(j)
 
-	request := func() (*http.Response, error) {
-		req, err := http.NewRequestWithContext(ctx, "POST", "https://context.reverso.net/bst-query-service", buf)
-		if err != nil {
-			return nil, err
-		}
-		//req.Header.Add("Content-Type", "application/json; charset=UTF-8")
-		//req.Header.Add("Accept-Language", "en-US,en;q=0.8")
-		//req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36")
-		//
-		req.Header = http.Header{
-			"Content-Type":    []string{"application/json; charset=UTF-8"},
-			"Accept-Language": []string{"en-US,en;q=0.8"},
-			"User-Agent":      []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36"},
-		}
-		return request(req, 3)
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://context.reverso.net/bst-query-service", buf)
+	if err != nil {
+		return ReversoQueryResponse{}, err
+	}
+	req.Close = true
+	req.Header = http.Header{
+		"Content-Type":    []string{"application/json; charset=UTF-8"},
+		"Accept-Language": []string{"en-US,en;q=0.8"},
+		"User-Agent":      []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36"},
 	}
 
-	res, err := request()
-
-	body, err := ioutil.ReadAll(res.Body)
+	resp, err := request(req)
+	if err != nil {
+		return ReversoQueryResponse{}, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return ReversoQueryResponse{}, err
 	}
@@ -1072,14 +1167,16 @@ func googleDictionary(ctx context.Context, lang, text string) (dict []string, ph
 	if err != nil {
 		return nil, "", err
 	}
+	req.Close = true
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Add("X-Origin", "chrome-extension://mgijmajocgfcbeboacabfgobmjgjcoja")
 
-	resp, err := request(req, 3)
+	resp, err := request(req)
 	if err != nil {
 		return nil, "", err
 	}
-	body, err := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, "", err
 	}
@@ -1125,10 +1222,11 @@ func googleDictionary(ctx context.Context, lang, text string) (dict []string, ph
 
 func YandexTranscription(ctx context.Context, from, to, text string) (YandexTranscriptionResponse, error) {
 	fromto := url.PathEscape(from) + "-" + url.PathEscape(to)
-	req, err := http.NewRequest("GET", "https://dictionary.yandex.net/dicservice.json/lookupMultiple?ui=en&srv=tr-text&text="+url.PathEscape(text)+"&type=regular,syn,ant,deriv&lang="+fromto+"&flags=7591&dict="+fromto, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://dictionary.yandex.net/dicservice.json/lookupMultiple?ui=en&srv=tr-text&text="+url.PathEscape(text)+"&type=regular,syn,ant,deriv&lang="+fromto+"&flags=7591&dict="+fromto, nil)
 	if err != nil {
 		return YandexTranscriptionResponse{}, err
 	}
+	req.Close = true
 	req.Header["authority"] = []string{"mc.yandex.ru"}
 	req.Header["cookie"] = []string{""}
 	req.Header["origin"] = []string{"https://translate.yandex.ru"}
@@ -1142,10 +1240,11 @@ func YandexTranscription(ctx context.Context, from, to, text string) (YandexTran
 	req.Header["sec-ch-ua"] = []string{`" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"`}
 	req.Header["user-agent"] = []string{"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36"}
 
-	resp, err := request(req, 3)
+	resp, err := request(req)
 	if err != nil {
 		return YandexTranscriptionResponse{}, err
 	}
+	defer resp.Body.Close()
 	var result = make(map[string]interface{})
 	if err = json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return YandexTranscriptionResponse{}, err
@@ -1194,12 +1293,14 @@ func ReversoSuggestions(ctx context.Context, from, to, text string) (ReversoSugg
 	if err != nil {
 		return ReversoSuggestionsResponse{}, err
 	}
+	req.Close = true
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36")
-	resp, err := request(req, 3)
+	resp, err := request(req)
 	if err != nil {
 		return ReversoSuggestionsResponse{}, err
 	}
+	defer resp.Body.Close()
 	var result ReversoSuggestionsResponse
 	if err = json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return ReversoSuggestionsResponse{}, err
@@ -1235,6 +1336,7 @@ func MicrosoftTranslate(ctx context.Context, from, to, text string) (MicrosoftTr
 	if err != nil {
 		return MicrosoftTranslation{}, err
 	}
+	req.Close = true
 	req.Header["Content-Type"] = []string{"application/json; charset=UTF-8"}
 	req.Header["Accept-Language"] = []string{"ru-RU,ru;q=0.9"}
 	req.Header["Accept"] = []string{"application/json, text/javascript, */*; q=0.01"}
@@ -1248,10 +1350,11 @@ func MicrosoftTranslate(ctx context.Context, from, to, text string) (MicrosoftTr
 	req.Header["sec-ch-ua-platform"] = []string{`"Android"`}
 	req.Header["sec-ch-ua"] = []string{`" Not A;Brand";v="99", "Chromium";v="99", "Google Chrome";v="99"`}
 
-	resp, err := request(req, 3)
+	resp, err := request(req)
 	if err != nil {
 		return MicrosoftTranslation{}, err
 	}
+	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -1305,6 +1408,7 @@ func reversoParaphrase(ctx context.Context, lang, text string) ([]string, error)
 	if err != nil {
 		return nil, err
 	}
+	req.Close = true
 	req.Header["Content-Type"] = []string{"application/json; charset=UTF-16"}
 	req.Header["Accept"] = []string{"*/*"}
 	req.Header["Accept-Language"] = []string{"ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"}
@@ -1320,12 +1424,12 @@ func reversoParaphrase(ctx context.Context, lang, text string) ([]string, error)
 	req.Header["sec-ch-ua"] = []string{`" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"`}
 	req.Header["x-reverso-origin"] = []string{`translation.web`}
 
-	resp, err := request(req, 3)
+	resp, err := request(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

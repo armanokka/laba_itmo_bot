@@ -36,6 +36,8 @@ func main() {
 		panic(err)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	signalChanel := make(chan os.Signal, 1)
 	signal.Notify(signalChanel,
 		syscall.SIGHUP,
@@ -44,7 +46,6 @@ func main() {
 		syscall.SIGQUIT)
 	defer signal.Stop(signalChanel)
 
-	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		<-signalChanel
 		fmt.Println("exiting...")
