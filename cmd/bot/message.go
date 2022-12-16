@@ -61,12 +61,6 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	//	}
 	//}()
 
-	defer func() {
-		if err := app.db.UpdateUserActivity(message.From.ID); err != nil {
-			app.notifyAdmin(err)
-		}
-	}()
-
 	var err error
 	user, err = app.db.GetUserByID(message.From.ID)
 	if err != nil {
@@ -79,12 +73,11 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 				tolang = "en"
 			}
 			user = tables.Users{
-				ID:           message.From.ID,
-				MyLang:       message.From.LanguageCode,
-				ToLang:       tolang,
-				Lang:         nil,
-				LastActivity: time.Now(),
-				TTS:          true,
+				ID:     message.From.ID,
+				MyLang: message.From.LanguageCode,
+				ToLang: tolang,
+				Lang:   nil,
+				TTS:    true,
 			}
 			if err = app.db.CreateUser(&user); err != nil {
 				warn(err)

@@ -17,14 +17,10 @@ type BotDB interface {
 	// UpdateUserByMap
 	// Errors: gorm.ErrRecordNotFound, unknown
 	UpdateUserByMap(id int64, updates map[string]interface{}) error
-	UpdateUserActivity(id int64) error
-
-	GetRandomUser() (tables.Users, error)
-
 	SwapLangs(userID int64) error
 
 	GetUsersLen() (int64, error)
 	GetUsersSlice(offset, count int64, slice []int64) (err error)
-
 	GetAllUsers() ([]tables.Users, error)
+	GetRandomUser() (tables.Users, error)
 }

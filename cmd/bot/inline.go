@@ -297,12 +297,6 @@ func (app App) onInlineQuery(ctx context.Context, update tgbotapi.InlineQuery) {
 	if _, err = app.bot.AnswerInlineQuery(inlineConfig); err != nil {
 		log.Error("", zap.Error(err))
 	}
-
-	if user.MyLang != "" { // user exists
-		if err = app.db.UpdateUserActivity(update.From.ID); err != nil {
-			warn(err)
-		}
-	}
 	//if err = app.analytics.InlineBot(*update.From, inlineConfig); err != nil {
 	//	app.notifyAdmin(err)
 	//}

@@ -40,9 +40,6 @@ func (app *App) onCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			}
 			app.bot.Send(tgbotapi.NewMessage(config.AdminID, "Panic:"+fmt.Sprint(err)))
 		}
-		if err := app.db.UpdateUserActivity(callback.From.ID); err != nil {
-			app.notifyAdmin(err)
-		}
 	}()
 	warn := func(err error) {
 		app.bot.Send(tgbotapi.NewCallback(callback.ID, "Error, sorry"))

@@ -8,15 +8,16 @@ import (
 
 // Users is table in DB
 type Users struct {
-	ID           int64     `gorm:"primaryKey;index;not null"`
-	MyLang       string    `gorm:"default:es"`
-	ToLang       string    `gorm:"default:zh"`
-	Act          *string   `gorm:"default:null"`
-	Usings       int       `gorm:"default:0"`
-	Blocked      bool      `gorm:"default:false"`
-	LastActivity time.Time `gorm:"default:current_timestamp"`
-	Lang         *string   `gorm:"default:null"`
-	TTS          bool      `gorm:"default:true"`
+	ID        int64     `gorm:"primaryKey;index;not null"`
+	MyLang    string    `gorm:"default:es"`
+	ToLang    string    `gorm:"default:zh"`
+	Act       *string   `gorm:"default:null"`
+	Usings    int       `gorm:"default:0"`
+	Blocked   bool      `gorm:"default:false"`
+	Lang      *string   `gorm:"default:null"`
+	TTS       bool      `gorm:"default:true"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime:true"`
+	CreatedAt time.Time `gorm:"autoCreateTime:true"`
 }
 
 func (u Users) Localize(key string, placeholders ...interface{}) string {
