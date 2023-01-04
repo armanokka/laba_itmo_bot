@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -53,7 +54,7 @@ func (c API) Translate(ctx context.Context, from, to, text string) (Translation,
 	if err != nil {
 		return Translation{}, err
 	}
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return Translation{}, err
 	}

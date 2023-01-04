@@ -72,12 +72,23 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			} else if message.From.LanguageCode == "ru" {
 				tolang = "en"
 			}
+			var deeplink *string
+			if message.Command() == "start" && message.CommandArguments() != "" {
+				param := message.CommandArguments()
+				deeplink = &param
+			}
 			user = tables.Users{
-				ID:     message.From.ID,
-				MyLang: message.From.LanguageCode,
-				ToLang: tolang,
-				Lang:   nil,
-				TTS:    true,
+				ID:        message.From.ID,
+				MyLang:    message.From.LanguageCode,
+				ToLang:    tolang,
+				Act:       nil,
+				Usings:    1,
+				Blocked:   false,
+				Lang:      nil,
+				TTS:       true,
+				Deeplink:  deeplink,
+				UpdatedAt: time.Now(),
+				CreatedAt: time.Now(),
 			}
 			if err = app.db.CreateUser(&user); err != nil {
 				warn(err)
@@ -252,6 +263,26 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			warn(err)
 			return
 		}
+		return
+	case "stats":
+		stats, err := app.db.GetDeeplinksStats()
+		if err != nil {
+			warn(err)
+			return
+		}
+		msg := tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:              message.Chat.ID,
+				DisableNotification: true,
+			},
+			Text:                  "Total amount of users arrived from deep links:",
+			ParseMode:             tgbotapi.ModeHTML,
+			DisableWebPagePreview: true,
+		}
+		for deeplink, referrals := range stats {
+			msg.Text += "\nhttps://t.me/" + app.bot.Self.UserName + "?start=" + deeplink + " <b>+" + strconv.FormatInt(referrals, 10) + "</b> users"
+		}
+		app.bot.Send(msg)
 		return
 	case "mailing":
 		app.bot.Send(tgbotapi.MessageConfig{
@@ -831,7 +862,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			}
 			tr := strings.TrimSpace(writeLingvo(l))
 			if tr != "" {
-				trDict = tr + "\n❤️ @TransloBot"
+				trDict = tr + "\n❤️ @" + app.bot.Self.UserName
 				cancel()
 			}
 			return nil

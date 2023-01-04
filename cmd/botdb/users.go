@@ -106,3 +106,18 @@ func (db BotDB) SwapLangs(userID int64) error {
 	}
 	return query.Error
 }
+
+func (db BotDB) GetDeeplinksStats() (map[string]int64, error) {
+	stats := make([]struct {
+		Deeplink string
+		Count    int64
+	}, 0, 5)
+	if err := db.Raw(`SELECT deeplink, COUNT(*) AS count FROM users WHERE deeplink IS NOT NULL GROUP BY deeplink ORDER BY count DESC`).Find(&stats).Error; err != nil {
+		return nil, err
+	}
+	ret := make(map[string]int64, len(stats))
+	for _, s := range stats {
+		ret[s.Deeplink] = s.Count
+	}
+	return ret, nil
+}

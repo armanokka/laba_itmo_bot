@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"github.com/armanokka/translobot/internal/tables"
 	"github.com/armanokka/translobot/pkg/botapi"
 	"github.com/armanokka/translobot/pkg/dashbot"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -70,12 +71,10 @@ func load() (err error) {
 		return err
 	}
 
-	//if err = db.AutoMigrate(
-	//	&tables.Chats{},
-	//	&tables.Users{},
-	//); err != nil {
-	//	return err
-	//}
+	if err = db.AutoMigrate(&tables.Users{}); err != nil {
+		return err
+	}
+
 	analytics = dashbot.NewAPI(dashBotAPIKey)
 
 	var api *tgbotapi.BotAPI

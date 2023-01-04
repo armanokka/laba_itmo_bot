@@ -23,4 +23,6 @@ type BotDB interface {
 	GetUsersSlice(offset, count int64, slice []int64) (err error)
 	GetAllUsers() ([]tables.Users, error)
 	GetRandomUser() (tables.Users, error)
+
+	GetDeeplinksStats() (map[string]int64, error)
 }
