@@ -8,6 +8,10 @@ git.mills.io/prologic/bitcask/internal/data/codec
 git.mills.io/prologic/bitcask/internal/index
 git.mills.io/prologic/bitcask/internal/metadata
 git.mills.io/prologic/bitcask/scripts/migrations
+# github.com/BurntSushi/toml v1.2.1
+## explicit; go 1.16
+github.com/BurntSushi/toml
+github.com/BurntSushi/toml/internal
 # github.com/PuerkitoBio/goquery v1.8.0
 ## explicit; go 1.13
 github.com/PuerkitoBio/goquery
@@ -66,6 +70,9 @@ github.com/golang/freetype/truetype
 # github.com/golang/protobuf v1.5.2
 ## explicit; go 1.9
 github.com/golang/protobuf/proto
+# github.com/ilyakaznacheev/cleanenv v1.4.2
+## explicit; go 1.13
+github.com/ilyakaznacheev/cleanenv
 # github.com/jackc/chunkreader/v2 v2.0.1
 ## explicit; go 1.12
 github.com/jackc/chunkreader/v2
@@ -100,6 +107,9 @@ github.com/jinzhu/inflection
 # github.com/jinzhu/now v1.1.5
 ## explicit; go 1.12
 github.com/jinzhu/now
+# github.com/joho/godotenv v1.5.1
+## explicit; go 1.12
+github.com/joho/godotenv
 # github.com/json-iterator/go v1.1.12
 ## explicit; go 1.12
 github.com/json-iterator/go
@@ -241,6 +251,9 @@ google.golang.org/protobuf/types/descriptorpb
 # gopkg.in/yaml.v2 v2.4.0
 ## explicit; go 1.15
 gopkg.in/yaml.v2
+# gopkg.in/yaml.v3 v3.0.1
+## explicit
+gopkg.in/yaml.v3
 # gorm.io/driver/postgres v1.3.9
 ## explicit; go 1.14
 gorm.io/driver/postgres
@@ -253,3 +266,6 @@ gorm.io/gorm/logger
 gorm.io/gorm/migrator
 gorm.io/gorm/schema
 gorm.io/gorm/utils
+# olympos.io/encoding/edn v0.0.0-20201019073823-d3554ca0b0a3
+## explicit; go 1.13
+olympos.io/encoding/edn

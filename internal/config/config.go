@@ -13,11 +13,6 @@ import (
 	"sync"
 )
 
-const (
-	AdminID      = 579515224
-	BotstatToken = "JAEGWDUSGFJDYT39H3GTAXEFT6NTMD"
-)
-
 var (
 	botToken, dashBotAPIKey string
 	dsn                     string

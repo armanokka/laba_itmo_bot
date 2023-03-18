@@ -1,0 +1,10 @@
+ENVIRONMENT: "debug"
+
+POSTGRES_USER: "translobot"
+POSTGRES_DB: "translobot"
+POSTGRES_PASSWORD: "password"
+
+BOT_TOKEN: "token"
+ADMIN_ID: 12345
+
+TRANSLO_API_TOKEN: "abc" # refer to the https://rapidapi.com/armangokka/api/translo
