@@ -2,7 +2,7 @@ package logger
 
 import (
 	"fmt"
-	"github.com/armanokka/transloapi/internal/usecase"
+	"github.com/armanokka/laba_itmo_bot/internal/usecase"
 	"github.com/mattn/go-colorable"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"

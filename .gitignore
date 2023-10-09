@@ -1,4 +1,5 @@
-.env
 translobot
 .github
 .idea
+.env
+laba_itmo_bot

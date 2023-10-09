@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"github.com/armanokka/translobot/pkg/helpers"
+	"github.com/armanokka/laba_itmo_bot/pkg/helpers"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"net/http"
 	"strconv"

@@ -3,11 +3,11 @@ package app
 import (
 	"context"
 	"fmt"
-	"github.com/armanokka/translobot/config"
-	"github.com/armanokka/translobot/internal/controller/bot"
-	"github.com/armanokka/translobot/internal/usecase/repo"
-	"github.com/armanokka/translobot/pkg/logger"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/armanokka/laba_itmo_bot/config"
+	"github.com/armanokka/laba_itmo_bot/internal/controller/bot"
+	"github.com/armanokka/laba_itmo_bot/internal/usecase/repo"
+	"github.com/armanokka/laba_itmo_bot/pkg/botapi"
+	"github.com/armanokka/laba_itmo_bot/pkg/logger"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	dblogger "gorm.io/gorm/logger"
@@ -28,7 +28,7 @@ func Run(cfg *config.Config) error {
 	}()
 
 	// Creating connection with PostgreSQL
-	var dsn = fmt.Sprintf("host=postgres port=5432 user=%s password=%s dbname=%s TimeZone=Europe/Moscow", cfg.PostgresUser, cfg.PostgresPassword, cfg.PostgresDB)
+	var dsn = fmt.Sprintf("host=postgresql port=5432 user=%s password=%s dbname=%s TimeZone=Europe/Moscow", cfg.PostgresUser, cfg.PostgresPassword, cfg.PostgresDB)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: dblogger.Default.LogMode(dblogger.Silent),
 	})
@@ -42,10 +42,10 @@ func Run(cfg *config.Config) error {
 
 	log := logger.New(cfg.Environment)
 
-	api, err := tgbotapi.NewBotAPI(cfg.BotToken)
+	api, err := botapi.NewBotAPI(cfg.BotToken)
 	if err != nil {
 		return err
 	}
-	
-	return bot.Run(api)
+
+	return bot.Run(ctx, api, translationRepo, log, cfg.AdminID)
 }

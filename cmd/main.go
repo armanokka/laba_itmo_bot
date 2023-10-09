@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/armanokka/translobot/config"
-	"github.com/armanokka/translobot/internal/app"
+	"github.com/armanokka/laba_itmo_bot/config"
+	"github.com/armanokka/laba_itmo_bot/internal/app"
 )
 
 func main() {

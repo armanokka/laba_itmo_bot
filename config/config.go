@@ -13,8 +13,6 @@ type Config struct {
 	PostgresUser     string `yaml:"POSTGRES_USER" env:"POSTGRES_USER" env-required:"true"`
 	PostgresDB       string `yaml:"POSTGRES_DB" env:"POSTGRES_DB" env-required:"true"`
 	PostgresPassword string `yaml:"POSTGRES_PASSWORD" env:"POSTGRES_PASSWORD" env-required:"true"`
-
-	TransloAPIToken string `yaml:"TRANSLO_API_TOKEN" env:"TRANSLO_API_TOKEN" env-required:"true"`
 }
 
 func NewConfig() (*Config, error) {
