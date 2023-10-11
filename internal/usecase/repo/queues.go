@@ -10,7 +10,7 @@ func (t TranslationRepo) GetQueueBySubject(threadID int, labID int) ([]entity.Qu
 	rows, err := t.client.Model(&Queues{}).Raw(`
 SELECT queues.user_id, queues.checked, queues.retake, queues.passed, users.first_name, users.last_name, users.patronymic
 FROM queues
-         JOIN users ON users.id=queues.user_id WHERE queues.laboratory_id = ? AND queues.thread_id = ? ORDER BY queues.checked DESC, queues.created_at, queues.retake`, labID, threadID).Rows()
+         JOIN users ON users.id=queues.user_id WHERE queues.laboratory_id = ? AND queues.thread_id = ? ORDER BY queues.checked DESC, queues.retake, queues.created_at`, labID, threadID).Rows()
 	if err != nil {
 		return nil, err
 	}
