@@ -7,6 +7,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -92,12 +93,22 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 			return
 		}
 
+		in, err := app.repo.UserInAnyQueue(callback.From.ID, entity.Subject(subject))
+		if err != nil {
+			warn(err)
+			return
+		}
+		if in {
+			app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, "Вы уже записаны на другую лабу по этому предмету. Можно записаться только на одну лабу за раз."))
+			return
+		}
+
 		var threadID int
 		switch entity.Subject(subject) {
 		case entity.IT:
 			threadID = *user.ITThreadID
 		case entity.OPD:
-			threadID = *user.ProgrammingThreadID
+			threadID = *user.OPDThreadID
 		case entity.Programming:
 			threadID = *user.ProgrammingThreadID
 		}
@@ -217,10 +228,13 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 		switch entity.Subject(subject) {
 		case entity.IT:
 			column = "it_thread_id"
+			user.ITThreadID = &threadID
 		case entity.Programming:
 			column = "programming_thread_id"
+			user.ProgrammingThreadID = &threadID
 		case entity.OPD:
 			column = "opd_thread_id"
+			user.OPDThreadID = &threadID
 		}
 		if err = app.repo.UpdateUserByID(callback.From.ID, column, threadID); err != nil {
 			warn(err)
@@ -250,6 +264,7 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 				warn(err)
 				return
 			}
+
 			if len(threads) == 0 {
 				keyboard := tgbotapi.NewInlineKeyboardMarkup(
 					tgbotapi.NewInlineKeyboardRow(
@@ -264,6 +279,17 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 				})
 				return
 			}
+			sort.Slice(threads, func(i, j int) bool {
+				l1, n1b, n1a := extractNumber(threads[i].Name) // letter 1, number 1 before dot, number 1 before dot
+				l2, n2b, n2a := extractNumber(threads[j].Name)
+				if l1 != l2 {
+					return l1 < l2
+				}
+				if n1b != n2b {
+					return n1b < n2b
+				}
+				return n1a < n2a
+			})
 			keyboard := tgbotapi.NewInlineKeyboardMarkup()
 			for i, thread := range threads {
 				btn := tgbotapi.NewInlineKeyboardButtonData(thread.Name, fmt.Sprintf("set_thread:%s:%d", strconv.Itoa(int(subjectID)), thread.ID))
@@ -280,7 +306,17 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 			keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
 				tgbotapi.NewInlineKeyboardRow(
 					tgbotapi.NewInlineKeyboardButtonData("Вернуться назад", "menu")))
-			app.bot.Send(tgbotapi.NewEditMessageTextAndMarkup(callback.From.ID, callback.Message.MessageID, entity.Subject(subjectID).Name()+"\n\n"+"Выбери свой поток:", keyboard))
+			app.bot.Send(tgbotapi.EditMessageTextConfig{
+				BaseEdit: tgbotapi.BaseEdit{
+					ChatID:      callback.From.ID,
+					MessageID:   callback.Message.MessageID,
+					ReplyMarkup: &keyboard,
+				},
+				Text:                  "<b>" + entity.Subject(subjectID).Name() + "</b>\n\n" + "Выбери свой поток:",
+				ParseMode:             tgbotapi.ModeHTML,
+				Entities:              nil,
+				DisableWebPagePreview: false,
+			})
 			app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
 			return
 		}

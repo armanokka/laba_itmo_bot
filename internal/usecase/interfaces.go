@@ -28,6 +28,7 @@ type Repo interface {
 	MarkLabAsNotPassed(studentID int64, lab int) error
 	MarkLabAsPassed(studentID int64, lab int) error
 	UserPassedLab(studentID int64, lab int) (exists bool, err error)
+	UserInAnyQueue(studentID int64, subject entity.Subject) (in bool, err error) // whether user is in any queue of the subject
 
 	// Threads
 	GetThreadsBySubject(subject entity.Subject) ([]entity.Thread, error)
