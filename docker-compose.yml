@@ -9,6 +9,11 @@ services:
       - ./postgres-data:/var/lib/postgresql
     ports:
       - 5433:5432
+    deploy:
+      resources:
+        limits:
+          cpus: '0.001'
+          memory: 512M
   itmo_queue_bot:
     build: .
     restart: on-failure
@@ -18,3 +23,8 @@ services:
       - postgresql
     ports:
       - 80:80
+    deploy:
+      resources:
+        limits:
+          cpus: '0.001'
+          memory: 512M
