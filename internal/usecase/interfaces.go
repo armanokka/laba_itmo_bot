@@ -38,6 +38,6 @@ type Repo interface {
 	RenameThread(threadID int, newName string) error
 
 	// Laboratories
-	GetLaboratoriesBySubject(subject entity.Subject) ([]int, error)
+	GetLaboratoriesBySubject(subject entity.Subject) ([]entity.Laboratory, error)
 	GetLaboratoryNameByID(labID int) (string, error)
 }

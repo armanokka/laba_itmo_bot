@@ -70,7 +70,7 @@ func (t TranslationRepo) UserTookLab(studentID int64, lab int) (exists bool, err
 }
 
 func (t TranslationRepo) UserInAnyQueue(studentID int64, subject entity.Subject) (in bool, err error) { // whether user is in any queue of the subject
-	query := t.client.Model(&Queues{}).Raw("SELECT EXISTS(SELECT 1 FROM queues WHERE user_id = ? AND laboratory_id IN (SELECT id FROM laboratories WHERE subject = ?))", studentID, int(subject)).Find(&in)
+	query := t.client.Model(&Queues{}).Raw("SELECT EXISTS(SELECT 1 FROM queues WHERE user_id = ? AND checked=false AND laboratory_id IN (SELECT id FROM laboratories WHERE subject = ?))", studentID, int(subject)).Find(&in)
 	if query.Error != nil {
 		return false, err
 	}

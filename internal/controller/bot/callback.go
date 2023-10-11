@@ -99,7 +99,7 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 			return
 		}
 		if in {
-			app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, "Вы уже записаны на другую лабу по этому предмету. Можно записаться только на одну лабу за раз."))
+			app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, "Нельзя записаться на две лабы одновременно. Вы уже записаны на другую лабу по этому предмету"))
 			return
 		}
 
@@ -114,8 +114,16 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 		}
 		if err = app.repo.AddUserToQueue(callback.From.ID, threadID, labID); err != nil {
 			warn(err)
+			return
 		}
-		edit, err := app.createQueueMessage(callback.From.ID, callback.Message.MessageID, threadID, labID, entity.Subject(subject))
+
+		labName, err := app.repo.GetLaboratoryNameByID(labID)
+		if err != nil {
+			warn(err)
+			return
+		}
+
+		edit, err := app.createQueueMessage(callback.From.ID, callback.Message.MessageID, threadID, labID, labName, entity.Subject(subject))
 		if err != nil {
 			warn(err)
 		}
@@ -141,10 +149,17 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 		}
 		if err = app.repo.RemoveUserFromQueue(callback.From.ID, thread, labID); err != nil {
 			warn(err)
+			return
 		}
-		edit, err := app.createQueueMessage(callback.From.ID, callback.Message.MessageID, thread, labID, entity.Subject(subject))
+		labName, err := app.repo.GetLaboratoryNameByID(labID)
 		if err != nil {
 			warn(err)
+			return
+		}
+		edit, err := app.createQueueMessage(callback.From.ID, callback.Message.MessageID, thread, labID, labName, entity.Subject(subject))
+		if err != nil {
+			warn(err)
+			return
 		}
 		app.bot.Send(edit)
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, "Вы вышли из очереди"))
@@ -167,7 +182,13 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 			threadID = *user.OPDThreadID
 		}
 
-		edit, err := app.createQueueMessage(callback.From.ID, callback.Message.MessageID, threadID, labID, entity.Subject(subject))
+		labName, err := app.repo.GetLaboratoryNameByID(labID)
+		if err != nil {
+			warn(err)
+			return
+		}
+
+		edit, err := app.createQueueMessage(callback.From.ID, callback.Message.MessageID, threadID, labID, labName, entity.Subject(subject))
 		if err != nil {
 			warn(err)
 			return
@@ -207,7 +228,13 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 			threadID = *user.OPDThreadID
 		}
 
-		edit, err := app.createQueueMessage(callback.From.ID, callback.Message.MessageID, threadID, labID, entity.Subject(subject))
+		labName, err := app.repo.GetLaboratoryNameByID(labID)
+		if err != nil {
+			warn(err)
+			return
+		}
+
+		edit, err := app.createQueueMessage(callback.From.ID, callback.Message.MessageID, threadID, labID, labName, entity.Subject(subject))
 		if err != nil {
 			warn(err)
 		}
@@ -340,8 +367,8 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 			return
 		}
 		keyboard := tgbotapi.NewInlineKeyboardMarkup()
-		for i, labID := range labs {
-			btn := tgbotapi.NewInlineKeyboardButtonData("ЛР №"+strconv.Itoa(labID), fmt.Sprintf("check_lab:%s:%d", data[1], labID))
+		for i, lab := range labs {
+			btn := tgbotapi.NewInlineKeyboardButtonData("ЛР №"+lab.Name, fmt.Sprintf("check_lab:%s:%d", data[1], lab.ID))
 			if i%4 == 0 || len(keyboard.InlineKeyboard) == 0 {
 				keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(btn))
 				continue
@@ -415,8 +442,8 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 		}
 		nextLab := -1
 		for _, lab := range labs {
-			if lab > int(labID) {
-				nextLab = lab
+			if lab.ID > int(labID) {
+				nextLab = lab.ID
 				break
 			}
 		}
