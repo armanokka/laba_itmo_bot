@@ -16,5 +16,3 @@ services:
       - .env
     depends_on:
       - postgresql
-    ports:
-      - 80:80
