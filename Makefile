@@ -1,19 +1,11 @@
-init: build run
-init-d: build run-d
-
-update: pull build restart
+init: pull build restart
 
 pull:
 	git pull
 
 restart:
-	docker-compose restart
-
-run:
-	docker-compose up --remove-orphans
-run-d:
-	docker-compose up --remove-orphans -d
+	docker-compose stop
+	docker-compose up  --build --remove-orphans --detach
 
 build:
 	GOOS=linux GOARCH=amd64 go build -o laba_itmo_bot ./cmd
-	docker-compose build
