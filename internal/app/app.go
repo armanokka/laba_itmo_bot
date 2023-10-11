@@ -28,7 +28,7 @@ func Run(cfg *config.Config) error {
 	}()
 
 	// Creating connection with PostgreSQL
-	var dsn = fmt.Sprintf("host=postgresql port=5432 user=%s password=%s dbname=%s TimeZone=Europe/Moscow", cfg.PostgresUser, cfg.PostgresPassword, cfg.PostgresDB)
+	var dsn = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s TimeZone=Europe/Moscow", cfg.PostgresHost, cfg.PostgresPort, cfg.PostgresUser, cfg.PostgresPassword, cfg.PostgresDB)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: dblogger.Default.LogMode(dblogger.Silent),
 	})

@@ -190,6 +190,9 @@ func (app App) createCheckLabMenu(userID int64, messageID int, subject entity.Su
 			tgbotapi.NewInlineKeyboardButtonData("🚷 Студент отсутствует", fmt.Sprintf("student_missing:%d:%d:%d", threadID, labID, currentStudent.UserID)),
 		),
 		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("⏭ Пропустить", fmt.Sprintf("student_missing:%d:%d:%d", threadID, labID, currentStudent.UserID)),
+		),
+		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("🔄 Обновить очередь", fmt.Sprintf("update_check_lab:%d:%d", threadID, labID)),
 		),
 		tgbotapi.NewInlineKeyboardRow(
@@ -266,7 +269,7 @@ func (app App) createQueueMessage(userID int64, messageID, threadID, labID int, 
 			fio += " (пересдача)"
 		}
 		if i != 0 && !booking.Checked && queue[i-1].Checked {
-			fio += "  ⬅️ (сдает сейчас. " + app.now().Format("03:04 2/1") + ")"
+			fio += "  ⬅️ (сдает сейчас. " + app.now().Format("15:04:05 2/1") + ")"
 		}
 		people += fio
 	}
@@ -276,7 +279,7 @@ func (app App) createQueueMessage(userID int64, messageID, threadID, labID int, 
 	}
 	beforeYouText := ""
 	if in {
-		beforeYouText = "\n<i>до тебя <b>" + strconv.Itoa(before) + "</b> человек</i>"
+		beforeYouText = "\n<i>до тебя <b>" + strconv.Itoa(before) + "</b> " + declOfNum(before, []string{"человек", "человека", "человек"}) + "</i>"
 		if before == 0 {
 			beforeYouText = "\nты сдаешь первым\\первой"
 		}
@@ -605,4 +608,21 @@ func UntickAll(inlineKeyboard [][]tgbotapi.InlineKeyboardButton) {
 			inlineKeyboard[i1][i2].Text = strings.TrimPrefix(button.Text, "✅ ")
 		}
 	}
+}
+
+func declOfNum(number int, titles []string) string {
+	if number < 0 {
+		number *= -1
+	}
+
+	cases := []int{2, 0, 1, 1, 1, 2}
+	var currentCase int
+	if number%100 > 4 && number%100 < 20 {
+		currentCase = 2
+	} else if number%10 < 5 {
+		currentCase = cases[number%10]
+	} else {
+		currentCase = cases[5]
+	}
+	return titles[currentCase]
 }
