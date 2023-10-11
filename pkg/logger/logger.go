@@ -72,7 +72,7 @@ func (l Logger) With(args ...interface{}) usecase.Logger {
 func New(level string) Logger {
 	l, err := zapcore.ParseLevel(level)
 	if err != nil {
-		l = zapcore.DebugLevel
+		l = zapcore.ErrorLevel
 	}
 	encoder := zap.NewDevelopmentEncoderConfig()
 	encoder.EncodeLevel = zapcore.CapitalColorLevelEncoder
