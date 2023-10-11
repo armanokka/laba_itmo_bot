@@ -179,32 +179,15 @@ func (app App) createLabSelection(userID int64, messageID int, userThread int, u
 }
 
 func (app App) createTeacherMenu(userID int64, messageID int) (tgbotapi.EditMessageTextConfig, error) {
-	//threads, err := app.repo.GetThreadsBySubject(subject)
-	//if err != nil {
-	//	return tgbotapi.EditMessageTextConfig{}, err
-	//}
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Проверять ЛР", "start_checking_labs"),
 		),
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Список потоков", "manage_threads"),
-			tgbotapi.NewInlineKeyboardButtonData("Список ЛР", "manage_labs"),
-		),
+		//tgbotapi.NewInlineKeyboardRow(
+		//	tgbotapi.NewInlineKeyboardButtonData("Список потоков", "manage_threads"),
+		//	tgbotapi.NewInlineKeyboardButtonData("Список ЛР", "manage_labs"),
+		//),
 	)
-	//for i, thread := range threads {
-	//	btn := tgbotapi.NewInlineKeyboardButtonData(thread, fmt.Sprintf("show_queue:%s:%s", strconv.Itoa(int(subject)), thread))
-	//	if i%4 == 0 || len(keyboard.InlineKeyboard) == 0 {
-	//		keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(btn))
-	//		continue
-	//	}
-	//	l := len(keyboard.InlineKeyboard) - 1
-	//	if l < 0 {
-	//		l = 0
-	//	}
-	//	keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], btn)
-	//}
-
 	return tgbotapi.EditMessageTextConfig{
 		BaseEdit: tgbotapi.BaseEdit{
 			ChatID:      userID,
