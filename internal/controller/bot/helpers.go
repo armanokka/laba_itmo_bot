@@ -277,9 +277,9 @@ func (app App) createCheckLabMenu(userID int64, messageID int, subject entity.Su
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("🚷 Студент отсутствует", fmt.Sprintf("student_missing:%d:%d:%d", threadID, labID, currentStudent.UserID)),
 		),
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("⏭ Пропустить", fmt.Sprintf("student_missing:%d:%d:%d", threadID, labID, currentStudent.UserID)),
-		),
+		//tgbotapi.NewInlineKeyboardRow(
+		//	tgbotapi.NewInlineKeyboardButtonData("⏭ Пропустить", fmt.Sprintf("student_missing:%d:%d:%d", threadID, labID, currentStudent.UserID)),
+		//),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("🔄 Обновить очередь", fmt.Sprintf("update_check_lab:%d:%d", threadID, labID)),
 		),
