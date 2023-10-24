@@ -204,6 +204,17 @@ func (app App) createCheckLabMenu(userID int64, messageID int, subject entity.Su
 	if err != nil {
 		return tgbotapi.EditMessageTextConfig{}, err
 	}
+
+	firstCheckedUsers := 0
+	for _, booking := range queue {
+		if !booking.Checked {
+			break
+		}
+		firstCheckedUsers++
+	}
+	if firstCheckedUsers > 2 {
+		queue = queue[firstCheckedUsers-2:]
+	}
 	// Choosing first not checked student
 	var currentStudent entity.QueueUser
 	fullQueue := ""
@@ -214,7 +225,7 @@ func (app App) createCheckLabMenu(userID int64, messageID int, subject entity.Su
 			s := ""
 			p.Patronymic = &s
 		}
-		fio := fmt.Sprintf("\n%d. %s %s %s", i+1, p.FirstName, p.LastName, *p.Patronymic)
+		fio := fmt.Sprintf("\n%d. %s %s %s", i+1+firstCheckedUsers, p.FirstName, p.LastName, *p.Patronymic)
 
 		if p.Checked {
 			fio = "<s>" + fio + "</s>"

@@ -9,6 +9,22 @@ services:
       - ./postgres-data:/var/lib/postgresql
     ports:
       - 5433:5433
+#  pgbackups:
+#    image: prodrigestivill/postgres-backup-local
+#    restart: always
+#    volumes:
+#      - ./pg_backups:/var/opt/pgbackups
+#    links:
+#      - postgresql
+#    depends_on:
+#      - postgresql
+#    environment:
+#      - POSTGRES_EXTRA_OPTS=-Z6 --schema=public --blobs
+#      - SCHEDULE="@every 1m"
+#      - BACKUP_KEEP_DAYS=7
+#      - BACKUP_KEEP_WEEKS=4
+#      - BACKUP_KEEP_MONTHS=6
+#      - HEALTHCHECK_PORT=8080
   itmo_queue_bot:
     build: .
     restart: on-failure
