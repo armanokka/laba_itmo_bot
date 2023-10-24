@@ -8,7 +8,7 @@ services:
     volumes:
       - ./postgres-data:/var/lib/postgresql
     ports:
-      - 5433:5433
+      - "5432:5433"
 #  pgbackups:
 #    image: prodrigestivill/postgres-backup-local
 #    restart: always
