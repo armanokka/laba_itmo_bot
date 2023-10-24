@@ -631,29 +631,3 @@ func declOfNum(number int, titles []string) string {
 	}
 	return titles[currentCase]
 }
-
-func extractNumber(s string) (letter string, beforeDot int, afterDot int) {
-	dot := false
-	for _, ch := range s {
-		if unicode.IsLetter(ch) {
-			letter += string(ch)
-			continue
-		}
-		if ch == '.' || ch == ',' {
-			dot = true
-			continue
-		}
-		if unicode.IsDigit(ch) {
-			if dot {
-				afterDot *= 10
-				n, _ := strconv.Atoi(string(ch))
-				afterDot += n
-				continue
-			}
-			beforeDot *= 10
-			n, _ := strconv.Atoi(string(ch))
-			beforeDot += n
-		}
-	}
-	return letter, beforeDot, afterDot
-}

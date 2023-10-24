@@ -1,4 +1,5 @@
 init: pull build restart
+update: init
 
 pull:
 	git pull

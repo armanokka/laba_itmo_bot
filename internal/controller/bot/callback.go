@@ -7,7 +7,6 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
 	"runtime"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -306,17 +305,6 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 				})
 				return
 			}
-			sort.Slice(threads, func(i, j int) bool {
-				l1, n1b, n1a := extractNumber(threads[i].Name) // letter 1, number 1 before dot, number 1 before dot
-				l2, n2b, n2a := extractNumber(threads[j].Name)
-				if l1 != l2 {
-					return l1 < l2
-				}
-				if n1b != n2b {
-					return n1b < n2b
-				}
-				return n1a < n2a
-			})
 			keyboard := tgbotapi.NewInlineKeyboardMarkup()
 			for i, thread := range threads {
 				btn := tgbotapi.NewInlineKeyboardButtonData(thread.Name, fmt.Sprintf("set_thread:%s:%d", strconv.Itoa(int(subjectID)), thread.ID))

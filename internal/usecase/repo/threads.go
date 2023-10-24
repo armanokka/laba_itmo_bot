@@ -3,6 +3,8 @@ package repo
 import (
 	"github.com/armanokka/laba_itmo_bot/internal/usecase/entity"
 	"sort"
+	"strconv"
+	"unicode"
 )
 
 func (t TranslationRepo) GetThreadsBySubject(subject entity.Subject) ([]entity.Thread, error) {
@@ -12,9 +14,43 @@ func (t TranslationRepo) GetThreadsBySubject(subject entity.Subject) ([]entity.T
 		return nil, err
 	}
 	sort.Slice(threads, func(i, j int) bool {
-		return threads[i].Name < threads[j].Name
+		l1, n1b, n1a := extractNumber(threads[i].Name) // letter 1, number 1 before dot, number 1 before dot
+		l2, n2b, n2a := extractNumber(threads[j].Name)
+		if l1 != l2 {
+			return l1 < l2
+		}
+		if n1b != n2b {
+			return n1b < n2b
+		}
+		return n1a < n2a
 	})
 	return threads, nil
+}
+
+func extractNumber(s string) (letter string, beforeDot int, afterDot int) {
+	dot := false
+	for _, ch := range s {
+		if unicode.IsLetter(ch) {
+			letter += string(ch)
+			continue
+		}
+		if ch == '.' || ch == ',' {
+			dot = true
+			continue
+		}
+		if unicode.IsDigit(ch) {
+			if dot {
+				afterDot *= 10
+				n, _ := strconv.Atoi(string(ch))
+				afterDot += n
+				continue
+			}
+			beforeDot *= 10
+			n, _ := strconv.Atoi(string(ch))
+			beforeDot += n
+		}
+	}
+	return letter, beforeDot, afterDot
 }
 
 func (t TranslationRepo) AddThread(name string, subject entity.Subject) error {
