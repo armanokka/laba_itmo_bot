@@ -39,15 +39,17 @@ func (app *App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 	log.Debug("new callback")
 	switch data[0] {
 	case "menu":
-		app.bot.Send(app.createMenu(callback.From.ID, callback.Message.MessageID))
-		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
-	case "teacher_menu":
-		edit, err := app.createTeacherMenu(callback.From.ID, callback.Message.MessageID)
-		if err != nil {
-			warn(err)
-			return
+		if user.TeacherSubject != nil {
+			edit, err := app.createTeacherMainMenu(callback.From.ID, callback.Message.MessageID)
+			if err != nil {
+				warn(err)
+				return
+			}
+			app.bot.Send(edit)
+			app.SetCurrentPassingStudent(0)
+		} else {
+			app.bot.Send(app.createMainMenu(callback.From.ID, callback.Message.MessageID))
 		}
-		app.bot.Send(edit)
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
 	case "start_checking_labs":
 		threads, err := app.repo.GetThreadsBySubject(*user.TeacherSubject)
@@ -69,7 +71,8 @@ func (app *App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], btn)
 		}
 		keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Вернуться назад", "teacher_menu")))
+			tgbotapi.NewInlineKeyboardButtonData("Вернуться назад", "menu")))
+		app.SetCurrentPassingStudent(0)
 		app.bot.Send(tgbotapi.NewEditMessageTextAndMarkup(callback.From.ID, callback.Message.MessageID, "Лабораторные работы какого потока вы хотели бы проверить?", keyboard))
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
 	case "enter_queue": // data[1] - threadID int
@@ -106,25 +109,81 @@ func (app *App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		app.bot.Send(edit)
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, "Вы встали в очередь"))
 	case "leave_queue": // data[1] - thread ID int
-		userThreadID, err := strconv.Atoi(data[1])
+		threadID, err := strconv.Atoi(data[1])
 		if err != nil {
 			warn(err)
 			return
 		}
-		in, err := app.repo.UserInQueue(callback.From.ID, userThreadID)
+		thread, err := app.repo.GetThreadByID(threadID)
 		if err != nil {
 			warn(err)
 			return
 		}
-		if !in {
-			app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, "Вы и так не стоите в очереди"))
-			return
-		}
-		if err = app.repo.RemoveUserFromQueue(callback.From.ID, userThreadID); err != nil {
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("❌ Выйти", "confirm_leaving_queue:"+data[1]),
+				tgbotapi.NewInlineKeyboardButtonData("✅ Остаться", "show_queue:"+strconv.Itoa(int(thread.Subject))),
+			))
+		app.bot.Send(tgbotapi.EditMessageTextConfig{
+			BaseEdit: tgbotapi.BaseEdit{
+				ChatID:      callback.From.ID,
+				MessageID:   callback.Message.MessageID,
+				ReplyMarkup: &keyboard,
+			},
+			Text: "Вы уверены, что хотите выйти из очереди? Отменить это действие будет невозможно",
+		})
+		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
+	case "open_change_my_lab_menu": // data[1] - thread id
+		threadID, err := strconv.Atoi(data[1])
+		if err != nil {
 			warn(err)
 			return
 		}
-		edit, err := app.createQueueMessage(callback.From.ID, callback.Message.MessageID, userThreadID)
+		thread, err := app.repo.GetThreadByID(threadID)
+		if err != nil {
+			warn(err)
+			return
+		}
+		edit, err := app.createLabSelection(callback.From.ID, callback.Message.MessageID, threadID, thread.Subject)
+		if err != nil {
+			warn(err)
+			return
+		}
+		app.bot.Send(edit)
+		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
+	case "change_my_lab": // data[1] - thread ID, data[2] - new lab ID
+		threadID, err := strconv.Atoi(data[1])
+		if err != nil {
+			warn(err)
+			return
+		}
+		newLabID, err := strconv.Atoi(data[2])
+		if err != nil {
+			warn(err)
+			return
+		}
+		if err = app.repo.ChangeUserLab(callback.From.ID, threadID, newLabID); err != nil {
+			warn(err)
+			return
+		}
+		edit, err := app.createQueueMessage(callback.From.ID, callback.Message.MessageID, threadID)
+		if err != nil {
+			warn(err)
+			return
+		}
+		app.bot.Send(edit)
+		app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, fmt.Sprintf("Теперь вы сдаёте лабу №%d", newLabID)))
+	case "confirm_leaving_queue":
+		threadID, err := strconv.Atoi(data[1])
+		if err != nil {
+			warn(err)
+			return
+		}
+		if err = app.repo.RemoveUserFromQueue(callback.From.ID, threadID); err != nil {
+			warn(err)
+			return
+		}
+		edit, err := app.createQueueMessage(callback.From.ID, callback.Message.MessageID, threadID)
 		if err != nil {
 			warn(err)
 			return
@@ -274,27 +333,17 @@ func (app *App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		app.bot.Send(edit)
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
 	case "show_teacher_labs_selection": // data[1] - thread
-		labs, err := app.repo.GetLaboratoriesBySubject(*user.TeacherSubject)
+		threadID, err := strconv.Atoi(data[1])
 		if err != nil {
 			warn(err)
 			return
 		}
-		keyboard := tgbotapi.NewInlineKeyboardMarkup()
-		for i, lab := range labs {
-			btn := tgbotapi.NewInlineKeyboardButtonData("ЛР №"+lab.Name, fmt.Sprintf("check_lab:%s:%d", data[1], lab.ID))
-			if i%4 == 0 || len(keyboard.InlineKeyboard) == 0 {
-				keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(btn))
-				continue
-			}
-			l := len(keyboard.InlineKeyboard) - 1
-			if l < 0 {
-				l = 0
-			}
-			keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], btn)
+		edit, err := app.createCheckLabMenu(callback.From.ID, callback.Message.MessageID, threadID)
+		if err != nil {
+			warn(err)
+			return
 		}
-		keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Вернуться назад", "start_checking_labs")))
-		app.bot.Send(tgbotapi.NewEditMessageTextAndMarkup(callback.From.ID, callback.Message.MessageID, "Вы выбрали поток "+data[1]+"\nКакую лабораторную работу вы хотели бы проверить?", keyboard))
+		app.bot.Send(edit)
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
 	case "update_check_lab": // data[1] - threadID int
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, "Информация актуальна на "+app.now().Format("15:04:05")))
@@ -490,7 +539,7 @@ func (app *App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("➕ Добавить поток", "add_thread")))
 		keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Вернуться назад", "teacher_menu")))
+			tgbotapi.NewInlineKeyboardButtonData("Вернуться назад", "menu")))
 		app.bot.Send(tgbotapi.EditMessageTextConfig{
 			BaseEdit: tgbotapi.BaseEdit{
 				ChatID:      callback.From.ID,

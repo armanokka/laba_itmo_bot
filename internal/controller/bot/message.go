@@ -93,7 +93,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	// todo: -добавить фичу подсчета среднего времени сдачи?
 
 	if user.TeacherSubject != nil {
-		msg, err := app.createTeacherMenu(message.From.ID, 0)
+		msg, err := app.createTeacherMainMenu(message.From.ID, 0)
 		if err != nil {
 			warn(err)
 			return
@@ -106,7 +106,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	case "id":
 		app.bot.Send(tgbotapi.NewMessage(message.From.ID, strconv.FormatInt(message.From.ID, 10)))
 	default:
-		app.bot.Send(app.createMenu(message.From.ID, 0))
+		app.bot.Send(app.createMainMenu(message.From.ID, 0))
 	}
 	// no code here!
 }

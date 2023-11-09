@@ -22,6 +22,37 @@ import (
 	"unicode/utf16"
 )
 
+func (app App) createLabSelection(userID int64, messageID int, threadID int, subject entity.Subject) (tgbotapi.EditMessageTextConfig, error) {
+	labs, err := app.repo.GetLaboratoriesBySubject(subject)
+	if err != nil {
+		return tgbotapi.EditMessageTextConfig{}, err
+	}
+	keyboard := tgbotapi.NewInlineKeyboardMarkup()
+	for i, lab := range labs {
+		btn := tgbotapi.NewInlineKeyboardButtonData("Лаба №"+lab.Name, fmt.Sprintf("change_my_lab:%s:%s", strconv.Itoa(threadID), strconv.Itoa(lab.ID)))
+		if i%4 == 0 || len(keyboard.InlineKeyboard) == 0 {
+			keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(btn))
+			continue
+		}
+		l := len(keyboard.InlineKeyboard) - 1
+		if l < 0 {
+			l = 0
+		}
+		keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], btn)
+	}
+	keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+		tgbotapi.NewInlineKeyboardButtonData("Вернуться назад", "show_queue:"+strconv.Itoa(int(subject)))))
+
+	return tgbotapi.EditMessageTextConfig{
+		BaseEdit: tgbotapi.BaseEdit{
+			ChatID:      userID,
+			MessageID:   messageID,
+			ReplyMarkup: &keyboard,
+		},
+		Text: fmt.Sprintf("На какую лабу хотите изменить?"),
+	}, nil
+}
+
 func (app *App) createQueueMessage(userID int64, messageID, threadID int) (tgbotapi.EditMessageTextConfig, error) {
 	queue, err := app.repo.GetQueueByThreadID(threadID)
 	if err != nil {
@@ -38,23 +69,20 @@ func (app *App) createQueueMessage(userID int64, messageID, threadID int) (tgbot
 			s := ""
 			booking.Patronymic = &s
 		}
-		fio := fmt.Sprintf(`%d. <a href="tg://user?id=%d">%s %s %s</a>`, i+1, booking.UserID, booking.FirstName, booking.LastName, *booking.Patronymic)
-		if booking.Checked {
-			fio = "<i><s>" + fio + "</s></i>"
-		} else if booking.UserID != userID && !in {
+		fio := fmt.Sprintf(`%d. <a href="tg://user?id=%d">%s %s %s</a> / ЛР №%s`, i+1, booking.UserID, booking.FirstName, booking.LastName, *booking.Patronymic, booking.LabName)
+		if !booking.Checked && booking.UserID != userID && !in {
 			before++
 		}
-		fio += fmt.Sprintf("— ЛР №%s", booking.LabName)
 		if booking.Passed {
 			fio += " (сдал)"
 		}
 		if booking.UserID == app.currentPassingStudent {
 			fio += "  ⬅️ (сдает сейчас. " + app.now().Format("15:04:05 2/1") + ")"
 		} else if app.currentPassingStudent == 0 && i == 0 {
-			fio += "  ⬅️ (сдача начнется с этого человека)"
+			fio += "  ⬅️ (проверка начнется во время пары)"
 		}
 		if booking.UserID == userID {
-			fio += " (ты)"
+			fio += " (вы)"
 			in = true
 		}
 		people += fio
@@ -67,7 +95,7 @@ func (app *App) createQueueMessage(userID int64, messageID, threadID int) (tgbot
 	if in {
 		beforeYouText = "\n<i>до вас <b>" + strconv.Itoa(before) + "</b> " + declOfNum(before, []string{"человек", "человека", "человек"}) + "</i>"
 		if before == 0 {
-			beforeYouText = "\nты сдаешь первым\\первой"
+			beforeYouText = "\nвы сдаете первым\\первой"
 		}
 	}
 	if len(queue) == 0 {
@@ -89,8 +117,15 @@ func (app *App) createQueueMessage(userID int64, messageID, threadID int) (tgbot
 			btn,
 			tgbotapi.NewInlineKeyboardButtonData("🔄 Обновить очередь", fmt.Sprintf("update_queue:%s", strconv.Itoa(threadID))),
 		),
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Вернуться назад", "menu")))
+	)
+	if in {
+		keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("✍️ Изменить номер моей лабы", fmt.Sprintf("open_change_my_lab_menu:%s", strconv.Itoa(threadID))),
+		))
+	}
+	keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
+		tgbotapi.NewInlineKeyboardButtonData("Вернуться назад", "menu"),
+	))
 
 	return tgbotapi.EditMessageTextConfig{
 		BaseEdit: tgbotapi.BaseEdit{
@@ -107,69 +142,7 @@ func (app *App) createQueueMessage(userID int64, messageID, threadID int) (tgbot
 	}, nil
 }
 
-func (app *App) createLabSelection(userID int64, messageID int, subject entity.Subject) (tgbotapi.EditMessageTextConfig, error) {
-	labs, err := app.repo.GetLaboratoriesBySubject(subject)
-	if err != nil {
-		return tgbotapi.EditMessageTextConfig{}, err
-	}
-	passedLabs, err := app.repo.GetPassedLabsByID(userID)
-	if err != nil {
-		return tgbotapi.EditMessageTextConfig{}, err
-	}
-	keyboard := tgbotapi.NewInlineKeyboardMarkup()
-	for i, lab := range labs {
-		btn := tgbotapi.NewInlineKeyboardButtonData("Лаба №"+lab.Name, "show_queue:"+strconv.Itoa(int(subject)))
-		if in(passedLabs, lab.ID) {
-			btn.Text += " ✅"
-		}
-		if i%4 == 0 || len(keyboard.InlineKeyboard) == 0 {
-			keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(btn))
-			continue
-		}
-		l := len(keyboard.InlineKeyboard) - 1
-		if l < 0 {
-			l = 0
-		}
-		keyboard.InlineKeyboard[l] = append(keyboard.InlineKeyboard[l], btn)
-	}
-	if len(labs) == 0 {
-		keyboard = tgbotapi.NewInlineKeyboardMarkup(
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("Вернуться назад", "menu")))
-		return tgbotapi.EditMessageTextConfig{
-			BaseEdit: tgbotapi.BaseEdit{
-				ChatID:      userID,
-				MessageID:   messageID,
-				ReplyMarkup: &keyboard,
-			},
-			Text:      "Список лаб пуст. Обратись к создателю бота @armanokka за помощью",
-			ParseMode: tgbotapi.ModeHTML,
-		}, nil
-	}
-	keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("Вернуться назад", "menu")))
-
-	subjectName := ""
-	switch subject {
-	case entity.IT:
-		subjectName = "Информатике"
-	case entity.Programming:
-		subjectName = "Программированию"
-	case entity.OPD:
-		subjectName = "ОПД"
-	}
-	return tgbotapi.EditMessageTextConfig{
-		BaseEdit: tgbotapi.BaseEdit{
-			ChatID:      userID,
-			MessageID:   messageID,
-			ReplyMarkup: &keyboard,
-		},
-		Text:      "<b>Лабы по " + subjectName + "</b>\nНа какую хотите записаться?",
-		ParseMode: tgbotapi.ModeHTML,
-	}, nil
-}
-
-func (app *App) createTeacherMenu(userID int64, messageID int) (tgbotapi.EditMessageTextConfig, error) {
+func (app *App) createTeacherMainMenu(userID int64, messageID int) (tgbotapi.EditMessageTextConfig, error) {
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Проверять ЛР", "start_checking_labs"),
@@ -196,43 +169,28 @@ func (app *App) createCheckLabMenu(userID int64, messageID int, threadID int) (t
 		return tgbotapi.EditMessageTextConfig{}, err
 	}
 
-	firstCheckedUsers := 0
-	for _, booking := range queue {
-		if !booking.Checked {
-			break
-		}
-		firstCheckedUsers++
-	}
-	if firstCheckedUsers > 2 {
-		queue = queue[firstCheckedUsers-2:]
-	}
 	// Choosing first not checked student
 	var currentStudent entity.QueueUser
 	fullQueue := ""
 	afterCurrentStudentCount := 0
 	currentStudentIdx := 0
-	for i, p := range queue {
-		if p.Patronymic == nil {
+	for i, booking := range queue {
+		if booking.Patronymic == nil {
 			s := ""
-			p.Patronymic = &s
+			booking.Patronymic = &s
 		}
-		fio := fmt.Sprintf("\n%d. %s %s %s", i+1+firstCheckedUsers, p.FirstName, p.LastName, *p.Patronymic)
+		fio := fmt.Sprintf("\n"+`%d. <a href="tg://user?id=%d">%s %s %s</a> / ЛР №%s`, i+1, booking.UserID, booking.FirstName, booking.LastName, *booking.Patronymic, booking.LabName)
 
-		if p.Checked {
+		if booking.Checked {
 			fio = "<s>" + fio + "</s>"
 		} else {
 			if currentStudent.UserID == 0 {
-				currentStudent = p
-				fio += " ⬅️"
+				currentStudent = booking
+				fio += "  ⬅️ (сейчас)"
 				currentStudentIdx = i
 			} else {
 				afterCurrentStudentCount++
 			}
-		}
-		if p.Passed {
-			fio += " (сдал)"
-		} else if p.Retake {
-			fio += " (пересдача)"
 		}
 		fullQueue += fio
 	}
@@ -258,7 +216,7 @@ func (app *App) createCheckLabMenu(userID int64, messageID int, threadID int) (t
 			},
 			Text: fmt.Sprintf(`Очередь потока <b>%s</b>. %s.
 
-<b>Сейчас никто не сдаёт.</b> <i>%d/%d</i>
+<b>сейчас никто не сдаёт.</b> <i>%d/%d</i>
 %s
 
 <i>очередь пуста</i>`, thread.Name, thread.Subject.Name(), currentStudentIdx+1, currentStudentIdx+1+afterCurrentStudentCount, fullQueue),
@@ -280,27 +238,32 @@ func (app *App) createCheckLabMenu(userID int64, messageID int, threadID int) (t
 			tgbotapi.NewInlineKeyboardButtonData("🔄 Обновить очередь", fmt.Sprintf("update_check_lab:%d", threadID)),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Вернуться назад", "show_teacher_labs_selection:"+strconv.Itoa(threadID)),
+			tgbotapi.NewInlineKeyboardButtonData("Вернуться назад", "start_checking_labs"),
 		),
 	)
 	app.SetCurrentPassingStudent(currentStudent.UserID)
+	if currentStudent.Patronymic == nil {
+		s := ""
+		currentStudent.Patronymic = &s
+	}
 	return tgbotapi.EditMessageTextConfig{
 		BaseEdit: tgbotapi.BaseEdit{
 			ChatID:      userID,
 			MessageID:   messageID,
 			ReplyMarkup: &keyboard,
 		},
-		Text: fmt.Sprintf(`Очередь потока <b>%s</b>. %s.
+		Text: fmt.Sprintf(`%s %s
 
-Сейчас сдаёт: <b>%s %s</b> <i>%d/%d</i>
-%s
+Сейчас сдаёт:  <b><a href="tg://user?id=%d">%s %s %s</a></b> (ЛР <b>№%s</b>)
 
-Проверьте лабораторную работу студента, а затем нажмите на одну из кнопок.`, thread.Name, thread.Subject.Name(), currentStudent.FirstName, currentStudent.LastName, currentStudentIdx+1, currentStudentIdx+1+afterCurrentStudentCount, fullQueue),
+очередь:%s
+
+<i>Пожалуйста, проверьте лабораторную работу студента, а затем нажмите на одну из кнопок.</i>`, thread.Subject.Name(), thread.Name, currentStudent.UserID, currentStudent.FirstName, currentStudent.LastName, *currentStudent.Patronymic, currentStudent.LabName, fullQueue),
 		ParseMode: tgbotapi.ModeHTML,
 	}, nil
 }
 
-func (app App) createMenu(userID int64, messageID int) tgbotapi.EditMessageTextConfig {
+func (app *App) createMainMenu(userID int64, messageID int) tgbotapi.EditMessageTextConfig {
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Программирование", fmt.Sprintf("show_labs_selection:%d", int(entity.Programming))),

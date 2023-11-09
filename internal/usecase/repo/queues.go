@@ -12,7 +12,7 @@ func (t TranslationRepo) GetQueueByThreadID(threadID int) ([]entity.QueueUser, e
 SELECT queues.user_id, laboratories.name, queues.checked, queues.retake, queues.passed, users.first_name, users.last_name, users.patronymic
 FROM queues
          JOIN laboratories ON  laboratories.id=queues.laboratory_id
-         JOIN users ON users.id=queues.user_id WHERE queues.thread_id = ? AND checked=false ORDER BY queues.checked DESC, queues.retake ASC, queues.created_at`, threadID).Rows()
+         JOIN users ON users.id=queues.user_id WHERE queues.thread_id = ? AND checked=false ORDER BY queues.created_at`, threadID).Rows()
 	if err != nil {
 		return nil, err
 	}
@@ -26,6 +26,17 @@ FROM queues
 		queue = append(queue, user)
 	}
 	return queue, rows.Err()
+}
+
+func (t TranslationRepo) ChangeUserLab(studentID int64, threadID int, newLabID int) error {
+	query := t.client.Model(&Queues{}).Where("user_id = ?", studentID).Where("thread_id = ?", threadID).Where("checked = ?", false).Update("laboratory_id", newLabID)
+	if query.Error != nil {
+		return query.Error
+	}
+	if query.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func (t TranslationRepo) AddUserToQueue(userID int64, threadID int, labID int) error {
@@ -45,7 +56,14 @@ func (t TranslationRepo) AddUserToQueue(userID int64, threadID int, labID int) e
 }
 
 func (t TranslationRepo) RemoveUserFromQueue(userID int64, threadID int) error {
-	return t.client.Where("user_id = ?", userID).Where("thread_id = ?", threadID).Where("checked = ?", false).Delete(&Queues{}).Error
+	query := t.client.Where("user_id = ?", userID).Where("thread_id = ?", threadID).Where("checked = ?", false).Delete(&Queues{})
+	if query.Error != nil {
+		return query.Error
+	}
+	if query.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func (t TranslationRepo) GradeLab(studentID int64, threadID int, passed bool) (labID int, err error) {

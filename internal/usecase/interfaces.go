@@ -28,6 +28,7 @@ type Repo interface {
 	GradeLab(studentID int64, threadID int, passed bool) (labID int, err error)
 	UserRetakesLab(studentID int64, threadID int) (in bool, err error)
 	UserInQueue(studentID int64, threadID int) (in bool, err error) // whether user is in any queue of the subject
+	ChangeUserLab(studentID int64, threadID int, newLabID int) error
 
 	// Threads
 	GetThreadByID(threadID int) (result entity.Thread, err error)

@@ -33,7 +33,9 @@ func (app *App) now() time.Time {
 }
 
 func (app *App) SetCurrentPassingStudent(userID int64) {
-	app.currentPassingStudentCh <- userID
+	go func() {
+		app.currentPassingStudentCh <- userID
+	}()
 }
 
 func (app *App) notifyAdmin(args ...interface{}) {
@@ -70,10 +72,11 @@ func (app *App) notifyAdmin(args ...interface{}) {
 
 func Run(ctx context.Context, api botapi.BotAPI, repo usecase.Repo, log logger.Logger, adminID int64) (err error) {
 	app := &App{
-		bot:     api,
-		log:     log,
-		repo:    repo,
-		adminID: adminID,
+		bot:                     api,
+		log:                     log,
+		repo:                    repo,
+		adminID:                 adminID,
+		currentPassingStudentCh: make(chan int64, 1),
 	}
 	updatesConfig := tgbotapi.UpdateConfig{}
 	updates := api.GetUpdatesChan(updatesConfig)
@@ -90,12 +93,10 @@ func Run(ctx context.Context, api botapi.BotAPI, repo usecase.Repo, log logger.L
 				app.mu.Lock()
 				app.currentPassingStudent = id
 				app.mu.Unlock()
-			case <-time.After(time.Minute):
+			case <-time.After(time.Minute * 45):
 				app.mu.Lock()
 				app.currentPassingStudent = 0
 				app.mu.Unlock()
-			case <-ctx.Done():
-				return
 			}
 		}
 	}()
