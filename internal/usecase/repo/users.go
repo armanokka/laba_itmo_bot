@@ -66,7 +66,7 @@ func (t TranslationRepo) GetAllUsersIDs() ([]int64, error) {
 	panic("implement me")
 }
 
-func (t TranslationRepo) GetUserPassedLaboratoriesIDs(userID int64, userThread int) ([]int, error) {
+func (t TranslationRepo) GetPassedLabsByID(userID int64) ([]int, error) {
 	labs := make([]int, 0, 3)
 	return labs, t.client.Model(&Queues{}).Where("user_id = ?", userID).Where("passed = ?", true).Select("laboratory_id").Find(&labs).Error
 }

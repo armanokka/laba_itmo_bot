@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"runtime/debug"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -21,13 +22,21 @@ type App struct {
 	repo    usecase.Repo
 	adminID int64
 	loc     *time.Location
+
+	mu                      sync.Mutex
+	currentPassingStudent   int64 // current passing student's user id
+	currentPassingStudentCh chan int64
 }
 
-func (app App) now() time.Time {
+func (app *App) now() time.Time {
 	return time.Now().In(app.loc).Add(3 * time.Hour)
 }
 
-func (app App) notifyAdmin(args ...interface{}) {
+func (app *App) SetCurrentPassingStudent(userID int64) {
+	app.currentPassingStudentCh <- userID
+}
+
+func (app *App) notifyAdmin(args ...interface{}) {
 	text := ""
 	for _, arg := range args {
 		switch v := arg.(type) {
@@ -60,7 +69,7 @@ func (app App) notifyAdmin(args ...interface{}) {
 }
 
 func Run(ctx context.Context, api botapi.BotAPI, repo usecase.Repo, log logger.Logger, adminID int64) (err error) {
-	app := App{
+	app := &App{
 		bot:     api,
 		log:     log,
 		repo:    repo,
@@ -73,6 +82,23 @@ func Run(ctx context.Context, api botapi.BotAPI, repo usecase.Repo, log logger.L
 	if err != nil {
 		return err
 	}
+
+	go func() {
+		for {
+			select {
+			case id := <-app.currentPassingStudentCh:
+				app.mu.Lock()
+				app.currentPassingStudent = id
+				app.mu.Unlock()
+			case <-time.After(time.Minute):
+				app.mu.Lock()
+				app.currentPassingStudent = 0
+				app.mu.Unlock()
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
 
 	app.bot.Send(tgbotapi.NewMessage(app.adminID, "Бот запущен /start"))
 	for update := range updates {

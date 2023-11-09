@@ -19,25 +19,25 @@ type Repo interface {
 	CreateUser(user entity.User) error
 	UpdateUserByID(id int64, columnValue ...interface{}) error
 	GetAllUsersIDs() ([]int64, error)
-	GetUserPassedLaboratoriesIDs(userID int64, userThread int) ([]int, error)
+	GetPassedLabsByID(userID int64) ([]int, error)
 
 	// Queues
-	GetQueueBySubject(threadID int, labID int) ([]entity.QueueUser, error)
-	AddUserToQueue(userID int64, userThreadID int, labID int) error
-	RemoveUserFromQueue(userID int64, threadID int, labID int) error
-	MarkLabAsNotPassed(studentID int64, lab int) error
-	MarkLabAsPassed(studentID int64, lab int) error
-	UserPassedLab(studentID int64, lab int) (exists bool, err error)
-	UserInAnyQueue(studentID int64, subject entity.Subject) (in bool, err error) // whether user is in any queue of the subject
+	GetQueueByThreadID(threadID int) ([]entity.QueueUser, error)
+	AddUserToQueue(userID int64, threadID int, labID int) error
+	RemoveUserFromQueue(userID int64, threadID int) error
+	GradeLab(studentID int64, threadID int, passed bool) (labID int, err error)
+	UserRetakesLab(studentID int64, threadID int) (in bool, err error)
+	UserInQueue(studentID int64, threadID int) (in bool, err error) // whether user is in any queue of the subject
 
 	// Threads
+	GetThreadByID(threadID int) (result entity.Thread, err error)
 	GetThreadsBySubject(subject entity.Subject) ([]entity.Thread, error)
 	AddThread(n string, subject entity.Subject) error
 	DeleteThread(threadID int) error
-	GetThreadNameByID(threadID int) (string, error)
 	RenameThread(threadID int, newName string) error
 
 	// Laboratories
+	GetNextLab(userID int64, subject entity.Subject) (entity.Laboratory, error)
 	GetLaboratoriesBySubject(subject entity.Subject) ([]entity.Laboratory, error)
 	GetLaboratoryNameByID(labID int) (string, error)
 }

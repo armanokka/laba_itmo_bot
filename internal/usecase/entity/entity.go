@@ -45,6 +45,7 @@ type QueueUser struct {
 	LastName   string
 	Patronymic *string
 
+	LabName string
 	Subject Subject
 	Checked bool
 	Passed  bool

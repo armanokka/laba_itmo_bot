@@ -77,13 +77,18 @@ func (t TranslationRepo) RenameThread(threadID int, newName string) error {
 	return nil
 }
 
-func (t TranslationRepo) GetThreadNameByID(threadID int) (thread string, err error) {
-	query := t.client.Model(&Threads{}).Where("id = ?", threadID).Select("name").Find(&thread)
+func (t TranslationRepo) GetThreadByID(threadID int) (result entity.Thread, err error) {
+	var thread Threads
+	query := t.client.Model(&Threads{}).Where("id = ?", threadID).Find(&thread)
 	if query.Error != nil {
-		return "", query.Error
+		return entity.Thread{}, query.Error
 	}
 	if query.RowsAffected == 0 {
-		return "", ErrNotFound
+		return entity.Thread{}, ErrNotFound
 	}
-	return thread, nil
+	return entity.Thread{
+		ID:      thread.ID,
+		Subject: thread.Subject,
+		Name:    thread.Name,
+	}, nil
 }

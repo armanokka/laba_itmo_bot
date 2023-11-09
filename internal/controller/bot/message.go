@@ -90,8 +90,8 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 			}
 		}
 	}
+	// todo: -добавить фичу подсчета среднего времени сдачи?
 
-	// TODO учитель не должен иметь возможности записаться на лабу
 	if user.TeacherSubject != nil {
 		msg, err := app.createTeacherMenu(message.From.ID, 0)
 		if err != nil {

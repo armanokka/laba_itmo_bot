@@ -2,8 +2,10 @@ package bot
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/armanokka/laba_itmo_bot/internal/usecase/entity"
+	"github.com/armanokka/laba_itmo_bot/internal/usecase/repo"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
 	"runtime"
@@ -11,7 +13,7 @@ import (
 	"strings"
 )
 
-func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQuery) {
+func (app *App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQuery) {
 	log := app.log.With(zap.Int64("id", callback.From.ID))
 
 	defer func() {
@@ -70,124 +72,73 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 			tgbotapi.NewInlineKeyboardButtonData("Вернуться назад", "teacher_menu")))
 		app.bot.Send(tgbotapi.NewEditMessageTextAndMarkup(callback.From.ID, callback.Message.MessageID, "Лабораторные работы какого потока вы хотели бы проверить?", keyboard))
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
-	case "enter_queue": // data[1] - subject int, data[2] - labID int,
-		subject, err := strconv.Atoi(data[1])
+	case "enter_queue": // data[1] - threadID int
+		threadID, err := strconv.Atoi(data[1])
 		if err != nil {
 			warn(err)
 			return
 		}
-		labID, err := strconv.Atoi(data[2])
-		if err != nil {
-			warn(err)
-			return
-		}
-
-		passed, err := app.repo.UserPassedLab(callback.From.ID, labID)
-		if err != nil {
-			warn(err)
-			return
-		}
-		if passed {
-			app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, "Вы не можете записаться на лабу №1, потому что вы уже сдали её."))
-			return
-		}
-
-		in, err := app.repo.UserInAnyQueue(callback.From.ID, entity.Subject(subject))
-		if err != nil {
-			warn(err)
-			return
-		}
-		if in {
-			app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, "Нельзя записаться на две лабы одновременно. Вы уже записаны на другую лабу по этому предмету"))
-			return
-		}
-
-		var threadID int
-		switch entity.Subject(subject) {
-		case entity.IT:
-			threadID = *user.ITThreadID
-		case entity.OPD:
-			threadID = *user.OPDThreadID
-		case entity.Programming:
-			threadID = *user.ProgrammingThreadID
-		}
-		if err = app.repo.AddUserToQueue(callback.From.ID, threadID, labID); err != nil {
-			warn(err)
-			return
-		}
-
-		labName, err := app.repo.GetLaboratoryNameByID(labID)
+		thread, err := app.repo.GetThreadByID(threadID)
 		if err != nil {
 			warn(err)
 			return
 		}
 
-		edit, err := app.createQueueMessage(callback.From.ID, callback.Message.MessageID, threadID, labID, labName, entity.Subject(subject))
+		lab, err := app.repo.GetNextLab(callback.From.ID, thread.Subject)
+		if err != nil {
+			if errors.Is(err, repo.ErrNotFound) {
+				app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, "Вы уже сдали все лабы ;)"))
+				return
+			}
+			warn(err)
+			return
+		}
+
+		if err = app.repo.AddUserToQueue(callback.From.ID, threadID, lab.ID); err != nil {
+			warn(err)
+			return
+		}
+
+		edit, err := app.createQueueMessage(callback.From.ID, callback.Message.MessageID, threadID)
 		if err != nil {
 			warn(err)
 		}
 		app.bot.Send(edit)
-		app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, "Вы встали в очередь на лабу №"+strconv.Itoa(labID)))
-	case "leave_queue": // data[1] - subject int, data[2] - lab ID
-		subject, err := strconv.Atoi(data[1])
-		if err != nil {
-			warn(err)
-		}
-		labID, err := strconv.Atoi(data[2])
-		if err != nil {
-			warn(err)
-		}
-		var thread int
-		switch entity.Subject(subject) {
-		case entity.IT:
-			thread = *user.ITThreadID
-		case entity.OPD:
-			thread = *user.OPDThreadID
-		case entity.Programming:
-			thread = *user.ProgrammingThreadID
-		}
-		if err = app.repo.RemoveUserFromQueue(callback.From.ID, thread, labID); err != nil {
-			warn(err)
-			return
-		}
-		labName, err := app.repo.GetLaboratoryNameByID(labID)
+		app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, "Вы встали в очередь"))
+	case "leave_queue": // data[1] - thread ID int
+		userThreadID, err := strconv.Atoi(data[1])
 		if err != nil {
 			warn(err)
 			return
 		}
-		edit, err := app.createQueueMessage(callback.From.ID, callback.Message.MessageID, thread, labID, labName, entity.Subject(subject))
+		in, err := app.repo.UserInQueue(callback.From.ID, userThreadID)
+		if err != nil {
+			warn(err)
+			return
+		}
+		if !in {
+			app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, "Вы и так не стоите в очереди"))
+			return
+		}
+		if err = app.repo.RemoveUserFromQueue(callback.From.ID, userThreadID); err != nil {
+			warn(err)
+			return
+		}
+		edit, err := app.createQueueMessage(callback.From.ID, callback.Message.MessageID, userThreadID)
 		if err != nil {
 			warn(err)
 			return
 		}
 		app.bot.Send(edit)
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, "Вы вышли из очереди"))
-	case "update_queue": // data[1] - subject int, data[2] - lab ID int
-		subject, err := strconv.Atoi(data[1])
-		if err != nil {
-			warn(err)
-		}
-		labID, err := strconv.Atoi(data[2])
-		if err != nil {
-			warn(err)
-		}
-		var threadID int
-		switch entity.Subject(subject) {
-		case entity.IT:
-			threadID = *user.ITThreadID
-		case entity.Programming:
-			threadID = *user.ProgrammingThreadID
-		case entity.OPD:
-			threadID = *user.OPDThreadID
-		}
-
-		labName, err := app.repo.GetLaboratoryNameByID(labID)
+	case "update_queue": // data[1] - thread ID int
+		threadID, err := strconv.Atoi(data[1])
 		if err != nil {
 			warn(err)
 			return
 		}
 
-		edit, err := app.createQueueMessage(callback.From.ID, callback.Message.MessageID, threadID, labID, labName, entity.Subject(subject))
+		edit, err := app.createQueueMessage(callback.From.ID, callback.Message.MessageID, threadID)
 		if err != nil {
 			warn(err)
 			return
@@ -195,25 +146,10 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 		edit.Text += "\n<i>" + app.now().Format("15:04:05") + "</i>"
 		app.bot.Send(edit)
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, "Информация актуальна на "+app.now().Format("15:04:05")))
-	case "show_queue": // data[1] - subject int, data[2] - labID int
+	case "show_queue": // data[1] - subject int
 		subject, err := strconv.Atoi(data[1])
 		if err != nil {
 			warn(err)
-			return
-		}
-		labID, err := strconv.Atoi(data[2])
-		if err != nil {
-			warn(err)
-			return
-		}
-
-		passed, err := app.repo.UserPassedLab(callback.From.ID, labID)
-		if err != nil {
-			warn(err)
-			return
-		}
-		if passed {
-			app.bot.AnswerCallbackQuery(tgbotapi.NewCallbackWithAlert(callback.ID, "Вы не можете записаться на лабу №1, потому что вы уже сдали её."))
 			return
 		}
 
@@ -227,13 +163,7 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 			threadID = *user.OPDThreadID
 		}
 
-		labName, err := app.repo.GetLaboratoryNameByID(labID)
-		if err != nil {
-			warn(err)
-			return
-		}
-
-		edit, err := app.createQueueMessage(callback.From.ID, callback.Message.MessageID, threadID, labID, labName, entity.Subject(subject))
+		edit, err := app.createQueueMessage(callback.From.ID, callback.Message.MessageID, threadID)
 		if err != nil {
 			warn(err)
 		}
@@ -335,13 +265,8 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 			app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
 			return
 		}
-		name, err := app.repo.GetThreadNameByID(*threadID)
-		if err != nil {
-			warn(err)
-			return
-		}
 		// We made sure the user has thread
-		edit, err := app.createLabSelection(callback.From.ID, callback.Message.MessageID, *threadID, name, entity.Subject(subjectID))
+		edit, err := app.createQueueMessage(callback.From.ID, callback.Message.MessageID, *threadID)
 		if err != nil {
 			warn(err)
 			return
@@ -371,26 +296,16 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 			tgbotapi.NewInlineKeyboardButtonData("Вернуться назад", "start_checking_labs")))
 		app.bot.Send(tgbotapi.NewEditMessageTextAndMarkup(callback.From.ID, callback.Message.MessageID, "Вы выбрали поток "+data[1]+"\nКакую лабораторную работу вы хотели бы проверить?", keyboard))
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
-	case "update_check_lab": // data[1] - threadID int, data[2] - lab ID int
-		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, "Информация обновлена"))
+	case "update_check_lab": // data[1] - threadID int
+		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, "Информация актуальна на "+app.now().Format("15:04:05")))
 		fallthrough
-	case "check_lab": // data[1] - threadID int, data[2] - lab ID int
-		labID, err := strconv.ParseInt(data[2], 10, 64)
-		if err != nil {
-			warn(err)
-			return
-		}
+	case "check_lab": // data[1] - threadID int
 		threadID, err := strconv.Atoi(data[1])
 		if err != nil {
 			warn(err)
 			return
 		}
-		threadName, err := app.repo.GetThreadNameByID(threadID)
-		if err != nil {
-			warn(err)
-			return
-		}
-		edit, err := app.createCheckLabMenu(callback.From.ID, callback.Message.MessageID, *user.TeacherSubject, threadName, threadID, int(labID))
+		edit, err := app.createCheckLabMenu(callback.From.ID, callback.Message.MessageID, threadID)
 		if err != nil {
 			warn(err)
 			return
@@ -400,13 +315,16 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 		}
 		app.bot.Send(edit)
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
-	case "accept_lab": // data[1] - threadID int, data[2] - lab ID int, data[3] - student ID int64
+	case "accept_lab": // data[1] - threadID int data[3] - student ID int64
+		// TODO сделать общую очередь для всех лаб
+		// TODO отмечать того сдающего, который открыт у учителя
+		// TODO считать количество пересдач
 		threadID, err := strconv.Atoi(data[1])
 		if err != nil {
 			warn(err)
 			return
 		}
-		labID, err := strconv.ParseInt(data[2], 10, 64)
+		thread, err := app.repo.GetThreadByID(threadID)
 		if err != nil {
 			warn(err)
 			return
@@ -417,62 +335,57 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 			return
 		}
 
-		if err = app.repo.MarkLabAsPassed(studentID, int(labID)); err != nil {
+		if _, err = app.repo.GradeLab(studentID, threadID, true); err != nil {
+			warn(err)
+			return
+		}
+
+		nextLab, err := app.repo.GetNextLab(studentID, thread.Subject)
+		if err != nil && !errors.Is(err, repo.ErrNotFound) {
 			warn(err)
 			return
 		}
 
 		// Пытаемся записать юзера на следующую лабу
-		labs, err := app.repo.GetLaboratoriesBySubject(*user.TeacherSubject)
-		if err != nil {
-			warn(err)
-			return
-		}
-		nextLab := -1
-		for _, lab := range labs {
-			if lab.ID > int(labID) {
-				nextLab = lab.ID
-				break
-			}
-		}
+
 		text := ""
-		if nextLab != -1 {
-			if err = app.repo.AddUserToQueue(studentID, threadID, nextLab); err != nil {
+		if nextLab.ID != 0 {
+			if err = app.repo.AddUserToQueue(studentID, threadID, nextLab.ID); err != nil {
 				warn(err)
 				return
 			}
-			text = fmt.Sprintf("Вы записаны на сдачу следующей лабы: №%d", nextLab)
+			text = fmt.Sprintf("Вы записаны на сдачу следующей лабы: №%d", nextLab.Name)
 		}
 
 		app.bot.Send(tgbotapi.MessageConfig{
 			BaseChat: tgbotapi.BaseChat{
 				ChatID: studentID,
+			},
+			Text: fmt.Sprintf("✅ Поздравляем! Вы сдали лабу №%d\n", nextLab.Name) + text,
+		})
+		app.bot.Send(tgbotapi.StickerConfig{tgbotapi.BaseFile{ //nolint:govet
+			BaseChat: tgbotapi.BaseChat{
+				ChatID: studentID,
 				ReplyMarkup: tgbotapi.NewInlineKeyboardMarkup(
 					tgbotapi.NewInlineKeyboardRow(
 						tgbotapi.NewInlineKeyboardButtonData("Главное меню", "menu"))),
-				DisableNotification: false,
 			},
-			Text: fmt.Sprintf("✅ Поздравляем! Вы сдали лабу №%d\n%s", labID, text),
-		})
-		threadName, err := app.repo.GetThreadNameByID(threadID)
-		if err != nil {
-			warn(err)
-			return
-		}
-		edit, err := app.createCheckLabMenu(callback.From.ID, callback.Message.MessageID, *user.TeacherSubject, threadName, threadID, int(labID))
+			File: tgbotapi.FileID(`CAACAgIAAxkBAAEXUKplTNfITDQ1wwXlwzx4U87NahYcUQAC5BQAAqt86UviEhEqhf3MYjME`),
+		}})
+		edit, err := app.createCheckLabMenu(callback.From.ID, callback.Message.MessageID, threadID)
 		if err != nil {
 			warn(err)
 			return
 		}
 		app.bot.Send(edit)
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, "✅ ЛР зачтена"))
-	case "lab_retake": // data[1] - threadID int, data[2] - lab ID int, data[3] - student ID int64
+	case "lab_retake": // data[1] - threadID int, data[3] - student ID int64
 		threadID, err := strconv.Atoi(data[1])
 		if err != nil {
 			warn(err)
 			return
 		}
-		labID, err := strconv.ParseInt(data[2], 10, 64)
+		thread, err := app.repo.GetThreadByID(threadID)
 		if err != nil {
 			warn(err)
 			return
@@ -483,17 +396,12 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 			return
 		}
 
-		if err = app.repo.MarkLabAsNotPassed(studentID, int(labID)); err != nil {
-			warn(err)
-			return
-		}
-		if err = app.repo.AddUserToQueue(studentID, threadID, int(labID)); err != nil {
-			warn(err)
-			return
-		}
-
-		labName, err := app.repo.GetLaboratoryNameByID(int(labID))
+		labID, err := app.repo.GradeLab(studentID, threadID, false)
 		if err != nil {
+			warn(err)
+			return
+		}
+		if err = app.repo.AddUserToQueue(studentID, threadID, labID); err != nil {
 			warn(err)
 			return
 		}
@@ -501,50 +409,44 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 		app.bot.Send(tgbotapi.MessageConfig{
 			BaseChat: tgbotapi.BaseChat{
 				ChatID: studentID,
+			},
+			Text: fmt.Sprintf("Вас отправили на пересдачу лабы по %s.\nВы встали в конец очереди.", thread.Subject.NameGenitiveCase()),
+		})
+		app.bot.Send(tgbotapi.StickerConfig{tgbotapi.BaseFile{ //nolint:govet
+			BaseChat: tgbotapi.BaseChat{
+				ChatID: studentID,
 				ReplyMarkup: tgbotapi.NewInlineKeyboardMarkup(
 					tgbotapi.NewInlineKeyboardRow(
 						tgbotapi.NewInlineKeyboardButtonData("Главное меню", "menu"))),
-				DisableNotification: true,
 			},
-			Text: fmt.Sprintf("Вас отправили на пересдачу лабы №%s\nВы встали в конец очереди.", labName),
-		})
+			File: tgbotapi.FileID(`CAACAgIAAxkBAAEXTJNlS6NRr3e-fv4vgcQnbjPTCluxcAACaBoAAkYKqUjgFcYYloWvkzME`),
+		}})
 
-		threadName, err := app.repo.GetThreadNameByID(threadID)
-		if err != nil {
-			warn(err)
-			return
-		}
-		edit, err := app.createCheckLabMenu(callback.From.ID, callback.Message.MessageID, *user.TeacherSubject, threadName, threadID, int(labID))
+		edit, err := app.createCheckLabMenu(callback.From.ID, callback.Message.MessageID, threadID)
 		if err != nil {
 			warn(err)
 			return
 		}
 		app.bot.Send(edit)
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, "✅ Студент отправлен на пересдачу"))
-	case "student_missing": // data[1] - thread ID, data[2] - lab ID int, data[3] - student ID int64
+	case "student_missing": // data[1] - thread ID, data[2] - student ID int64
 		threadID, err := strconv.Atoi(data[1])
 		if err != nil {
 			warn(err)
 			return
 		}
-		labID, err := strconv.ParseInt(data[2], 10, 64)
+		thread, err := app.repo.GetThreadByID(threadID)
 		if err != nil {
 			warn(err)
 			return
 		}
-		studentID, err := strconv.ParseInt(data[3], 10, 64)
+		studentID, err := strconv.ParseInt(data[2], 10, 64)
 		if err != nil {
 			warn(err)
 			return
 		}
 
-		if err = app.repo.MarkLabAsNotPassed(studentID, int(labID)); err != nil {
-			warn(err)
-			return
-		}
-
-		labName, err := app.repo.GetLaboratoryNameByID(int(labID))
-		if err != nil {
+		if _, err = app.repo.GradeLab(studentID, threadID, false); err != nil {
 			warn(err)
 			return
 		}
@@ -557,15 +459,9 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 						tgbotapi.NewInlineKeyboardButtonData("Главное меню", "menu"))),
 				DisableNotification: true,
 			},
-			Text: fmt.Sprintf("Вы не явились на сдачу лабы №%s\nВы убраны из очереди. Вы можете встать в неё обратно.", labName),
+			Text: fmt.Sprintf("Вы не явились на сдачу лабы по %s\nВы убраны из очереди. Вы можете встать в неё обратно.", thread.Subject.NameGenitiveCase()),
 		})
-
-		threadName, err := app.repo.GetThreadNameByID(threadID)
-		if err != nil {
-			warn(err)
-			return
-		}
-		edit, err := app.createCheckLabMenu(callback.From.ID, callback.Message.MessageID, *user.TeacherSubject, threadName, threadID, int(labID))
+		edit, err := app.createCheckLabMenu(callback.From.ID, callback.Message.MessageID, threadID)
 		if err != nil {
 			warn(err)
 			return
@@ -609,7 +505,7 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 			warn(err)
 			return
 		}
-		threadName, err := app.repo.GetThreadNameByID(threadID)
+		thread, err := app.repo.GetThreadByID(threadID)
 		if err != nil {
 			warn(err)
 			return
@@ -627,7 +523,7 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 				MessageID:   callback.Message.MessageID,
 				ReplyMarkup: &keyboard,
 			},
-			Text:      "Что бы вы хотели сделать с потоком <b>" + threadName + "</b>?",
+			Text:      "Что бы вы хотели сделать с потоком <b>" + thread.Name + "</b>?",
 			ParseMode: tgbotapi.ModeHTML,
 		})
 	case "delete_thread": // data[1] - threadID int
@@ -636,7 +532,7 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 			warn(err)
 			return
 		}
-		threadName, err := app.repo.GetThreadNameByID(threadID)
+		thread, err := app.repo.GetThreadByID(threadID)
 		if err != nil {
 			warn(err)
 			return
@@ -654,7 +550,7 @@ func (app App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQu
 				MessageID:   callback.Message.MessageID,
 				ReplyMarkup: &keyboard,
 			},
-			Text:      "Поток <b>" + threadName + "</b> успешно удалён.",
+			Text:      "Поток <b>" + thread.Name + "</b> успешно удалён.",
 			ParseMode: tgbotapi.ModeHTML,
 		})
 	case "rename_thread": // data[1] - threadID int

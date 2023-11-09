@@ -3,14 +3,16 @@ package repo
 import (
 	"github.com/armanokka/laba_itmo_bot/internal/usecase/entity"
 	"github.com/pkg/errors"
+	"gorm.io/gorm/clause"
 	"time"
 )
 
-func (t TranslationRepo) GetQueueBySubject(threadID int, labID int) ([]entity.QueueUser, error) {
+func (t TranslationRepo) GetQueueByThreadID(threadID int) ([]entity.QueueUser, error) {
 	rows, err := t.client.Model(&Queues{}).Raw(`
-SELECT queues.user_id, queues.checked, queues.retake, queues.passed, users.first_name, users.last_name, users.patronymic
+SELECT queues.user_id, laboratories.name, queues.checked, queues.retake, queues.passed, users.first_name, users.last_name, users.patronymic
 FROM queues
-JOIN users ON users.id=queues.user_id WHERE queues.laboratory_id = ? AND queues.thread_id = ? ORDER BY queues.checked DESC, queues.retake ASC, queues.created_at`, labID, threadID).Rows()
+         JOIN laboratories ON  laboratories.id=queues.laboratory_id
+         JOIN users ON users.id=queues.user_id WHERE queues.thread_id = ? AND checked=false ORDER BY queues.checked DESC, queues.retake ASC, queues.created_at`, threadID).Rows()
 	if err != nil {
 		return nil, err
 	}
@@ -18,7 +20,7 @@ JOIN users ON users.id=queues.user_id WHERE queues.laboratory_id = ? AND queues.
 	queue := make([]entity.QueueUser, 0, 5)
 	for rows.Next() {
 		var user entity.QueueUser
-		if err = rows.Scan(&user.UserID, &user.Checked, &user.Retake, &user.Passed, &user.FirstName, &user.LastName, &user.Patronymic); err != nil {
+		if err = rows.Scan(&user.UserID, &user.LabName, &user.Checked, &user.Retake, &user.Passed, &user.FirstName, &user.LastName, &user.Patronymic); err != nil {
 			return nil, err
 		}
 		queue = append(queue, user)
@@ -26,51 +28,48 @@ JOIN users ON users.id=queues.user_id WHERE queues.laboratory_id = ? AND queues.
 	return queue, rows.Err()
 }
 
-func (t TranslationRepo) AddUserToQueue(userID int64, userThreadID int, labID int) error {
-	took, err := t.UserTookLab(userID, labID)
+func (t TranslationRepo) AddUserToQueue(userID int64, threadID int, labID int) error {
+	retakes, err := t.UserRetakesLab(userID, labID)
 	if err != nil {
 		return err
 	}
 	return t.client.Create(&Queues{
 		UserID:       userID,
-		ThreadID:     userThreadID,
+		ThreadID:     threadID,
 		LaboratoryID: labID,
 		Checked:      false,
-		Retake:       took,
+		Retake:       retakes,
 		Passed:       false,
 		CreatedAt:    time.Now(),
 	}).Error
 }
 
-func (t TranslationRepo) RemoveUserFromQueue(userID int64, threadID int, labID int) error {
-	return t.client.Where("user_id = ?", userID).Where("thread_id = ?", threadID).Where("laboratory_id = ?", labID).Where("checked = ?", false).Delete(&Queues{}).Error
+func (t TranslationRepo) RemoveUserFromQueue(userID int64, threadID int) error {
+	return t.client.Where("user_id = ?", userID).Where("thread_id = ?", threadID).Where("checked = ?", false).Delete(&Queues{}).Error
 }
 
-func (t TranslationRepo) MarkLabAsNotPassed(studentID int64, lab int) error {
-	query := t.client.Model(&Queues{}).Where("user_id = ?", studentID).Where("laboratory_id = ?", lab).Update("checked", true)
+func (t TranslationRepo) GradeLab(studentID int64, threadID int, passed bool) (labID int, err error) {
+	var record Queues
+	query := t.client.Model(&record).Where("user_id = ?", studentID).Where("thread_id = ?", threadID).Where("checked = ?", false).Clauses(clause.Returning{}).Select("laboratory_id").Updates(map[string]interface{}{"checked": true, "passed": passed})
 	if query.RowsAffected == 0 {
-		return errors.Wrap(ErrNotFound, "MarkLabAsChecked")
+		return 0, errors.Wrap(ErrNotFound, "MarkLabAsChecked")
 	}
-	return query.Error
+	return record.LaboratoryID, query.Error
 }
 
-func (t TranslationRepo) MarkLabAsPassed(studentID int64, lab int) error {
-	query := t.client.Model(&Queues{}).Where("user_id = ?", studentID).Where("laboratory_id = ?", lab).Where("checked = ?", false).Updates(map[string]interface{}{"checked": true, "passed": true})
+func (t TranslationRepo) UserInQueue(studentID int64, threadID int) (in bool, err error) { // whether user is in any queue of the subject
+	query := t.client.Model(&Queues{}).Raw("SELECT EXISTS(SELECT 1 FROM queues WHERE user_id = ? AND checked=false AND thread_id = ?)", studentID, threadID).Find(&in)
+	if query.Error != nil {
+		return false, err
+	}
 	if query.RowsAffected == 0 {
-		return errors.Wrap(ErrNotFound, "MarkLabAsChecked")
+		return false, ErrNotFound
 	}
-	return query.Error
+	return in, nil
 }
 
-func (t TranslationRepo) UserPassedLab(studentID int64, lab int) (exists bool, err error) {
-	return exists, t.client.Model(&Queues{}).Raw(`SELECT EXISTS(SELECT 1 FROM queues WHERE user_id = ? AND laboratory_id = ? AND passed=true)`, studentID, lab).Find(&exists).Error
-}
-func (t TranslationRepo) UserTookLab(studentID int64, lab int) (exists bool, err error) {
-	return exists, t.client.Model(&Queues{}).Raw(`SELECT EXISTS(SELECT 1 FROM queues WHERE user_id = ? AND laboratory_id = ? AND checked=true)`, studentID, lab).Find(&exists).Error
-}
-
-func (t TranslationRepo) UserInAnyQueue(studentID int64, subject entity.Subject) (in bool, err error) { // whether user is in any queue of the subject
-	query := t.client.Model(&Queues{}).Raw("SELECT EXISTS(SELECT 1 FROM queues WHERE user_id = ? AND checked=false AND laboratory_id IN (SELECT id FROM laboratories WHERE subject = ?))", studentID, int(subject)).Find(&in)
+func (t TranslationRepo) UserRetakesLab(studentID int64, threadID int) (in bool, err error) { // whether user is in any queue of the subject
+	query := t.client.Model(&Queues{}).Raw("SELECT EXISTS(SELECT 1 FROM queues WHERE user_id = ? AND checked=true AND thread_id = ?)", studentID, threadID).Find(&in)
 	if query.Error != nil {
 		return false, err
 	}
