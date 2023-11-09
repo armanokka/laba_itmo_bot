@@ -49,7 +49,7 @@ func (app App) createLabSelection(userID int64, messageID int, threadID int, sub
 			MessageID:   messageID,
 			ReplyMarkup: &keyboard,
 		},
-		Text: fmt.Sprintf("На какую лабу хотите изменить?"),
+		Text: fmt.Sprintf("Какую лабу вы сдаёте? После выбора вы не потеряете свое место в очереди."),
 	}, nil
 }
 
@@ -120,7 +120,7 @@ func (app *App) createQueueMessage(userID int64, messageID, threadID int) (tgbot
 	)
 	if in {
 		keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("✍️ Изменить номер моей лабы", fmt.Sprintf("open_change_my_lab_menu:%s", strconv.Itoa(threadID))),
+			tgbotapi.NewInlineKeyboardButtonData("✍️ Сдаю другую лабу", fmt.Sprintf("open_change_my_lab_menu:%s", strconv.Itoa(threadID))),
 		))
 	}
 	keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, tgbotapi.NewInlineKeyboardRow(
