@@ -7,8 +7,9 @@ import (
 type Config struct {
 	Environment string `yaml:"BOT_TOKEN" env:"BOT_TOKEN" env-default:"debug"`
 
-	BotToken string `yaml:"BOT_TOKEN" env:"BOT_TOKEN" env-required:"true"`
-	AdminID  int64  `yaml:"ADMIN_ID" env:"ADMIN_ID" env-required:"true"`
+	BotToken       string `yaml:"BOT_TOKEN" env:"BOT_TOKEN" env-required:"true"`
+	AdminID        int64  `yaml:"ADMIN_ID" env:"ADMIN_ID" env-required:"true"`
+	BotAPIEndpoint string `yaml:"BOT_API_ENDPOINT" env:"BOT_API_ENDPOINT" env-default:"https://api.telegram.org/bot%s/%s"`
 
 	PostgresHost     string `yaml:"POSTGRES_HOST" env:"POSTGRES_HOST" env-required:"true" env-default:"postgresql"`
 	PostgresPort     int    `yaml:"POSTGRES_PORT" env:"POSTGRES_PORT" env-required:"true" env-default:"5432"`

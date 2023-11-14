@@ -19,6 +19,16 @@ func NewBotAPI(token string) (BotAPI, error) {
 	}, nil
 }
 
+func NewBotAPIWithEndpoint(token, endpoint string) (BotAPI, error) {
+	api, err := tgbotapi.NewBotAPIWithAPIEndpoint(token, endpoint)
+	if err != nil {
+		return BotAPI{}, err
+	}
+	return BotAPI{
+		BotAPI: api,
+	}, nil
+}
+
 func (bot BotAPI) AnswerCallbackQuery(config tgbotapi.CallbackConfig) (*tgbotapi.APIResponse, error) {
 	var params = make(tgbotapi.Params, 0)
 	params.AddNonEmpty("callback_query_id", config.CallbackQueryID)

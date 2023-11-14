@@ -102,6 +102,7 @@ func Run(ctx context.Context, api botapi.BotAPI, repo usecase.Repo, log logger.L
 	}()
 
 	app.bot.Send(tgbotapi.NewMessage(app.adminID, "Бот запущен /start"))
+	log.Info("Bot has started")
 	for update := range updates {
 		switch {
 		case update.Message != nil:
