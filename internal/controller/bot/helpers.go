@@ -65,11 +65,7 @@ func (app *App) createQueueMessage(userID int64, messageID, threadID int) (tgbot
 
 	for i, booking := range queue {
 		people += "\n"
-		if booking.Patronymic == nil {
-			s := ""
-			booking.Patronymic = &s
-		}
-		fio := fmt.Sprintf(`%d. <a href="tg://user?id=%d">%s %s %s</a> / ЛР №%s`, i+1, booking.UserID, booking.FirstName, booking.LastName, *booking.Patronymic, booking.LabName)
+		fio := fmt.Sprintf(`%d. <a href="tg://user?id=%d">%s %s</a> / ЛР №%s`, i+1, booking.UserID, booking.FirstName, booking.LastName, booking.LabName)
 		if !booking.Checked && booking.UserID != userID && !in {
 			before++
 		}
@@ -175,11 +171,7 @@ func (app *App) createCheckLabMenu(userID int64, messageID int, threadID int) (t
 	afterCurrentStudentCount := 0
 	currentStudentIdx := 0
 	for i, booking := range queue {
-		if booking.Patronymic == nil {
-			s := ""
-			booking.Patronymic = &s
-		}
-		fio := fmt.Sprintf("\n"+`%d. <a href="tg://user?id=%d">%s %s %s</a> / ЛР №%s`, i+1, booking.UserID, booking.FirstName, booking.LastName, *booking.Patronymic, booking.LabName)
+		fio := fmt.Sprintf("\n"+`%d. <a href="tg://user?id=%d">%s %s</a> / ЛР №%s`, i+1, booking.UserID, booking.FirstName, booking.LastName, booking.LabName)
 
 		if booking.Checked {
 			fio = "<s>" + fio + "</s>"
