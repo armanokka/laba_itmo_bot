@@ -1,5 +1,5 @@
-translobot
 .github
 .idea
 .env
 laba_itmo_bot
+postgres-data
