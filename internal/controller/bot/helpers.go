@@ -65,7 +65,11 @@ func (app *App) createQueueMessage(userID int64, messageID, threadID int) (tgbot
 
 	for i, booking := range queue {
 		people += "\n"
-		fio := fmt.Sprintf(`%d. <a href="tg://user?id=%d">%s %s</a> / ЛР №%s`, i+1, booking.UserID, booking.FirstName, booking.LastName, booking.LabName)
+		if booking.Patronymic == nil {
+			s := ""
+			booking.Patronymic = &s
+		}
+		fio := fmt.Sprintf(`%d. <a href="tg://user?id=%d">%s %s %s</a> / ЛР №%s`, i+1, booking.UserID, booking.FirstName, booking.LastName, *booking.Patronymic, booking.LabName)
 		if !booking.Checked && booking.UserID != userID && !in {
 			before++
 		}
@@ -169,7 +173,6 @@ func (app *App) createCheckLabMenu(userID int64, messageID int, threadID int) (t
 	var currentStudent entity.QueueUser
 	fullQueue := ""
 	afterCurrentStudentCount := 0
-	currentStudentIdx := 0
 	for i, booking := range queue {
 		fio := fmt.Sprintf("\n"+`%d. <a href="tg://user?id=%d">%s %s</a> / ЛР №%s`, i+1, booking.UserID, booking.FirstName, booking.LastName, booking.LabName)
 
@@ -179,7 +182,6 @@ func (app *App) createCheckLabMenu(userID int64, messageID int, threadID int) (t
 			if currentStudent.UserID == 0 {
 				currentStudent = booking
 				fio += "  ⬅️ (сейчас)"
-				currentStudentIdx = i
 			} else {
 				afterCurrentStudentCount++
 			}
@@ -198,7 +200,7 @@ func (app *App) createCheckLabMenu(userID int64, messageID int, threadID int) (t
 				tgbotapi.NewInlineKeyboardButtonData("🔄 Обновить очередь", fmt.Sprintf("update_check_lab:%d", threadID)),
 			),
 			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("Вернуться назад", "show_teacher_labs_selection:"+strconv.Itoa(threadID)),
+				tgbotapi.NewInlineKeyboardButtonData("Вернуться назад", "start_checking_labs"),
 			))
 		return tgbotapi.EditMessageTextConfig{
 			BaseEdit: tgbotapi.BaseEdit{
@@ -208,10 +210,10 @@ func (app *App) createCheckLabMenu(userID int64, messageID int, threadID int) (t
 			},
 			Text: fmt.Sprintf(`Очередь потока <b>%s</b>. %s.
 
-<b>сейчас никто не сдаёт.</b> <i>%d/%d</i>
+<b>сейчас никто не сдаёт.</b> <i>0/0</i>
 %s
 
-<i>очередь пуста</i>`, thread.Name, thread.Subject.Name(), currentStudentIdx+1, currentStudentIdx+1+afterCurrentStudentCount, fullQueue),
+<i>очередь пуста</i>`, thread.Name, thread.Subject.Name(), fullQueue),
 			ParseMode: tgbotapi.ModeHTML,
 		}, nil
 	}
