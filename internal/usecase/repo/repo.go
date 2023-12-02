@@ -32,7 +32,7 @@ type Users struct {
 // TODO configure foreign keys in gorm
 
 type Queues struct {
-	ID           int       `gorm:"primaryKey; index; autoIncrement; not null"`
+	ID           int       `gorm:"autoIncrement; not null"`
 	UserID       int64     `gorm:"not null"`
 	ThreadID     int       `gorm:"not null"`
 	LaboratoryID int       `gorm:"not null"`

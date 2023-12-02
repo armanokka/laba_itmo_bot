@@ -22,10 +22,11 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 	}()
 
 	warn := func(err error) {
-		_, file, line, _ := runtime.Caller(2)
-		app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, "произошла ошибка"))
-		log.Error("", zap.Error(err), zap.String("line", file+":"+strconv.Itoa(line)))
+		app.bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Что-то пошло не так... Попробуйте написать боту /start"))
 		app.notifyAdmin(err)
+
+		_, file, line, _ := runtime.Caller(2)
+		log.Error("", zap.Error(err), zap.String("line", file+":"+strconv.Itoa(line)))
 	}
 
 	log.Debug("new message")

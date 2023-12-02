@@ -14,7 +14,8 @@ import (
 )
 
 func (app *App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQuery) {
-	log := app.log.With(zap.Int64("id", callback.From.ID))
+	log := app.log.With(zap.Int64("id", callback.From.ID), zap.String("callback_data", callback.Data))
+	log.Debug("new callback")
 
 	defer func() {
 		if err := recover(); err != nil {
@@ -22,21 +23,21 @@ func (app *App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		}
 	}()
 	warn := func(err error) {
+		app.bot.Send(tgbotapi.NewCallback(callback.ID, "Что-то пошло не так... Попробуйте написать боту /start"))
+		app.notifyAdmin(err)
+
 		_, file, line, _ := runtime.Caller(2)
 		log.Error("", zap.Error(err), zap.String("line", file+":"+strconv.Itoa(line)))
-		app.bot.Send(tgbotapi.NewCallback(callback.ID, "произошла ошибка"))
-		app.notifyAdmin(err)
 	}
 
 	user, err := app.repo.GetUserByID(callback.From.ID)
 	if err != nil {
 		warn(err)
+		return
 	}
 
 	data := strings.Split(callback.Data, ":")
 
-	log = log.With(zap.String("callback_data", callback.Data))
-	log.Debug("new callback")
 	switch data[0] {
 	case "menu":
 		if user.TeacherSubject != nil {
@@ -364,7 +365,7 @@ func (app *App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		}
 		app.bot.Send(edit)
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, ""))
-	case "accept_lab": // data[1] - threadID int data[3] - student ID int64
+	case "accept_lab": // data[1] - threadID int data[2] - student ID int64
 		// TODO сделать общую очередь для всех лаб
 		// TODO отмечать того сдающего, который открыт у учителя
 		// TODO считать количество пересдач
@@ -378,7 +379,7 @@ func (app *App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			warn(err)
 			return
 		}
-		studentID, err := strconv.ParseInt(data[3], 10, 64)
+		studentID, err := strconv.ParseInt(data[2], 10, 64)
 		if err != nil {
 			warn(err)
 			return
@@ -403,14 +404,14 @@ func (app *App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 				warn(err)
 				return
 			}
-			text = fmt.Sprintf("Вы записаны на сдачу следующей лабы: №%d", nextLab.Name)
+			text = fmt.Sprintf("Вы записаны на сдачу следующей лабы: №%s", nextLab.Name)
 		}
 
 		app.bot.Send(tgbotapi.MessageConfig{
 			BaseChat: tgbotapi.BaseChat{
 				ChatID: studentID,
 			},
-			Text: fmt.Sprintf("✅ Поздравляем! Вы сдали лабу №%d\n", nextLab.Name) + text,
+			Text: fmt.Sprintf("✅ Поздравляем! Вы сдали лабу №%s\n", nextLab.Name) + text,
 		})
 		app.bot.Send(tgbotapi.StickerConfig{tgbotapi.BaseFile{ //nolint:govet
 			BaseChat: tgbotapi.BaseChat{
@@ -428,7 +429,7 @@ func (app *App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		}
 		app.bot.Send(edit)
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, "✅ ЛР зачтена"))
-	case "lab_retake": // data[1] - threadID int, data[3] - student ID int64
+	case "lab_retake": // data[1] - threadID int, data[2] - student ID int64
 		threadID, err := strconv.Atoi(data[1])
 		if err != nil {
 			warn(err)
@@ -439,7 +440,7 @@ func (app *App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 			warn(err)
 			return
 		}
-		studentID, err := strconv.ParseInt(data[3], 10, 64)
+		studentID, err := strconv.ParseInt(data[2], 10, 64)
 		if err != nil {
 			warn(err)
 			return
@@ -478,7 +479,7 @@ func (app *App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQ
 		}
 		app.bot.Send(edit)
 		app.bot.AnswerCallbackQuery(tgbotapi.NewCallback(callback.ID, "✅ Студент отправлен на пересдачу"))
-	case "student_missing": // data[1] - thread ID, data[2] - student ID int64
+	case "student_missing": // s1] - thread ID, data[2] - student ID int64
 		threadID, err := strconv.Atoi(data[1])
 		if err != nil {
 			warn(err)

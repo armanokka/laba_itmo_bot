@@ -68,9 +68,9 @@ func (t TranslationRepo) RemoveUserFromQueue(userID int64, threadID int) error {
 
 func (t TranslationRepo) GradeLab(studentID int64, threadID int, passed bool) (labID int, err error) {
 	var record Queues
-	query := t.client.Model(&record).Where("user_id = ?", studentID).Where("thread_id = ?", threadID).Where("checked = ?", false).Clauses(clause.Returning{}).Select("laboratory_id").Updates(map[string]interface{}{"checked": true, "passed": passed})
+	query := t.client.Model(&record).Where("user_id = ?", studentID).Where("thread_id = ?", threadID).Where("checked = ?", false).Clauses(clause.Returning{}).Updates(map[string]interface{}{"checked": true, "passed": passed})
 	if query.RowsAffected == 0 {
-		return 0, errors.Wrap(ErrNotFound, "MarkLabAsChecked")
+		return 0, errors.Wrap(ErrNotFound, "GradeLab")
 	}
 	return record.LaboratoryID, query.Error
 }

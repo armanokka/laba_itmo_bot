@@ -21,7 +21,6 @@ type App struct {
 	log     logger.Logger
 	repo    usecase.Repo
 	adminID int64
-	loc     *time.Location
 
 	mu                      sync.Mutex
 	currentPassingStudent   int64 // current passing student's user id
@@ -29,7 +28,7 @@ type App struct {
 }
 
 func (app *App) now() time.Time {
-	return time.Now().In(app.loc).Add(3 * time.Hour)
+	return time.Now().In(time.UTC).Add(3 * time.Hour)
 }
 
 func (app *App) SetCurrentPassingStudent(userID int64) {
@@ -78,13 +77,7 @@ func Run(ctx context.Context, api botapi.BotAPI, repo usecase.Repo, log logger.L
 		adminID:                 adminID,
 		currentPassingStudentCh: make(chan int64, 1),
 	}
-	updatesConfig := tgbotapi.UpdateConfig{}
-	updates := api.GetUpdatesChan(updatesConfig)
-
-	app.loc, err = time.LoadLocation("UTC")
-	if err != nil {
-		return err
-	}
+	updates := api.GetUpdatesChan(tgbotapi.UpdateConfig{})
 
 	go func() {
 		for {
@@ -103,13 +96,19 @@ func Run(ctx context.Context, api botapi.BotAPI, repo usecase.Repo, log logger.L
 
 	app.bot.Send(tgbotapi.NewMessage(app.adminID, "Бот запущен /start"))
 	log.Info("Bot has started")
-	for update := range updates {
-		switch {
-		case update.Message != nil:
-			app.onMessage(ctx, *update.Message)
-		case update.CallbackQuery != nil:
-			app.OnCallbackQuery(ctx, *update.CallbackQuery)
+	for {
+		select {
+		case update := <-updates:
+			switch {
+			case update.Message != nil:
+				app.onMessage(ctx, *update.Message)
+			case update.CallbackQuery != nil:
+				app.OnCallbackQuery(ctx, *update.CallbackQuery)
+			default:
+				app.log.Error(fmt.Sprintf("unsupported update: %T", update))
+			}
+		case <-ctx.Done():
+			return err
 		}
 	}
-	return nil
 }
