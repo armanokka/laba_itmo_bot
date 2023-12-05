@@ -15,7 +15,7 @@ import (
 
 func (app *App) OnCallbackQuery(ctx context.Context, callback tgbotapi.CallbackQuery) {
 	log := app.log.With(zap.Int64("id", callback.From.ID), zap.String("callback_data", callback.Data))
-	log.Debug("new callback")
+	//log.Debug("new callback")
 
 	defer func() {
 		if err := recover(); err != nil {

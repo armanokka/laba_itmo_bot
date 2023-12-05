@@ -35,7 +35,7 @@ func Run(cfg *config.Config) error {
 	}()
 
 	// Connecting to PostgreSQL
-	log.Debug("connecting to database...")
+	//log.Debug("connecting to database...")
 	var dsn = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s TimeZone=Europe/Moscow", cfg.PostgresHost, cfg.PostgresPort, cfg.PostgresUser, cfg.PostgresPassword, cfg.PostgresDB)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		SkipDefaultTransaction: true,
@@ -49,7 +49,7 @@ func Run(cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	log.Debug("connected to database successfully")
+	//log.Debug("connected to database successfully")
 
 	// Creating Telegram bot API instance
 	api, err := botapi.NewBotAPIWithEndpoint(cfg.BotToken, cfg.BotAPIEndpoint)

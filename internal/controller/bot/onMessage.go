@@ -29,7 +29,7 @@ func (app *App) onMessage(ctx context.Context, message tgbotapi.Message) {
 		log.Error("", zap.Error(err), zap.String("line", file+":"+strconv.Itoa(line)))
 	}
 
-	log.Debug("new message")
+	//log.Debug("new message")
 
 	if message.Chat.ID < 0 {
 		return
